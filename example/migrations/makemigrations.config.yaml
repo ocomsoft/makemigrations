@@ -1,0 +1,29 @@
+# Makemigrations Configuration File
+# 
+# This file contains configuration for the makemigrations tool.
+# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
+# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
+#
+# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
+#
+
+database:
+    type: mysql
+    default_schema: public
+    quote_identifiers: true
+migration:
+    directory: migrations
+    file_prefix: "20060102150405"
+    snapshot_file: .schema_snapshot.yaml
+    auto_apply: false
+    include_down_sql: false
+schema:
+    search_paths: []
+    ignore_modules: []
+    schema_file_name: schema.yaml
+    validate_strict: false
+output:
+    verbose: true
+    color_enabled: true
+    progress_bar: false
+    timestamp_format: "2006-01-02 15:04:05"

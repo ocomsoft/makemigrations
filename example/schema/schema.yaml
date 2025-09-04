@@ -1,0 +1,446 @@
+database:
+  name: comprehensive_field_test
+  version: 1.0.0
+
+include:
+  - module: github.com/ocomsoft/example_app
+    path: included/schemas/auth.yaml
+
+defaults:
+  postgresql:
+    blank: ''
+    now: CURRENT_TIMESTAMP
+    today: CURRENT_DATE
+    current_time: CURRENT_TIME
+    new_uuid: gen_random_uuid()
+    zero: "0"
+    true: "true"
+    false: "false"
+    null: "null"
+    array: "'[]'::jsonb"
+    object: "'{}'::jsonb"
+  mysql:
+    blank: ''
+    now: CURRENT_TIMESTAMP
+    today: (CURDATE())
+    current_time: (CURTIME())
+    new_uuid: (UUID())
+    zero: "0"
+    true: "1"
+    false: "0"
+    null: "null"
+    array: ('[]')
+    object: ('{}')
+  sqlite:
+    blank: ''
+    now: CURRENT_TIMESTAMP
+    today: CURRENT_DATE
+    current_time: CURRENT_TIME
+    new_uuid: ""
+    zero: "0"
+    true: "1"
+    false: "0"
+    null: "null"
+    array: '[]'
+    object: '{}'
+  sqlserver:
+    blank: ''
+    now: GETDATE()
+    today: CAST(GETDATE() AS DATE)
+    current_time: CAST(GETDATE() AS TIME)
+    new_uuid: NEWID()
+    zero: "0"
+    true: "1"
+    false: "0"
+    null: "null"
+    array: '[]'
+    object: '{}'
+
+tables:
+  # Reference table for foreign key relationships
+  - name: users
+    fields:
+      - name: id
+        type: uuid
+        primary_key: true
+        default: new_uuid
+      - name: username
+        type: varchar
+        length: 150
+        nullable: false
+      - name: email
+        type: varchar
+        length: 254
+        nullable: false
+
+  # Table demonstrating all field types
+  - name: all_fields_example
+    fields:
+      - name: id
+        type: serial
+        primary_key: true
+
+      # VARCHAR fields (required and nullable)
+      - name: char_required
+        type: varchar
+        length: 100
+        nullable: false
+        default: "default_text"
+      - name: char_nullable
+        type: varchar
+        length: 100
+        nullable: true
+        default: null
+
+      # TEXT fields (required and nullable)
+      - name: text_required
+        type: text
+        nullable: false
+        default: blank
+      - name: text_nullable
+        type: text
+        length: 5000
+        nullable: true
+
+      # Email fields (VARCHAR with specific length)
+      - name: email_required
+        type: varchar
+        length: 254
+        nullable: false
+      - name: email_nullable
+        type: varchar
+        length: 255
+        nullable: true
+
+      # URL fields (VARCHAR with specific length)
+      - name: url_required
+        type: varchar
+        length: 200
+        nullable: false
+      - name: url_nullable
+        type: varchar
+        length: 255
+        nullable: true
+
+      # INTEGER fields
+      - name: integer_required
+        type: integer
+        nullable: false
+        default: zero
+      - name: integer_nullable
+        type: integer
+        nullable: true
+
+      # BIGINT fields
+      - name: bigint_required
+        type: bigint
+        nullable: false
+        default: zero
+      - name: bigint_nullable
+        type: bigint
+        nullable: true
+
+      # FLOAT fields
+      - name: float_required
+        type: float
+        nullable: false
+        default: "0.0"
+      - name: float_nullable
+        type: float
+        nullable: true
+
+      # DECIMAL fields with precision and scale
+      - name: decimal_required
+        type: decimal
+        precision: 10
+        scale: 2
+        nullable: false
+        default: "0.00"
+      - name: decimal_nullable
+        type: decimal
+        precision: 19
+        scale: 4
+        nullable: true
+
+      # BOOLEAN fields
+      - name: boolean_required
+        type: boolean
+        nullable: false
+        default: false
+      - name: boolean_nullable
+        type: boolean
+        nullable: true
+        default: true
+
+      # DATE fields
+      - name: date_required
+        type: date
+        nullable: false
+        default: today
+      - name: date_nullable
+        type: date
+        nullable: true
+
+      # TIMESTAMP fields
+      - name: datetime_required
+        type: timestamp
+        nullable: false
+        default: now
+      - name: datetime_nullable
+        type: timestamp
+        nullable: true
+
+      # TIMESTAMP with auto_update
+      - name: datetime_auto_update
+        type: timestamp
+        nullable: false
+        auto_update: true
+
+      # TIMESTAMP with auto_create
+      - name: datetime_auto_create
+        type: timestamp
+        nullable: false
+        default: now
+        auto_create: true
+
+      # TIME fields
+      - name: time_required
+        type: time
+        nullable: false
+        default: current_time
+      - name: time_nullable
+        type: time
+        nullable: true
+
+      # UUID fields
+      - name: uuid_required
+        type: uuid
+        nullable: false
+        default: new_uuid
+      - name: uuid_nullable
+        type: uuid
+        nullable: true
+
+      # JSONB fields
+      - name: json_required
+        type: jsonb
+        nullable: false
+        default: object
+      - name: json_nullable
+        type: jsonb
+        nullable: true
+        default: array
+
+      # Foreign key fields (required and nullable)
+      - name: user_id
+        type: foreign_key
+        nullable: false
+        foreign_key:
+          table: users
+          on_delete: CASCADE
+      - name: optional_user_id
+        type: foreign_key
+        nullable: true
+        foreign_key:
+          table: users
+          on_delete: SET_NULL
+
+  # Table for tags (to demonstrate many-to-many relationships)
+  - name: tags
+    fields:
+      - name: id
+        type: serial
+        primary_key: true
+      - name: name
+        type: varchar
+        length: 50
+        nullable: false
+
+  # Table with many-to-many relationship
+  - name: articles
+    fields:
+      - name: id
+        type: uuid
+        primary_key: true
+        default: new_uuid
+      - name: title
+        type: varchar
+        length: 200
+        nullable: false
+      - name: author_id
+        type: foreign_key
+        nullable: false
+        foreign_key:
+          table: users
+          on_delete: PROTECT
+
+  # Junction table for many-to-many relationship
+  - name: articles_tags
+    fields:
+      - name: id
+        type: serial
+        primary_key: true
+      - name: article_id
+        type: foreign_key
+        nullable: false
+        foreign_key:
+          table: articles
+          on_delete: CASCADE
+      - name: tag_id
+        type: foreign_key
+        nullable: false
+        foreign_key:
+          table: tags
+          on_delete: CASCADE
+    indexes:
+      - name: idx_articles_tags_unique
+        fields: [article_id, tag_id]
+        unique: true
+
+  # Table demonstrating edge cases and default values
+  - name: edge_cases
+    fields:
+      - name: id
+        type: serial
+        primary_key: true
+
+      # Empty string default
+      - name: empty_string_default
+        type: varchar
+        length: 50
+        nullable: false
+        default: blank
+
+      # Zero default for integer
+      - name: zero_default_int
+        type: integer
+        nullable: false
+        default: zero
+
+      # Empty array JSON
+      - name: empty_list_json
+        type: jsonb
+        nullable: false
+        default: array
+
+      # Empty object JSON
+      - name: empty_dict_json
+        type: jsonb
+        nullable: false
+        default: object
+
+      # CharField with default length (255)
+      - name: char_default_length
+        type: varchar
+        length: 255
+        nullable: true
+
+      # EmailField with default length (255)
+      - name: email_default_length
+        type: varchar
+        length: 255
+        nullable: true
+
+      # URLField with default length (255)
+      - name: url_default_length
+        type: varchar
+        length: 255
+        nullable: true
+
+      # Self-referencing foreign key
+      - name: parent_id
+        type: foreign_key
+        nullable: true
+        foreign_key:
+          table: edge_cases
+          on_delete: SET_NULL
+
+  # Table demonstrating all default value mappings
+  - name: default_mappings
+    fields:
+      - name: id
+        type: serial
+        primary_key: true
+
+      # Timestamp defaults
+      - name: default_now
+        type: timestamp
+        nullable: false
+        default: now
+
+      # Date defaults
+      - name: default_today
+        type: date
+        nullable: false
+        default: today
+
+      # Time defaults
+      - name: default_current_time
+        type: time
+        nullable: false
+        default: current_time
+
+      # Boolean defaults
+      - name: default_true
+        type: boolean
+        nullable: false
+        default: true
+      - name: default_false
+        type: boolean
+        nullable: false
+        default: false
+
+      # String defaults
+      - name: default_blank
+        type: varchar
+        length: 100
+        nullable: false
+        default: blank
+      - name: default_literal_string
+        type: varchar
+        length: 100
+        nullable: false
+        default: "literal_value"
+
+      # Numeric defaults
+      - name: default_zero
+        type: integer
+        nullable: false
+        default: zero
+      - name: default_literal_number
+        type: integer
+        nullable: false
+        default: 42
+      - name: default_decimal_literal
+        type: decimal
+        precision: 10
+        scale: 2
+        nullable: false
+        default: "99.99"
+
+      # JSON defaults
+      - name: default_empty_array
+        type: jsonb
+        nullable: false
+        default: array
+      - name: default_empty_object
+        type: jsonb
+        nullable: false
+        default: object
+      - name: default_json_literal
+        type: jsonb
+        nullable: false
+        default: '{"key": "value", "enabled": true}'
+
+      # UUID default
+      - name: default_uuid
+        type: uuid
+        nullable: false
+        default: new_uuid
+
+      # Null default (for nullable fields)
+      - name: default_null
+        type: varchar
+        length: 100
+        nullable: true
+        default: null

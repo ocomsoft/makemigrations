@@ -1,0 +1,83 @@
+database:
+    name: ocom
+    version: 1.0.0
+defaults:
+    mysql:
+        array: ('[]')
+        blank: ''''''
+        current_time: (CURTIME())
+        "false": "0"
+        new_uuid: (UUID())
+        now: CURRENT_TIMESTAMP
+        "null": "null"
+        object: ('{}')
+        today: (CURDATE())
+        "true": "1"
+        zero: "0"
+    postgresql:
+        array: '''[]''::jsonb'
+        blank: ''''''
+        current_time: CURRENT_TIME
+        "false": "false"
+        new_uuid: gen_random_uuid()
+        now: CURRENT_TIMESTAMP
+        "null": "null"
+        object: '''{}''::jsonb'
+        today: CURRENT_DATE
+        "true": "true"
+        zero: "0"
+    sqlite:
+        array: '''[]'''
+        blank: ''''''
+        current_time: CURRENT_TIME
+        "false": "0"
+        new_uuid: ""
+        now: CURRENT_TIMESTAMP
+        "null": "null"
+        object: '''{}'''
+        today: CURRENT_DATE
+        "true": "1"
+        zero: "0"
+    sqlserver:
+        array: '''[]'''
+        blank: ''''''
+        current_time: CAST(GETDATE() AS TIME)
+        "false": "0"
+        new_uuid: NEWID()
+        now: GETDATE()
+        "null": "null"
+        object: '''{}'''
+        today: CAST(GETDATE() AS DATE)
+        "true": "1"
+        zero: "0"
+tables:
+    - name: user
+      fields:
+        - name: id
+          type: uuid
+          primary_key: true
+        - name: active_start_date
+          type: timestamp
+          nullable: true
+          default: now
+        - name: active_end_date
+          type: timestamp
+          nullable: true
+        - name: username
+          type: varchar
+          length: 255
+    - name: file_meta_data
+      fields:
+        - name: id
+          type: uuid
+          primary_key: true
+        - name: active_start_date
+          type: timestamp
+          nullable: true
+          default: now
+        - name: active_end_date
+          type: timestamp
+          nullable: true
+        - name: name
+          type: varchar
+          length: 255

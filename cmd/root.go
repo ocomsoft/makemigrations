@@ -218,7 +218,7 @@ func runDefaultMakeMigrations(cmd *cobra.Command, args []string) error {
 	// Check mode - exit with error if changes found
 	if check {
 		fmt.Printf("Schema changes detected (%d statements). Run without --check to generate migration.\n", len(statements))
-		os.Exit(1)
+		return fmt.Errorf("schema changes detected")
 	}
 
 	if verbose {

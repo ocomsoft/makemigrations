@@ -7,6 +7,22 @@ This document describes how to build, test, and release makemigrations.
 - Go 1.21 or later
 - Git
 - Make (optional, but recommended)
+- Python 3 and pip (for bumpversion - optional, for automated releases)
+
+### Optional Tools for Development
+
+#### bumpversion (for automated version management)
+```bash
+pip install bumpversion
+```
+
+#### Development Tools
+```bash
+# Go linting and security tools
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+go install golang.org/x/vuln/cmd/govulncheck@latest
+go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+```
 
 ## Quick Start
 
@@ -45,6 +61,10 @@ make dev  # format, vet, lint, test, build
 | `make ci` | CI workflow |
 | `make run ARGS="--help"` | Build and run |
 | `make version` | Show version info |
+| `make bump-patch` | Bump patch version |
+| `make bump-minor` | Bump minor version |
+| `make bump-major` | Bump major version |
+| `make bump-*-dry` | Preview version bumps |
 
 ## Manual Build
 
@@ -134,13 +154,52 @@ gosec ./...
 
 ### Automated Release (Recommended)
 
+#### Option 1: Using bumpversion (Easiest)
+
+1. **Bump version automatically:**
+   ```bash
+   # Preview what will change
+   make bump-patch-dry    # or bump-minor-dry, bump-major-dry
+
+   # Actually bump the version
+   make bump-patch        # or bump-minor, bump-major
+
+   # Push to trigger release
+   git push origin main --tags
+   ```
+
+2. **Alternative using script directly:**
+   ```bash
+   # Preview changes
+   ./scripts/bump-version.sh minor --dry-run
+
+   # Bump version
+   ./scripts/bump-version.sh minor
+
+   # Push to trigger release
+   git push origin main --tags
+   ```
+
+#### Option 2: Using GitHub Actions (Manual trigger)
+
+1. **Go to GitHub Actions:**
+   - Navigate to "Bump Version" workflow
+   - Click "Run workflow"
+   - Select version part (patch/minor/major)
+   - Optionally create prerelease
+   - Click "Run workflow"
+
+#### Option 3: Manual tag creation
+
 1. **Create and push a tag:**
    ```bash
    git tag v1.0.0
    git push origin v1.0.0
    ```
 
-2. **GitHub Actions will automatically:**
+#### What happens automatically:
+
+**GitHub Actions will automatically:**
    - Run tests
    - Build for all platforms
    - Generate checksums

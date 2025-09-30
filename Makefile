@@ -128,6 +128,31 @@ version:
 	@echo "Build Date: $(BUILD_DATE)"
 	@echo "Git Commit: $(GIT_COMMIT)"
 
+# Version bumping
+bump-patch:
+	@echo "Bumping patch version..."
+	@./scripts/bump-version.sh patch
+
+bump-minor:
+	@echo "Bumping minor version..."
+	@./scripts/bump-version.sh minor
+
+bump-major:
+	@echo "Bumping major version..."
+	@./scripts/bump-version.sh major
+
+bump-patch-dry:
+	@echo "Preview patch version bump..."
+	@./scripts/bump-version.sh patch --dry-run --allow-dirty
+
+bump-minor-dry:
+	@echo "Preview minor version bump..."
+	@./scripts/bump-version.sh minor --dry-run --allow-dirty
+
+bump-major-dry:
+	@echo "Preview major version bump..."
+	@./scripts/bump-version.sh major --dry-run --allow-dirty
+
 # Help
 help:
 	@echo "Available targets:"
@@ -148,6 +173,10 @@ help:
 	@echo "  ci            - CI workflow (deps, fmt, vet, lint, test, security, build)"
 	@echo "  run           - Build and run (use ARGS='--help' for arguments)"
 	@echo "  version       - Show version info"
+	@echo "  bump-patch    - Bump patch version"
+	@echo "  bump-minor    - Bump minor version"
+	@echo "  bump-major    - Bump major version"
+	@echo "  bump-*-dry    - Preview version bumps"
 	@echo "  help          - Show this help"
 
 # Default target

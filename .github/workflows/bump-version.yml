@@ -1,0 +1,126 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_part:
+        description: 'Version part to bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
+      prerelease:
+        description: 'Create prerelease version'
+        required: false
+        type: boolean
+        default: false
+      prerelease_tag:
+        description: 'Prerelease tag (e.g., alpha, beta, rc)'
+        required: false
+        type: string
+        default: 'alpha'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install bumpversion
+      run: pip install bumpversion
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Bump version (regular)
+      if: ${{ !inputs.prerelease }}
+      run: |
+        bumpversion ${{ inputs.version_part }}
+
+    - name: Bump version (prerelease)
+      if: ${{ inputs.prerelease }}
+      run: |
+        # For prerelease, we need to handle it differently
+        # First get current version
+        CURRENT_VERSION=$(grep "current_version" .bumpversion.cfg | cut -d' ' -f3)
+
+        # Create prerelease version
+        if [[ "$CURRENT_VERSION" =~ -[a-zA-Z] ]]; then
+          # Already a prerelease, just bump the prerelease number
+          bumpversion prerelease
+        else
+          # Regular version, make it a prerelease
+          NEW_VERSION=$(python3 -c "
+import re
+version = '$CURRENT_VERSION'
+parts = version.split('.')
+if '${{ inputs.version_part }}' == 'major':
+    parts[0] = str(int(parts[0]) + 1)
+    parts[1] = '0'
+    parts[2] = '0'
+elif '${{ inputs.version_part }}' == 'minor':
+    parts[1] = str(int(parts[1]) + 1)
+    parts[2] = '0'
+else:  # patch
+    parts[2] = str(int(parts[2]) + 1)
+print(f'{\".\".join(parts)}-${{ inputs.prerelease_tag }}.1')
+")
+
+          # Manually update version files
+          sed -i "s/Version = \"$CURRENT_VERSION\"/Version = \"$NEW_VERSION\"/" internal/version/version.go
+          sed -i "s/current_version = $CURRENT_VERSION/current_version = $NEW_VERSION/" .bumpversion.cfg
+
+          git add internal/version/version.go .bumpversion.cfg
+          git commit -m "Bump version: $CURRENT_VERSION → $NEW_VERSION"
+          git tag "v$NEW_VERSION"
+        fi
+
+    - name: Push changes
+      run: |
+        git push origin main --tags
+
+    - name: Create Release Notes
+      id: release_notes
+      run: |
+        # Get the new version
+        NEW_VERSION=$(git describe --tags --abbrev=0)
+        echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+        # Check if this is a prerelease
+        if [[ "$NEW_VERSION" =~ -[a-zA-Z] ]]; then
+          echo "is_prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Trigger Release
+      if: ${{ !inputs.prerelease || inputs.prerelease == false }}
+      run: |
+        echo "Regular release ${{ steps.release_notes.outputs.new_version }} has been tagged."
+        echo "The release workflow will automatically create binaries and GitHub release."
+
+    - name: Create Prerelease Notice
+      if: ${{ inputs.prerelease }}
+      run: |
+        echo "Prerelease ${{ steps.release_notes.outputs.new_version }} has been tagged."
+        echo "The release workflow will automatically create binaries and GitHub prerelease."

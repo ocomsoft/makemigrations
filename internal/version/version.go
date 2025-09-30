@@ -23,11 +23,23 @@ SOFTWARE.
 */
 package version
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
-// Version represents the current makemigrations version
-// This variable is updated by bumpversion during releases
-var Version = "0.1.0"
+// Build information set by ldflags during compilation
+var (
+	// Version represents the current makemigrations version
+	// This variable is updated by bumpversion during releases or set via ldflags
+	Version = "0.1.0"
+
+	// BuildDate is set via ldflags during build
+	BuildDate = "unknown"
+
+	// GitCommit is set via ldflags during build
+	GitCommit = "unknown"
+)
 
 // GetVersion returns the current version string
 func GetVersion() string {
@@ -37,4 +49,22 @@ func GetVersion() string {
 // GetDisplayVersion returns the formatted version for display
 func GetDisplayVersion() string {
 	return fmt.Sprintf("makemigrations v%s", Version)
+}
+
+// GetFullVersion returns detailed version information
+func GetFullVersion() string {
+	return fmt.Sprintf("makemigrations v%s (built %s, commit %s, %s/%s)",
+		Version, BuildDate, GitCommit, runtime.GOOS, runtime.GOARCH)
+}
+
+// GetBuildInfo returns build information
+func GetBuildInfo() map[string]string {
+	return map[string]string{
+		"version":   Version,
+		"buildDate": BuildDate,
+		"gitCommit": GitCommit,
+		"goVersion": runtime.Version(),
+		"platform":  fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH),
+		"compiler":  runtime.Compiler,
+	}
 }

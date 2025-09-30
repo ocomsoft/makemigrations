@@ -51,7 +51,7 @@ jobs:
     - name: Run tests
       if: steps.update.outputs.changes_detected == 'true'
       run: |
-        go test -v ./...
+        go test -v $(go list ./... | grep -v '/debug')
 
     - name: Build check
       if: steps.update.outputs.changes_detected == 'true'

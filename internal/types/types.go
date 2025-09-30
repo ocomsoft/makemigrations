@@ -133,20 +133,21 @@ func ParseDatabaseType(db string) (DatabaseType, error) {
 
 // ValidFieldTypes represents valid YAML field types
 var ValidFieldTypes = map[string]bool{
-	"varchar":     true,
-	"text":        true,
-	"integer":     true,
-	"bigint":      true,
-	"float":       true,
-	"decimal":     true,
-	"boolean":     true,
-	"date":        true,
-	"timestamp":   true,
-	"time":        true,
-	"uuid":        true,
-	"jsonb":       true,
-	"serial":      true,
-	"foreign_key": true,
+	"varchar":      true,
+	"text":         true,
+	"integer":      true,
+	"bigint":       true,
+	"float":        true,
+	"decimal":      true,
+	"boolean":      true,
+	"date":         true,
+	"timestamp":    true,
+	"time":         true,
+	"uuid":         true,
+	"jsonb":        true,
+	"serial":       true,
+	"foreign_key":  true,
+	"many_to_many": true,
 }
 
 // IsValidFieldType checks if a field type is valid

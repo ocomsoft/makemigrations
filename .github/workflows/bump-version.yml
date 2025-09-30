@@ -70,21 +70,22 @@ jobs:
           bumpversion prerelease
         else
           # Regular version, make it a prerelease
-          NEW_VERSION=$(python3 -c "
-import re
-version = '$CURRENT_VERSION'
-parts = version.split('.')
-if '${{ inputs.version_part }}' == 'major':
-    parts[0] = str(int(parts[0]) + 1)
-    parts[1] = '0'
-    parts[2] = '0'
-elif '${{ inputs.version_part }}' == 'minor':
-    parts[1] = str(int(parts[1]) + 1)
-    parts[2] = '0'
-else:  # patch
-    parts[2] = str(int(parts[2]) + 1)
-print(f'{\".\".join(parts)}-${{ inputs.prerelease_tag }}.1')
-")
+          NEW_VERSION=$(python3 <<'EOF'
+          import re
+          version = '$CURRENT_VERSION'
+          parts = version.split('.')
+          if '${{ inputs.version_part }}' == 'major':
+              parts[0] = str(int(parts[0]) + 1)
+              parts[1] = '0'
+              parts[2] = '0'
+          elif '${{ inputs.version_part }}' == 'minor':
+              parts[1] = str(int(parts[1]) + 1)
+              parts[2] = '0'
+          else:
+              parts[2] = str(int(parts[2]) + 1)
+          print('.'.join(parts) + '-${{ inputs.prerelease_tag }}.1')
+          EOF
+          )
 
           # Manually update version files
           sed -i "s/Version = \"$CURRENT_VERSION\"/Version = \"$NEW_VERSION\"/" internal/version/version.go

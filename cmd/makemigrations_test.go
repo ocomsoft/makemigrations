@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -139,12 +140,24 @@ func runMakeMigrations(t *testing.T, tempDir string) string {
 		t.Fatalf("No migration files found")
 	}
 
-	// Get the latest file
+	// Get the latest file by modification time with nanosecond precision
 	var latestFile string
+	var latestModTime time.Time
 	for _, file := range files {
-		if latestFile == "" || file > latestFile {
-			latestFile = file
+		info, err := os.Stat(file)
+		if err != nil {
+			continue
 		}
+		modTime := info.ModTime()
+		// Use modification time with full precision
+		if latestFile == "" || modTime.After(latestModTime) {
+			latestFile = file
+			latestModTime = modTime
+		}
+	}
+
+	if latestFile == "" {
+		t.Fatalf("No valid migration files found")
 	}
 
 	content, err := os.ReadFile(latestFile)

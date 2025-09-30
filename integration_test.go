@@ -49,8 +49,10 @@ func TestIntegration_EndToEnd(t *testing.T) {
 
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create go.mod
 	goModContent := `module test/integration
@@ -64,7 +66,9 @@ go 1.21
 
 	// Create schema.sql
 	sqlDir := filepath.Join("sql")
-	os.MkdirAll(sqlDir, 0755)
+	if err := os.MkdirAll(sqlDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	schemaContent := `-- MIGRATION_SCHEMA
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,

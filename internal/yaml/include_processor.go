@@ -116,7 +116,7 @@ func (ip *IncludeProcessor) collectAllSchemas(schema *Schema, currentFile string
 }
 
 // processInclude processes a single include and returns all schemas (including nested)
-func (ip *IncludeProcessor) processInclude(include Include, currentFile string) ([]*Schema, error) {
+func (ip *IncludeProcessor) processInclude(include Include, _ string) ([]*Schema, error) {
 	// Resolve the include path
 	includePath, err := ip.resolver.ResolveIncludePath(include)
 	if err != nil {
@@ -252,9 +252,9 @@ func (ip *IncludeProcessor) mergeSchemas(schemas []*Schema) (*Schema, error) {
 }
 
 // mergeTables merges two tables with mainWins determining conflict resolution
-func (ip *IncludeProcessor) mergeTables(existing *Table, new *Table, mainWins bool) (*Table, error) {
-	if existing.Name != new.Name {
-		return nil, fmt.Errorf("cannot merge tables with different names: %s vs %s", existing.Name, new.Name)
+func (ip *IncludeProcessor) mergeTables(existing *Table, newTable *Table, mainWins bool) (*Table, error) {
+	if existing.Name != newTable.Name {
+		return nil, fmt.Errorf("cannot merge tables with different names: %s vs %s", existing.Name, newTable.Name)
 	}
 
 	// Start with the winning table
@@ -263,9 +263,9 @@ func (ip *IncludeProcessor) mergeTables(existing *Table, new *Table, mainWins bo
 
 	if mainWins {
 		result = existing // Main schema table wins
-		other = new
+		other = newTable
 	} else {
-		result = new
+		result = newTable
 		other = existing
 	}
 

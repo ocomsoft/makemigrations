@@ -157,12 +157,12 @@ func (w *Writer) backupExistingFile(path string) error {
 }
 
 // mergeSchemas merges a new schema with an existing one
-func (w *Writer) mergeSchemas(existing, new *types.Schema) (*types.Schema, error) {
+func (w *Writer) mergeSchemas(existing, newSchema *types.Schema) (*types.Schema, error) {
 	// Start with the new schema as base
 	merged := &types.Schema{
-		Database: new.Database,
-		Defaults: new.Defaults,
-		Include:  append(existing.Include, new.Include...),
+		Database: newSchema.Database,
+		Defaults: newSchema.Defaults,
+		Include:  append(existing.Include, newSchema.Include...),
 		Tables:   []types.Table{},
 	}
 
@@ -183,7 +183,7 @@ func (w *Writer) mergeSchemas(existing, new *types.Schema) (*types.Schema, error
 
 	// Process new tables
 	newTableNames := make(map[string]bool)
-	for _, newTable := range new.Tables {
+	for _, newTable := range newSchema.Tables {
 		newTableNames[newTable.Name] = true
 
 		if existingTable, exists := existingTables[newTable.Name]; exists {
@@ -219,9 +219,9 @@ func (w *Writer) mergeSchemas(existing, new *types.Schema) (*types.Schema, error
 }
 
 // mergeTables merges two table definitions
-func (w *Writer) mergeTables(existing, new *types.Table) (*types.Table, error) {
+func (w *Writer) mergeTables(existing, newTable *types.Table) (*types.Table, error) {
 	merged := &types.Table{
-		Name:    new.Name,
+		Name:    newTable.Name,
 		Fields:  []types.Field{},
 		Indexes: []types.Index{},
 	}
@@ -235,7 +235,7 @@ func (w *Writer) mergeTables(existing, new *types.Table) (*types.Table, error) {
 
 	// Process new fields
 	newFieldNames := make(map[string]bool)
-	for _, newField := range new.Fields {
+	for _, newField := range newTable.Fields {
 		newFieldNames[newField.Name] = true
 
 		if existingField, exists := existingFields[newField.Name]; exists {
@@ -257,7 +257,7 @@ func (w *Writer) mergeTables(existing, new *types.Table) (*types.Table, error) {
 
 	// Merge indexes (prefer new ones, but keep existing if not conflicting)
 	indexNames := make(map[string]bool)
-	for _, newIndex := range new.Indexes {
+	for _, newIndex := range newTable.Indexes {
 		merged.Indexes = append(merged.Indexes, newIndex)
 		indexNames[newIndex.Name] = true
 	}
@@ -272,12 +272,12 @@ func (w *Writer) mergeTables(existing, new *types.Table) (*types.Table, error) {
 }
 
 // mergeFields merges two field definitions, preferring the new one but preserving manual changes
-func (w *Writer) mergeFields(existing, new *types.Field) *types.Field {
+func (w *Writer) mergeFields(existing, newField *types.Field) *types.Field {
 	// Start with new field as base
-	merged := *new
+	merged := *newField
 
 	// Preserve some existing attributes that might have been manually set
-	if existing.Default != "" && new.Default == "" {
+	if existing.Default != "" && newField.Default == "" {
 		merged.Default = existing.Default
 	}
 

@@ -86,14 +86,14 @@ func TestMerger_MergeColumn(t *testing.T) {
 		IsNullable: true,
 	}
 
-	new := parser.Column{
+	newCol := parser.Column{
 		Name:       "email",
 		DataType:   "VARCHAR",
 		Size:       255,
 		IsNullable: false,
 	}
 
-	merged := merger.mergeColumn(existing, new, "test")
+	merged := merger.mergeColumn(existing, newCol, "test")
 
 	if merged.Size != 255 {
 		t.Errorf("Expected size 255 (larger wins), got %d", merged.Size)
@@ -113,14 +113,14 @@ func TestMerger_MergeColumn_PrimaryKey(t *testing.T) {
 		IsNullable: true,
 	}
 
-	new := parser.Column{
+	newCol := parser.Column{
 		Name:         "id",
 		DataType:     "INTEGER",
 		IsPrimaryKey: true,
 		IsNullable:   false,
 	}
 
-	merged := merger.mergeColumn(existing, new, "test")
+	merged := merger.mergeColumn(existing, newCol, "test")
 
 	if !merged.IsPrimaryKey {
 		t.Error("Expected primary key to be preserved")
@@ -141,13 +141,13 @@ func TestMerger_MergeColumn_DefaultValue(t *testing.T) {
 		DefaultValue: "active",
 	}
 
-	new := parser.Column{
+	newCol := parser.Column{
 		Name:         "status",
 		DataType:     "VARCHAR",
 		DefaultValue: "pending",
 	}
 
-	merged := merger.mergeColumn(existing, new, "test")
+	merged := merger.mergeColumn(existing, newCol, "test")
 
 	if merged.DefaultValue != "active" {
 		t.Errorf("Expected existing default 'active', got '%s'", merged.DefaultValue)
@@ -155,7 +155,7 @@ func TestMerger_MergeColumn_DefaultValue(t *testing.T) {
 
 	// Test new default when existing is empty
 	existing.DefaultValue = ""
-	merged = merger.mergeColumn(existing, new, "test")
+	merged = merger.mergeColumn(existing, newCol, "test")
 
 	if merged.DefaultValue != "pending" {
 		t.Errorf("Expected new default 'pending', got '%s'", merged.DefaultValue)

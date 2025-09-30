@@ -179,7 +179,7 @@ func (p *Parser) ValidateDatabaseSpecificRules(schema *Schema, databaseType Data
 }
 
 // validateFieldForDatabase validates field-specific rules for the given database
-func (p *Parser) validateFieldForDatabase(field *Field, databaseType DatabaseType, tableName string) error {
+func (p *Parser) validateFieldForDatabase(field *Field, databaseType DatabaseType, _ string) error {
 	switch field.Type {
 	case "varchar":
 		if field.Length <= 0 {

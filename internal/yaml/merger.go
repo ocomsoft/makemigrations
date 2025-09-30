@@ -341,7 +341,7 @@ func (m *Merger) GetMergedTableNames(schemas []*Schema) []string {
 }
 
 // GetMergedFieldNames returns the names of all fields that were merged within each table
-func (m *Merger) GetMergedFieldNames(tableName string, tables []Table) []string {
+func (m *Merger) GetMergedFieldNames(_ string, tables []Table) []string {
 	fieldCount := make(map[string]int)
 
 	for _, table := range tables {

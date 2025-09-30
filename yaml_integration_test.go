@@ -58,7 +58,9 @@ go 1.21
 
 	// Create schema directory and YAML schema
 	schemaDir := filepath.Join("schema")
-	os.MkdirAll(schemaDir, 0755)
+	if err := os.MkdirAll(schemaDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	schemaContent := `database:
   name: test_app

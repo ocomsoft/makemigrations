@@ -26,6 +26,7 @@ package postgresql
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -169,7 +170,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var constraints []string
 
 	for _, field := range table.Fields {
-		fieldDef, constraint, err := p.convertField(&field)
+		fieldDef, constraint, err := p.convertField(schema, &field)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
 		}
@@ -203,7 +204,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 }
 
 // convertField converts a YAML field definition to PostgreSQL field definition
-func (p *Provider) convertField(field *types.Field) (string, string, error) {
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, string, error) {
 	// Skip many_to_many fields - they don't create actual columns
 	if field.Type == "many_to_many" {
 		return "", "", nil
@@ -226,8 +227,9 @@ func (p *Provider) convertField(field *types.Field) (string, string, error) {
 	if field.AutoCreate && field.Type == "timestamp" {
 		def.WriteString(" DEFAULT CURRENT_TIMESTAMP")
 	} else if field.Default != "" {
-		// Add default value
-		def.WriteString(" DEFAULT " + field.Default)
+		// Convert default value using the schema's defaults mapping
+		defaultValue := p.convertDefaultValue(schema, field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
 	// Generate primary key constraint if needed
@@ -237,6 +239,42 @@ func (p *Provider) convertField(field *types.Field) (string, string, error) {
 	}
 
 	return def.String(), constraint, nil
+}
+
+// convertDefaultValue converts YAML default value to PostgreSQL-specific SQL
+func (p *Provider) convertDefaultValue(schema *types.Schema, defaultValue string) string {
+	if schema == nil || schema.Defaults.PostgreSQL == nil {
+		// If no schema or defaults mapping, try to handle common cases
+		// Check if it's a numeric value
+		if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
+			return defaultValue // Return numeric values as-is
+		}
+		// Check for boolean values
+		if defaultValue == "true" || defaultValue == "false" {
+			return defaultValue // PostgreSQL accepts true/false
+		}
+		// Otherwise treat as string literal
+		return fmt.Sprintf("'%s'", defaultValue)
+	}
+
+	// Look up the default value in the PostgreSQL defaults mapping
+	if sqlDefault, exists := schema.Defaults.PostgreSQL[defaultValue]; exists {
+		return sqlDefault
+	}
+
+	// If not found in mapping, determine if it needs quotes
+	// Check if it's a numeric value
+	if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
+		return defaultValue // Return numeric values as-is
+	}
+
+	// Check for boolean values
+	if defaultValue == "true" || defaultValue == "false" {
+		return defaultValue // PostgreSQL accepts true/false
+	}
+
+	// Otherwise treat as string literal
+	return fmt.Sprintf("'%s'", defaultValue)
 }
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {

@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for TiDB
@@ -170,7 +171,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var constraints []string
 
 	for _, field := range table.Fields {
-		fieldDef, constraint, err := p.convertField(&field)
+		fieldDef, constraint, err := p.convertField(schema, &field)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
 		}
@@ -204,7 +205,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 }
 
 // convertField converts a YAML field definition to TiDB field definition
-func (p *Provider) convertField(field *types.Field) (string, string, error) {
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, string, error) {
 	// Skip many_to_many fields - they don't create actual columns
 	if field.Type == "many_to_many" {
 		return "", "", nil
@@ -228,7 +229,8 @@ func (p *Provider) convertField(field *types.Field) (string, string, error) {
 		def.WriteString(" DEFAULT CURRENT_TIMESTAMP")
 	} else if field.Default != "" {
 		// Add default value
-		def.WriteString(" DEFAULT " + field.Default)
+		defaultValue := utils.ConvertDefaultValue(schema, "tidb", field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
 	// Generate primary key constraint if needed

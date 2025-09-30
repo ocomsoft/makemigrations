@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for YDB (Yandex Database)
@@ -147,7 +148,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var primaryKeys []string
 
 	for _, field := range table.Fields {
-		fieldDef, err := p.convertField(&field)
+		fieldDef, err := p.convertField(schema, &field)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
 		}
@@ -183,7 +184,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	return sql.String(), nil
 }
 
-func (p *Provider) convertField(field *types.Field) (string, error) {
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, error) {
 	if field.Type == "many_to_many" {
 		return "", nil
 	}
@@ -193,15 +194,22 @@ func (p *Provider) convertField(field *types.Field) (string, error) {
 	def.WriteString(" ")
 
 	sqlType := p.ConvertFieldType(field)
-	def.WriteString(sqlType)
 
 	// YDB uses Optional<Type> for nullable fields
 	if field.IsNullable() && !field.PrimaryKey {
-		def.Reset()
-		def.WriteString(p.QuoteName(field.Name))
-		def.WriteString(" Optional<")
+		def.WriteString("Optional<")
 		def.WriteString(sqlType)
 		def.WriteString(">")
+	} else {
+		def.WriteString(sqlType)
+	}
+
+	// Handle default values
+	if field.Default != "" {
+		// Convert default value using the schema's defaults mapping
+		// Note: YDB has limited default value support, mainly for auto-generated fields
+		defaultValue := utils.ConvertDefaultValue(schema, "ydb", field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
 	return def.String(), nil

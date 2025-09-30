@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for SQL Server
@@ -160,7 +161,79 @@ func (p *Provider) GenerateRenameColumn(tableName, oldName, newName string) stri
 // Placeholder implementations for remaining interface methods
 
 func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	var fieldDefs []string
+	var constraints []string
+
+	for _, field := range table.Fields {
+		fieldDef, constraint, err := p.convertField(schema, &field)
+		if err != nil {
+			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
+		}
+
+		// Only add non-empty field definitions (skip many_to_many fields)
+		if fieldDef != "" {
+			fieldDefs = append(fieldDefs, fieldDef)
+		}
+		if constraint != "" {
+			constraints = append(constraints, constraint)
+		}
+	}
+
+	// Combine field definitions and constraints
+	allDefs := append(fieldDefs, constraints...)
+
+	// Build CREATE TABLE statement
+	var sql strings.Builder
+	sql.WriteString(fmt.Sprintf("CREATE TABLE %s (\n", p.QuoteName(table.Name)))
+
+	for i, def := range allDefs {
+		sql.WriteString("    " + def)
+		if i < len(allDefs)-1 {
+			sql.WriteString(",")
+		}
+		sql.WriteString("\n")
+	}
+
+	sql.WriteString(");")
+	return sql.String(), nil
+}
+
+// convertField converts a YAML field definition to SQL Server field definition
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, string, error) {
+	// Skip many_to_many fields - they don't create actual columns
+	if field.Type == "many_to_many" {
+		return "", "", nil
+	}
+
+	var def strings.Builder
+	def.WriteString(p.QuoteName(field.Name))
+	def.WriteString(" ")
+
+	// Convert field type
+	sqlType := p.ConvertFieldType(field)
+	def.WriteString(sqlType)
+
+	// Add NOT NULL constraint
+	if !field.IsNullable() {
+		def.WriteString(" NOT NULL")
+	}
+
+	// Handle auto_create and auto_update for timestamp fields
+	if field.AutoCreate && field.Type == "timestamp" {
+		def.WriteString(" DEFAULT GETDATE()")
+	} else if field.Default != "" {
+		// Convert default value using the schema's defaults mapping
+		defaultValue := utils.ConvertDefaultValue(schema, "sqlserver", field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
+	}
+
+	// Generate primary key constraint if needed
+	var constraint string
+	if field.PrimaryKey {
+		constraint = fmt.Sprintf("PRIMARY KEY (%s)", p.QuoteName(field.Name))
+	}
+
+	return def.String(), constraint, nil
 }
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {

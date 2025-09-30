@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for StarRocks
@@ -158,7 +159,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var primaryKeys []string
 
 	for _, field := range table.Fields {
-		fieldDef, err := p.convertField(&field)
+		fieldDef, err := p.convertField(schema, &field)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
 		}
@@ -216,7 +217,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	return sql.String(), nil
 }
 
-func (p *Provider) convertField(field *types.Field) (string, error) {
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, error) {
 	if field.Type == "many_to_many" {
 		return "", nil
 	}
@@ -233,7 +234,9 @@ func (p *Provider) convertField(field *types.Field) (string, error) {
 	}
 
 	if field.Default != "" {
-		def.WriteString(" DEFAULT " + field.Default)
+		// Convert default value using the schema's defaults mapping
+		defaultValue := utils.ConvertDefaultValue(schema, "starrocks", field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
 	return def.String(), nil

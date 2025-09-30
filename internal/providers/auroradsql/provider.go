@@ -28,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for Aurora DSQL
@@ -164,7 +165,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var constraints []string
 
 	for _, field := range table.Fields {
-		fieldDef, constraint, err := p.convertField(&field)
+		fieldDef, constraint, err := p.convertField(schema, &field)
 		if err != nil {
 			return "", fmt.Errorf("failed to convert field %s: %w", field.Name, err)
 		}
@@ -194,7 +195,7 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	return sql.String(), nil
 }
 
-func (p *Provider) convertField(field *types.Field) (string, string, error) {
+func (p *Provider) convertField(schema *types.Schema, field *types.Field) (string, string, error) {
 	if field.Type == "many_to_many" {
 		return "", "", nil
 	}
@@ -213,7 +214,8 @@ func (p *Provider) convertField(field *types.Field) (string, string, error) {
 	if field.AutoCreate && field.Type == "timestamp" {
 		def.WriteString(" DEFAULT CURRENT_TIMESTAMP")
 	} else if field.Default != "" {
-		def.WriteString(" DEFAULT " + field.Default)
+		defaultValue := utils.ConvertDefaultValue(schema, "auroradsql", field.Default)
+		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
 	var constraint string

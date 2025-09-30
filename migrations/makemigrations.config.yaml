@@ -1,0 +1,47 @@
+# Makemigrations Configuration File
+# 
+# This file contains configuration for the makemigrations tool.
+# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
+# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
+#
+# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
+#
+# Available destructive operation types for review comments:
+#   - table_removed: Dropping an entire table
+#   - field_removed: Removing a column from a table
+#   - index_removed: Removing an index
+#   - table_renamed: Renaming a table (data preserved but references may break)
+#   - field_renamed: Renaming a column (data preserved but references may break)
+#   - field_modified: Changing a column's data type (may cause data loss)
+#
+
+database:
+    type: postgresql
+    default_schema: public
+    quote_identifiers: true
+migration:
+    directory: migrations
+    file_prefix: "20060102150405"
+    snapshot_file: .schema_snapshot.yaml
+    auto_apply: false
+    include_down_sql: true
+    review_comment_prefix: '-- REVIEW: '
+    destructive_operations:
+        - table_removed
+        - field_removed
+        - index_removed
+        - table_renamed
+        - field_renamed
+        - field_modified
+    silent: false
+    rejection_comment_prefix: '-- REJECTED: '
+schema:
+    search_paths: []
+    ignore_modules: []
+    schema_file_name: schema.yaml
+    validate_strict: false
+output:
+    verbose: false
+    color_enabled: true
+    progress_bar: false
+    timestamp_format: "2006-01-02 15:04:05"

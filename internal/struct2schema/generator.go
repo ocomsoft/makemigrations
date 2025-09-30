@@ -277,12 +277,8 @@ func (g *Generator) getTableName(goStruct GoStruct) string {
 func (g *Generator) inferTableName(typeName string) string {
 	// Clean the type name
 	cleanName := typeName
-	if strings.HasPrefix(cleanName, "*") {
-		cleanName = cleanName[1:]
-	}
-	if strings.HasPrefix(cleanName, "[]") {
-		cleanName = cleanName[2:]
-	}
+	cleanName = strings.TrimPrefix(cleanName, "*")
+	cleanName = strings.TrimPrefix(cleanName, "[]")
 
 	// Remove package prefix
 	if idx := strings.LastIndex(cleanName, "."); idx != -1 {

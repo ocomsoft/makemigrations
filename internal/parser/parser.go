@@ -269,7 +269,7 @@ func (p *Parser) parseColumn(def string) Column {
 		re := regexp.MustCompile(`\((\d+)\)`)
 		matches := re.FindStringSubmatch(col.DataType)
 		if len(matches) > 1 {
-			fmt.Sscanf(matches[1], "%d", &col.Size)
+			_, _ = fmt.Sscanf(matches[1], "%d", &col.Size)
 			col.DataType = strings.Split(col.DataType, "(")[0]
 		}
 	}

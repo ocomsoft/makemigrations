@@ -25,9 +25,10 @@ package yaml
 
 import (
 	"fmt"
-	yaml "gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	yaml "gopkg.in/yaml.v3"
 )
 
 // IncludeProcessor handles processing schema includes with circular dependency tracking

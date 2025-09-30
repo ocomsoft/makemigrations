@@ -1,12 +1,10 @@
 run:
   timeout: 5m
-  skip-dirs:
-    - debug
-    - vendor
 
 linters-settings:
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
   gocyclo:
     min-complexity: 15
   maligned:
@@ -35,10 +33,4 @@ linters:
 issues:
   exclude-dirs:
     - debug
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-    - linters:
-        - typecheck
-      text: "undefined: yaml"
+    - vendor

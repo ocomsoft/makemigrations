@@ -24,11 +24,7 @@ SOFTWARE.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // dumpSQLCmd represents the dump_sql command
@@ -67,71 +63,7 @@ but is sent to stdout instead of being written to a file.`,
 
 // runDumpSQL executes the dump_sql command
 func runDumpSQL(cmd *cobra.Command, args []string) error {
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Dumping merged schema as SQL\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "============================\n")
-	}
-
-	// Parse database type
-	dbType, err := yamlpkg.ParseDatabaseType(databaseType)
-	if err != nil {
-		return fmt.Errorf("invalid database type: %w", err)
-	}
-
-	// Initialize YAML components
-	components := InitializeYAMLComponents(dbType, verbose, false)
-	sqlConverter := yamlpkg.NewSQLConverter(dbType, verbose)
-
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
-	}
-
-	// Scan and parse schemas using shared function but adapt verbose output for dump_sql
-	allSchemas, err := ScanAndParseSchemas(components, false) // Don't use verbose mode here since we customize output
-	if err != nil {
-		if err.Error() == "no YAML schema files found" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to dump.\n")
-			return nil
-		}
-		return err
-	}
-
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
-	}
-
-	// Merge and validate schemas using shared function
-	mergedSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, false) // Don't use verbose here since we customize output
-	if err != nil {
-		return fmt.Errorf("merged schema validation failed: %w", err)
-	}
-
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Validating merged schema...\n")
-	}
-
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Generating SQL...\n")
-	}
-
-	// Convert to SQL
-	sql, err := sqlConverter.ConvertSchema(mergedSchema)
-	if err != nil {
-		return fmt.Errorf("failed to generate SQL: %w", err)
-	}
-
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Generated %d lines of SQL\n", len(sql))
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n5. SQL Output:\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
-	}
-
-	// Output SQL to stdout
-	fmt.Print(sql)
-
-	return nil
+	return ExecuteDumpSQL(cmd, databaseType, verbose)
 }
 
 func init() {

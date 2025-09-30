@@ -35,7 +35,6 @@ import (
 	"golang.org/x/mod/modfile"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/makemigrations/internal/config"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
@@ -85,137 +84,7 @@ Examples:
 
 // runFindIncludes executes the find_includes command
 func runFindIncludes(cmd *cobra.Command, args []string) error {
-	// Load configuration
-	cfg := config.LoadOrDefault(configFile)
-
-	// Apply config settings
-	verbose = cfg.Output.Verbose
-	if !cfg.Output.ColorEnabled {
-		color.NoColor = true
-	}
-
-	if verbose {
-		color.Cyan("Schema Include Discovery Tool")
-		color.Cyan("=============================")
-	}
-
-	// Check if schema flag was provided
-	schemaProvided = cmd.Flags().Changed("schema")
-
-	// If schema not provided, search for schema.yaml files
-	if !schemaProvided {
-		if verbose {
-			color.Blue("No --schema flag provided, searching for schema.yaml files...")
-		}
-
-		localSchemas, err := findLocalSchemaFiles()
-		if err != nil {
-			return fmt.Errorf("failed to search for local schema files: %w", err)
-		}
-
-		if len(localSchemas) == 0 {
-			return fmt.Errorf("no schema.yaml files found in current directory and subdirectories")
-		}
-
-		if len(localSchemas) == 1 {
-			// Use the single schema file found
-			schemaPath = localSchemas[0].Path
-			if verbose {
-				color.Green("Found schema file: %s (database: %s)", schemaPath, localSchemas[0].DatabaseName)
-			}
-		} else {
-			// Multiple schema files found, prompt user
-			selectedPath, err := selectLocalSchemaFile(localSchemas)
-			if err != nil {
-				return fmt.Errorf("failed to select schema file: %w", err)
-			}
-			schemaPath = selectedPath
-		}
-	}
-
-	// Validate schema file exists
-	if _, err := os.Stat(schemaPath); os.IsNotExist(err) {
-		return fmt.Errorf("schema file not found: %s", schemaPath)
-	}
-
-	if verbose {
-		color.Blue("\n1. Discovering schemas in Go modules...")
-	}
-
-	// Discover schemas
-	discovered, err := discoverSchemas()
-	if err != nil {
-		return fmt.Errorf("failed to discover schemas: %w", err)
-	}
-
-	if len(discovered) == 0 {
-		color.Yellow("No YAML schemas found in Go modules.")
-		return nil
-	}
-
-	if verbose {
-		color.Green("Found %d schema(s)\n", len(discovered))
-	}
-
-	// Load existing schema
-	existingSchema, err := loadExistingSchema(schemaPath)
-	if err != nil {
-		return fmt.Errorf("failed to load existing schema: %w", err)
-	}
-
-	// Filter out already included schemas
-	newSchemas := filterNewSchemas(discovered, existingSchema)
-	if len(newSchemas) == 0 {
-		color.Yellow("All discovered schemas are already included.")
-		return nil
-	}
-
-	if verbose {
-		color.Blue("\n2. Processing discovered schemas...")
-	}
-
-	// Handle interactive vs automatic mode
-	var schemasToAdd []DiscoveredSchema
-	if interactive {
-		schemasToAdd, err = selectSchemasInteractively(newSchemas)
-		if err != nil {
-			return fmt.Errorf("interactive selection failed: %w", err)
-		}
-	} else {
-		schemasToAdd = newSchemas
-		if verbose {
-			color.Green("Adding %d new schema(s) automatically\n", len(schemasToAdd))
-		}
-	}
-
-	if len(schemasToAdd) == 0 {
-		color.Yellow("No schemas selected for inclusion.")
-		return nil
-	}
-
-	if verbose {
-		color.Blue("\n3. Updating schema file...")
-	}
-
-	// Update schema file
-	err = updateSchemaWithIncludes(schemaPath, existingSchema, schemasToAdd)
-	if err != nil {
-		return fmt.Errorf("failed to update schema: %w", err)
-	}
-
-	color.Green("\nSuccessfully added %d include(s) to %s", len(schemasToAdd), schemaPath)
-
-	// Show what was added
-	color.Cyan("\nAdded includes:")
-	for _, schema := range schemasToAdd {
-		marker := ""
-		if schema.IsWorkspace {
-			marker = " (workspace)"
-		}
-		color.Cyan("  - %s -> %s%s", schema.ModulePath, schema.RelativePath, marker)
-	}
-
-	return nil
+	return ExecuteFindIncludes(cmd, configFile, schemaPath, interactive, includeWorkspace, verbose, schemaProvided)
 }
 
 // discoverSchemas finds all YAML schemas in Go modules and workspace

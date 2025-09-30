@@ -24,11 +24,7 @@ SOFTWARE.
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-
-	"github.com/ocomsoft/makemigrations/internal/struct2schema"
 )
 
 var (
@@ -85,37 +81,5 @@ func init() {
 }
 
 func runStruct2Schema(cmd *cobra.Command, args []string) error {
-	if s2sVerboseMode {
-		fmt.Println("struct2schema - Go struct to YAML schema converter")
-		fmt.Println("=============================================")
-	}
-
-	// Initialize the struct2schema processor
-	processor, err := struct2schema.NewProcessor(struct2schema.ProcessorConfig{
-		InputDir:   s2sInputDir,
-		OutputFile: s2sOutputFile,
-		ConfigFile: s2sConfigFile,
-		TargetDB:   s2sTargetDB,
-		DryRun:     s2sDryRunMode,
-		Verbose:    s2sVerboseMode,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to initialize processor: %w", err)
-	}
-
-	// Process the structs
-	if err := processor.Process(); err != nil {
-		return fmt.Errorf("failed to process structs: %w", err)
-	}
-
-	if s2sDryRunMode {
-		fmt.Println("\nDry run completed successfully - no files were modified")
-	} else {
-		if s2sVerboseMode {
-			fmt.Printf("\nSchema file written to: %s\n", s2sOutputFile)
-		}
-		fmt.Println("struct2schema completed successfully")
-	}
-
-	return nil
+	return ExecuteStruct2Schema(s2sInputDir, s2sOutputFile, s2sConfigFile, s2sTargetDB, s2sDryRunMode, s2sVerboseMode)
 }

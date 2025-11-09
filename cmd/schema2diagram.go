@@ -596,7 +596,7 @@ func convertTypeForMermaid(fieldType string) string {
 		return "datetime"
 	case "uuid":
 		return "uuid"
-	case "jsonb":
+	case "json", "jsonb":
 		return "json"
 	case "foreign_key":
 		return "int"
@@ -719,7 +719,7 @@ func generateFieldDescription(field types.Field) string {
 		return "Boolean true/false value"
 	case "uuid":
 		return "Universally unique identifier"
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSON data with binary storage"
 	default:
 		return fmt.Sprintf("%s field", strings.Title(field.Type))

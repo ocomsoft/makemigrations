@@ -144,6 +144,7 @@ var ValidFieldTypes = map[string]bool{
 	"timestamp":    true,
 	"time":         true,
 	"uuid":         true,
+	"json":         true,
 	"jsonb":        true,
 	"serial":       true,
 	"foreign_key":  true,

@@ -88,7 +88,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TIMESTAMP"
 	case "uuid":
 		return "UUID" // Aurora DSQL has native UUID support
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSONB" // Aurora DSQL supports JSONB
 	default:
 		return "TEXT"

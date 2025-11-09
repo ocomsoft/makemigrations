@@ -91,7 +91,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "DateTime"
 	case "uuid":
 		return "UUID"
-	case "jsonb":
+	case "json", "jsonb":
 		return "String" // ClickHouse doesn't have native JSON, store as String
 	default:
 		return "String"

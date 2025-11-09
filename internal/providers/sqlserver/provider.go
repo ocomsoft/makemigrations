@@ -87,7 +87,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "DATETIME2"
 	case "uuid":
 		return "UNIQUEIDENTIFIER"
-	case "jsonb":
+	case "json", "jsonb":
 		return "NVARCHAR(MAX)"
 	default:
 		return "NVARCHAR(MAX)"

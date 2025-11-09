@@ -84,7 +84,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "Datetime"
 	case "uuid":
 		return "String" // Store UUID as string
-	case "jsonb":
+	case "json", "jsonb":
 		return "Json" // YDB has native Json type
 	default:
 		return "String"

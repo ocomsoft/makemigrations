@@ -92,7 +92,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TIMESTAMP"
 	case "uuid":
 		return "CHAR(36)"
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSON"
 	default:
 		return "TEXT"

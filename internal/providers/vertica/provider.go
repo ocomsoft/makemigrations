@@ -90,7 +90,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TIMESTAMP"
 	case "uuid":
 		return "VARCHAR(36)" // Vertica doesn't have native UUID
-	case "jsonb":
+	case "json", "jsonb":
 		return "LONG VARCHAR" // Vertica doesn't have native JSON, use LONG VARCHAR
 	default:
 		return "VARCHAR(65000)"

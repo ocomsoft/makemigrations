@@ -91,7 +91,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TIMESTAMP"
 	case "uuid":
 		return "VARCHAR(36)" // Redshift doesn't have native UUID type
-	case "jsonb":
+	case "json", "jsonb":
 		return "SUPER" // Redshift's native JSON type
 	default:
 		return "VARCHAR(65535)"

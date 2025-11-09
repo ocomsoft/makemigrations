@@ -90,7 +90,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "DATETIME"
 	case "uuid":
 		return "VARCHAR(36)"
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSON" // StarRocks has native JSON support
 	default:
 		return "STRING"

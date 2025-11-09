@@ -91,7 +91,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TIMESTAMP"
 	case "uuid":
 		return "CHAR(36)" // Same as MySQL
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSON" // TiDB supports JSON natively
 	default:
 		return "TEXT"

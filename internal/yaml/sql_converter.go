@@ -482,7 +482,7 @@ func (sc *SQLConverter) convertFieldTypeWithSchema(schema *Schema, field *Field)
 			return SQLTypeUUID, nil
 		}
 
-	case "jsonb":
+	case "json", "jsonb":
 		switch sc.databaseType {
 		case DatabasePostgreSQL:
 			return "JSONB", nil
@@ -1321,7 +1321,7 @@ func (sc *SQLConverter) getPostgreSQLTypeName(field *Field) string {
 		return "TIME"
 	case FieldTypeUUID:
 		return "UUID"
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSONB"
 	default:
 		return strings.ToUpper(field.Type)
@@ -1359,7 +1359,7 @@ func (sc *SQLConverter) getMySQLTypeName(field *Field) string {
 		return "TIME"
 	case FieldTypeUUID:
 		return "CHAR(36)"
-	case "jsonb":
+	case "json", "jsonb":
 		return "JSON"
 	default:
 		return strings.ToUpper(field.Type)
@@ -1397,7 +1397,7 @@ func (sc *SQLConverter) getSQLServerTypeName(field *Field) string {
 		return "TIME"
 	case FieldTypeUUID:
 		return "UNIQUEIDENTIFIER"
-	case "jsonb":
+	case "json", "jsonb":
 		return "NVARCHAR(MAX)"
 	default:
 		return strings.ToUpper(field.Type)

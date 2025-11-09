@@ -84,7 +84,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TEXT"
 	case "uuid":
 		return "TEXT"
-	case "jsonb":
+	case "json", "jsonb":
 		return "TEXT" // SQLite stores JSON as TEXT
 	default:
 		return "TEXT"

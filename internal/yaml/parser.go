@@ -246,7 +246,7 @@ func (p *Parser) validateFieldForDatabase(field *Field, databaseType DatabaseTyp
 			}
 		}
 
-	case "jsonb":
+	case "json", "jsonb":
 		// JSONB is PostgreSQL-specific
 		if databaseType != DatabasePostgreSQL {
 			if p.verbose {

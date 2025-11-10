@@ -30,16 +30,26 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
+	"github.com/ocomsoft/makemigrations/internal/fkutils"
 	"github.com/ocomsoft/makemigrations/internal/types"
 	"github.com/ocomsoft/makemigrations/internal/version"
 )
 
 // Provider implements the Provider interface for PostgreSQL
-type Provider struct{}
+type Provider struct {
+	fkResolver *fkutils.ForeignKeyTypeResolver
+}
 
 // New creates a new PostgreSQL provider
 func New() *Provider {
-	return &Provider{}
+	return &Provider{
+		fkResolver: &fkutils.ForeignKeyTypeResolver{
+			UUIDType:    "UUID",
+			IntegerType: "INTEGER",
+			BigIntType:  "BIGINT",
+			SerialType:  "INTEGER",
+		},
+	}
 }
 
 // QuoteName quotes database identifiers for PostgreSQL
@@ -92,9 +102,28 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "UUID"
 	case "json", "jsonb":
 		return "JSONB"
+	case "foreign_key":
+		// Foreign keys default to UUID for PostgreSQL
+		// The actual type will be determined in convertField based on the referenced table
+		return "UUID"
 	default:
 		return "TEXT"
 	}
+}
+
+// ConvertFieldTypeWithSchema converts YAML field type to PostgreSQL-specific SQL type with schema context for foreign keys
+func (p *Provider) ConvertFieldTypeWithSchema(schema *types.Schema, field *types.Field) string {
+	if field.Type == "foreign_key" && field.ForeignKey != nil {
+		// Look up the referenced table's primary key type
+		return p.getForeignKeyType(schema, field.ForeignKey.Table)
+	}
+	return p.ConvertFieldType(field)
+}
+
+// getForeignKeyType determines the appropriate SQL type for a foreign key field
+// by looking up the referenced table's primary key type using the shared resolver
+func (p *Provider) getForeignKeyType(schema *types.Schema, referencedTableName string) string {
+	return p.fkResolver.GetForeignKeyType(schema, referencedTableName)
 }
 
 // GetDefaultValue converts default value references to PostgreSQL-specific values
@@ -214,8 +243,8 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	def.WriteString(p.QuoteName(field.Name))
 	def.WriteString(" ")
 
-	// Convert field type
-	sqlType := p.ConvertFieldType(field)
+	// Convert field type with schema context for foreign keys
+	sqlType := p.ConvertFieldTypeWithSchema(schema, field)
 	def.WriteString(sqlType)
 
 	// Add NOT NULL constraint

@@ -618,6 +618,15 @@ func (sc *SQLConverter) generateTableForeignKeys(tableName string, fields []Fiel
 // getForeignKeyType determines the appropriate SQL type for a foreign key field
 // by looking up the referenced table's primary key type
 func (sc *SQLConverter) getForeignKeyType(schema *Schema, referencedTableName string) (string, error) {
+	if sc.verbose {
+		fmt.Printf("DEBUG: getForeignKeyType called with referencedTableName=%s\n", referencedTableName)
+		if schema == nil {
+			fmt.Printf("DEBUG: schema is nil!\n")
+		} else {
+			fmt.Printf("DEBUG: schema has %d tables\n", len(schema.Tables))
+		}
+	}
+
 	// Skip namespaced table references (like "auth.User" or "filesystem.FileMetaData")
 	if strings.Contains(referencedTableName, ".") {
 		// For namespaced tables, assume UUID primary key as default

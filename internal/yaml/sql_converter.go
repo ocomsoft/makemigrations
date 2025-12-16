@@ -850,36 +850,9 @@ func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema 
 		}
 
 		// Handle DOWN statement
+		// DOWN statements are always generated without review comments or prompts
 		if downStmt != "" {
-			if sc.shouldAddReviewComment(change) {
-				// For down statements, prompt with different context
-				if !sc.silent {
-					fmt.Printf("\n--- DOWN statement for the same operation ---\n")
-				}
-				response, err := sc.promptForDestructiveOperation(downStmt, change)
-				if err != nil {
-					return "", "", fmt.Errorf("failed to prompt for destructive operation (down): %w", err)
-				}
-
-				switch response {
-				case PromptGenerate:
-					// User chose to generate - add statement without any prefix
-					downStatements = append(downStatements, downStmt)
-				case PromptReview:
-					// User chose to mark for review - apply review comment
-					downStmt = sc.addReviewComment(downStmt)
-					downStatements = append(downStatements, downStmt)
-				case PromptOmit:
-					// User chose to omit - don't add to statements
-					// (statement is discarded)
-				case PromptExit:
-					// User chose to exit - return error to stop migration generation
-					return "", "", fmt.Errorf("migration generation cancelled by user")
-				}
-			} else {
-				// Not a destructive operation or no review needed
-				downStatements = append(downStatements, downStmt)
-			}
+			downStatements = append(downStatements, downStmt)
 		}
 	}
 

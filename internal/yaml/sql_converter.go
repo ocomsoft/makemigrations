@@ -1104,6 +1104,9 @@ func (sc *SQLConverter) generateFieldModificationSQL(tableName string, oldField,
 	}
 
 	// Handle nullable changes (separate from type changes for PostgreSQL)
+	// Track if we already handled default during nullable change to avoid duplication
+	defaultHandledInNullableChange := false
+
 	if sc.databaseType == DatabasePostgreSQL {
 		// Helper function to get nullable bool value
 		oldNullable := oldField.Nullable == nil || *oldField.Nullable // default to true if nil
@@ -1122,6 +1125,8 @@ func (sc *SQLConverter) generateFieldModificationSQL(tableName string, oldField,
 					upStatements = append(upStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", quotedTableName, quotedFieldName, newDefault))
 					// Step 2: Update all NULL values to the default
 					upStatements = append(upStatements, fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s IS NULL;", quotedTableName, quotedFieldName, newDefault, quotedFieldName))
+					// Mark that we already handled the default
+					defaultHandledInNullableChange = true
 				} else {
 					// No default value - user needs to handle NULL values manually
 					// Add a comment warning about this
@@ -1138,7 +1143,8 @@ func (sc *SQLConverter) generateFieldModificationSQL(tableName string, oldField,
 	}
 
 	// Handle default value changes (separate for PostgreSQL)
-	if sc.databaseType == DatabasePostgreSQL {
+	// Skip if we already handled it during nullable change
+	if sc.databaseType == DatabasePostgreSQL && !defaultHandledInNullableChange {
 		oldDefault := sc.getFieldDefaultValue(oldField, oldSchema)
 		newDefault := sc.getFieldDefaultValue(newField, newSchema)
 

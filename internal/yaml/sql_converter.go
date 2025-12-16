@@ -38,10 +38,11 @@ import (
 type PromptResponse int
 
 const (
-	PromptGenerate PromptResponse = 1 // Generate SQL without any prefix
-	PromptReview   PromptResponse = 2 // Mark for review (use review prefix)
-	PromptOmit     PromptResponse = 3 // Don't generate statement (omit from output)
-	PromptExit     PromptResponse = 4 // Exit migration generation
+	PromptGenerate    PromptResponse = 1 // Generate SQL without any prefix
+	PromptReview      PromptResponse = 2 // Mark for review (use review prefix)
+	PromptOmit        PromptResponse = 3 // Don't generate statement (omit from output)
+	PromptExit        PromptResponse = 4 // Exit migration generation
+	PromptGenerateAll PromptResponse = 5 // Generate all remaining destructive operations without prompting
 )
 
 // Field types
@@ -111,6 +112,7 @@ type SQLConverter struct {
 	destructiveOperations  map[string]bool
 	silent                 bool
 	rejectionCommentPrefix string
+	generateAllTypes       map[ChangeType]bool // Tracks which change types should auto-generate without prompting
 }
 
 // NewSQLConverter creates a new SQL converter
@@ -842,6 +844,13 @@ func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema 
 				case PromptExit:
 					// User chose to exit - return error to stop migration generation
 					return "", "", fmt.Errorf("migration generation cancelled by user")
+				case PromptGenerateAll:
+					// User chose to generate all - enable auto-generate for this change type and add current statement
+					if sc.generateAllTypes == nil {
+						sc.generateAllTypes = make(map[ChangeType]bool)
+					}
+					sc.generateAllTypes[change.Type] = true
+					upStatements = append(upStatements, upStmt)
 				}
 			} else {
 				// Not a destructive operation or no review needed
@@ -1102,10 +1111,27 @@ func (sc *SQLConverter) generateFieldModificationSQL(tableName string, oldField,
 
 		if oldNullable != newNullable {
 			if newNullable {
+				// Changing from NOT NULL to nullable - simple case
 				upStatements = append(upStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", quotedTableName, quotedFieldName))
 				downStatements = append(downStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quotedTableName, quotedFieldName))
 			} else {
+				// Changing from nullable to NOT NULL - need to handle existing NULL values
+				// Step 1: Set default value if one exists in the new field
+				newDefault := sc.getFieldDefaultValue(newField, newSchema)
+				if newDefault != "" {
+					upStatements = append(upStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", quotedTableName, quotedFieldName, newDefault))
+					// Step 2: Update all NULL values to the default
+					upStatements = append(upStatements, fmt.Sprintf("UPDATE %s SET %s = %s WHERE %s IS NULL;", quotedTableName, quotedFieldName, newDefault, quotedFieldName))
+				} else {
+					// No default value - user needs to handle NULL values manually
+					// Add a comment warning about this
+					upStatements = append(upStatements, fmt.Sprintf("-- WARNING: Setting %s to NOT NULL without a default. Ensure no NULL values exist.", quotedFieldName))
+					upStatements = append(upStatements, fmt.Sprintf("-- UPDATE %s SET %s = <your_default_value> WHERE %s IS NULL;", quotedTableName, quotedFieldName, quotedFieldName))
+				}
+				// Step 3: Apply NOT NULL constraint
 				upStatements = append(upStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", quotedTableName, quotedFieldName))
+
+				// Down migration: just drop NOT NULL (don't worry about cleaning up defaults)
 				downStatements = append(downStatements, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", quotedTableName, quotedFieldName))
 			}
 		}
@@ -1409,26 +1435,33 @@ func (sc *SQLConverter) promptForDestructiveOperation(sqlStmt string, change Cha
 		return PromptReview, nil
 	}
 
+	// If "Generate All" mode is enabled for this change type, auto-generate without prompting
+	if sc.generateAllTypes != nil && sc.generateAllTypes[change.Type] {
+		return PromptGenerate, nil
+	}
+
 	// Create colored output functions
 	red := color.New(color.FgRed, color.Bold).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	white := color.New(color.FgWhite).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
 
 	// Show the destructive operation with RED highlighting
 	fmt.Printf("\n%s\n", red("⚠️  DESTRUCTIVE OPERATION DETECTED"))
 	fmt.Printf("%s %s\n", red("Operation:"), change.Type)
 	fmt.Printf("%s\n%s\n", red("SQL Statement:"), white(sqlStmt))
 
-	// Show the 4 options
+	// Show the 5 options
 	fmt.Printf("\n%s\n", yellow("Choose an action:"))
 	fmt.Printf("  %s - Generate SQL (execute the destructive operation)\n", cyan("1"))
 	fmt.Printf("  %s - Mark for review (comment out with review prefix)\n", cyan("2"))
 	fmt.Printf("  %s - Don't generate statement (omit completely)\n", cyan("3"))
 	fmt.Printf("  %s - Exit migration generation\n", cyan("4"))
+	fmt.Printf("  %s - Generate All of type '%s' (auto-accept remaining %s operations)\n", green("5"), change.Type, change.Type)
 
 	// Prompt for input
-	fmt.Printf("\n%s ", red("Enter choice (1-4):"))
+	fmt.Printf("\n%s ", red("Enter choice (1-5):"))
 
 	// Read user input
 	reader := bufio.NewReader(os.Stdin)
@@ -1449,8 +1482,10 @@ func (sc *SQLConverter) promptForDestructiveOperation(sqlStmt string, change Cha
 			return PromptOmit, nil
 		case "4":
 			return PromptExit, nil
+		case "5":
+			return PromptGenerateAll, nil
 		default:
-			fmt.Printf("%s Please enter 1, 2, 3, or 4: ", red("Invalid choice."))
+			fmt.Printf("%s Please enter 1, 2, 3, 4, or 5: ", red("Invalid choice."))
 		}
 	}
 }

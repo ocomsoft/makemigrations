@@ -87,7 +87,7 @@ func TestGenerateFieldModificationSQL(t *testing.T) {
 				Length:   255,
 				Nullable: boolPtr(false),
 			},
-			expectedUp:   `ALTER TABLE "products" ALTER COLUMN "description" SET NOT NULL;`,
+			expectedUp:   `-- WARNING: Setting "description" to NOT NULL without a default. Ensure no NULL values exist.` + "\n" + `-- UPDATE "products" SET "description" = <your_default_value> WHERE "description" IS NULL;` + "\n" + `ALTER TABLE "products" ALTER COLUMN "description" SET NOT NULL;`,
 			expectedDown: `ALTER TABLE "products" ALTER COLUMN "description" DROP NOT NULL;`,
 		},
 		{

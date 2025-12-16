@@ -109,7 +109,8 @@ security:
 # Install locally
 install: build
 	@echo "Installing $(BINARY_NAME)..."
-	cp $(BINARY_NAME) $$GOPATH/bin/
+	@mkdir -p $${GOPATH%/}/bin
+	cp $(BINARY_NAME) $${GOPATH%/}/bin/$(BINARY_NAME)
 
 # Development workflow
 dev: fmt vet lint test build

@@ -31,6 +31,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	ignore "github.com/sabhiram/go-gitignore"
 	"golang.org/x/mod/modfile"
 
 	"github.com/ocomsoft/makemigrations/internal/errors"
@@ -115,10 +116,10 @@ func (s *Scanner) ScanModulesWithType(schemaType SchemaType) ([]SchemaFile, erro
 			continue
 		}
 
-		schema, err := s.findSchemaInPathWithType(modPath, req.Mod.Path, schemaType)
-		if err != nil {
+		schema, schemaErr := s.findSchemaInPathWithType(modPath, req.Mod.Path, schemaType)
+		if schemaErr != nil {
 			if s.verbose {
-				fmt.Printf("  Error scanning: %v\n", err)
+				fmt.Printf("  Error scanning: %v\n", schemaErr)
 			}
 			continue
 		}
@@ -185,10 +186,29 @@ func (s *Scanner) findAllSchemasInPathWithType(basePath, modulePath string, sche
 
 	var schemas []SchemaFile
 
+	// Load .gitignore if it exists
+	var gitignore *ignore.GitIgnore
+	gitignorePath := filepath.Join(basePath, ".gitignore")
+	if _, err := os.Stat(gitignorePath); err == nil {
+		gitignore, _ = ignore.CompileIgnoreFile(gitignorePath)
+	}
+
 	// Search recursively for all schema files
 	err := filepath.WalkDir(basePath, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil // Continue walking even if there's an error with this path
+		}
+
+		// Check if path is ignored by .gitignore
+		if gitignore != nil {
+			// Convert path to relative path from basePath
+			relPath, err := filepath.Rel(basePath, path)
+			if err == nil && gitignore.MatchesPath(relPath) {
+				if d.IsDir() {
+					return filepath.SkipDir // Skip entire directory
+				}
+				return nil // Skip file
+			}
 		}
 
 		// Check if this is the target file in a target directory

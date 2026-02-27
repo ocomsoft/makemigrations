@@ -50,6 +50,9 @@ func (s *SchemaState) AddTable(name string, fields []Field, indexes []Index) err
 	if _, exists := s.Tables[name]; exists {
 		return fmt.Errorf("table %q already exists in schema state", name)
 	}
+	if fields == nil {
+		fields = []Field{}
+	}
 	if indexes == nil {
 		indexes = []Index{}
 	}
@@ -66,11 +69,14 @@ func (s *SchemaState) DropTable(name string) error {
 	return nil
 }
 
-// RenameTable renames a table. Returns error if old name does not exist.
+// RenameTable renames a table. Returns error if old name does not exist or new name already exists.
 func (s *SchemaState) RenameTable(oldName, newName string) error {
 	t, exists := s.Tables[oldName]
 	if !exists {
 		return fmt.Errorf("table %q does not exist in schema state", oldName)
+	}
+	if _, exists := s.Tables[newName]; exists {
+		return fmt.Errorf("table %q already exists in schema state", newName)
 	}
 	t.Name = newName
 	s.Tables[newName] = t
@@ -78,11 +84,16 @@ func (s *SchemaState) RenameTable(oldName, newName string) error {
 	return nil
 }
 
-// AddField appends a field to an existing table.
+// AddField appends a field to an existing table. Returns error if the field name already exists.
 func (s *SchemaState) AddField(tableName string, field Field) error {
 	t, exists := s.Tables[tableName]
 	if !exists {
 		return fmt.Errorf("table %q does not exist in schema state", tableName)
+	}
+	for _, f := range t.Fields {
+		if f.Name == field.Name {
+			return fmt.Errorf("field %q already exists in table %q", field.Name, tableName)
+		}
 	}
 	t.Fields = append(t.Fields, field)
 	return nil
@@ -133,11 +144,16 @@ func (s *SchemaState) RenameField(tableName, oldName, newName string) error {
 	return fmt.Errorf("field %q does not exist in table %q", oldName, tableName)
 }
 
-// AddIndex appends an index to an existing table.
+// AddIndex appends an index to an existing table. Returns error if the index name already exists.
 func (s *SchemaState) AddIndex(tableName string, index Index) error {
 	t, exists := s.Tables[tableName]
 	if !exists {
 		return fmt.Errorf("table %q does not exist in schema state", tableName)
+	}
+	for _, idx := range t.Indexes {
+		if idx.Name == index.Name {
+			return fmt.Errorf("index %q already exists in table %q", index.Name, tableName)
+		}
 	}
 	t.Indexes = append(t.Indexes, index)
 	return nil

@@ -142,3 +142,125 @@ func TestSchemaState_AddDropIndex(t *testing.T) {
 		t.Fatalf("expected 0 indexes after drop, got %d", len(s.Tables["users"].Indexes))
 	}
 }
+
+// Error-path tests — duplicate and missing-entity guards.
+
+func TestSchemaState_AddTable_NilFields_Normalised(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.AddTable("things", nil, nil); err != nil {
+		t.Fatalf("AddTable with nil fields: %v", err)
+	}
+	if s.Tables["things"].Fields == nil {
+		t.Fatal("expected Fields to be normalised to empty slice, got nil")
+	}
+	if s.Tables["things"].Indexes == nil {
+		t.Fatal("expected Indexes to be normalised to empty slice, got nil")
+	}
+}
+
+func TestSchemaState_RenameTable_Collision(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("a", nil, nil)
+	_ = s.AddTable("b", nil, nil)
+	if err := s.RenameTable("a", "b"); err == nil {
+		t.Fatal("expected error when renaming onto an existing table name")
+	}
+}
+
+func TestSchemaState_RenameTable_NotExists(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.RenameTable("ghost", "new"); err == nil {
+		t.Fatal("expected error when source table does not exist")
+	}
+}
+
+func TestSchemaState_AddField_Duplicate(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", []migrate.Field{{Name: "id", Type: "uuid"}}, nil)
+	if err := s.AddField("users", migrate.Field{Name: "id", Type: "uuid"}); err == nil {
+		t.Fatal("expected error for duplicate field name")
+	}
+}
+
+func TestSchemaState_AddField_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.AddField("ghost", migrate.Field{Name: "col", Type: "varchar"}); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_DropField_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.DropField("ghost", "col"); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_DropField_MissingField(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", nil, nil)
+	if err := s.DropField("users", "ghost_col"); err == nil {
+		t.Fatal("expected error when field does not exist")
+	}
+}
+
+func TestSchemaState_AlterField_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.AlterField("ghost", migrate.Field{Name: "col", Type: "varchar"}); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_AlterField_MissingField(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", nil, nil)
+	if err := s.AlterField("users", migrate.Field{Name: "ghost_col", Type: "varchar"}); err == nil {
+		t.Fatal("expected error when field does not exist")
+	}
+}
+
+func TestSchemaState_RenameField_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.RenameField("ghost", "old", "new"); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_RenameField_MissingField(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", nil, nil)
+	if err := s.RenameField("users", "ghost_col", "new_col"); err == nil {
+		t.Fatal("expected error when field does not exist")
+	}
+}
+
+func TestSchemaState_AddIndex_Duplicate(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", nil, nil)
+	_ = s.AddIndex("users", migrate.Index{Name: "idx_email", Fields: []string{"email"}})
+	if err := s.AddIndex("users", migrate.Index{Name: "idx_email", Fields: []string{"email"}}); err == nil {
+		t.Fatal("expected error for duplicate index name")
+	}
+}
+
+func TestSchemaState_AddIndex_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.AddIndex("ghost", migrate.Index{Name: "idx_x", Fields: []string{"x"}}); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_DropIndex_MissingTable(t *testing.T) {
+	s := migrate.NewSchemaState()
+	if err := s.DropIndex("ghost", "idx_x"); err == nil {
+		t.Fatal("expected error when table does not exist")
+	}
+}
+
+func TestSchemaState_DropIndex_MissingIndex(t *testing.T) {
+	s := migrate.NewSchemaState()
+	_ = s.AddTable("users", nil, nil)
+	if err := s.DropIndex("users", "idx_ghost"); err == nil {
+		t.Fatal("expected error when index does not exist")
+	}
+}

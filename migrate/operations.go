@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// operations.go defines the Operation interface that all concrete migration
+// operations (AddTable, DropField, etc.) must implement.
 package migrate
 
 // Operation is the interface implemented by all migration operations.

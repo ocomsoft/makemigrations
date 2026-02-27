@@ -31,15 +31,19 @@ var (
 	databaseType string
 )
 
-// makemigrationsCmd represents the makemigrations command (YAML-based)
-var makemigrationsCmd = &cobra.Command{
-	Use:   "makemigrations",
-	Short: "Django-style migration generator from YAML schemas",
-	Long: `Generate database migrations from schema.yaml files in Go modules.
+// sqlMigrationsCmd represents the sql-migrations command (legacy YAML-based SQL workflow).
+// For the new Go migration framework, use the `makemigrations` command instead.
+var sqlMigrationsCmd = &cobra.Command{
+	Use:   "sql-migrations",
+	Short: "Legacy YAML-based SQL migration generator (Goose-compatible)",
+	Long: `Generate database migrations from schema.yaml files in Go modules (legacy workflow).
 
-This tool scans Go module dependencies for schema/schema.yaml files, merges them 
-into a unified schema, and generates Goose-compatible migration files by comparing 
+This tool scans Go module dependencies for schema/schema.yaml files, merges them
+into a unified schema, and generates Goose-compatible migration files by comparing
 against the last known schema state.
+
+NOTE: This is the legacy SQL file workflow. For the new Django-style Go migration
+framework that generates typed .go migration files, use the "makemigrations" command.
 
 The YAML schema format supports:
 - Multiple database types (PostgreSQL, MySQL, SQL Server, SQLite)
@@ -72,19 +76,19 @@ func runYAMLMakeMigrations(cmd *cobra.Command, args []string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(makemigrationsCmd)
+	rootCmd.AddCommand(sqlMigrationsCmd)
 
 	// Add YAML-specific flags
-	makemigrationsCmd.Flags().StringVar(&databaseType, "database", "postgresql",
+	sqlMigrationsCmd.Flags().StringVar(&databaseType, "database", "postgresql",
 		"Target database type (postgresql, mysql, sqlserver, sqlite)")
-	makemigrationsCmd.Flags().BoolVar(&dryRun, "dry-run", false,
+	sqlMigrationsCmd.Flags().BoolVar(&dryRun, "dry-run", false,
 		"Show what would be generated without creating files")
-	makemigrationsCmd.Flags().BoolVar(&check, "check", false,
+	sqlMigrationsCmd.Flags().BoolVar(&check, "check", false,
 		"Exit with error code if migrations are needed (for CI/CD)")
-	makemigrationsCmd.Flags().StringVar(&customName, "name", "",
+	sqlMigrationsCmd.Flags().StringVar(&customName, "name", "",
 		"Override auto-generated migration name")
-	makemigrationsCmd.Flags().BoolVar(&verbose, "verbose", false,
+	sqlMigrationsCmd.Flags().BoolVar(&verbose, "verbose", false,
 		"Show detailed processing information")
-	makemigrationsCmd.Flags().BoolVar(&silent, "silent", false,
+	sqlMigrationsCmd.Flags().BoolVar(&silent, "silent", false,
 		"Skip prompts for destructive operations (use review comments instead)")
 }

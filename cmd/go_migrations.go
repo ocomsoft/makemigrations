@@ -58,7 +58,7 @@ var (
 // reconstructed state from existing Go migration files and generates a new
 // migration .go file for any changes detected.
 var goMigrationsCmd = &cobra.Command{
-	Use:   "makemigrations_go",
+	Use:   "makemigrations",
 	Short: "Generate Go migration files from YAML schema changes",
 	Long: `Compares the current YAML schema against the reconstructed state from existing
 Go migration files and generates a new migration .go file for any changes detected.
@@ -158,7 +158,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	// 5. Check for branches (warn if present and not doing merge)
 	if dagOut != nil && dagOut.HasBranches && !goMigMerge {
 		fmt.Printf("WARNING: Branches detected: %s\n", strings.Join(dagOut.Leaves, ", "))
-		fmt.Println("Run 'makemigrations makemigrations_go --merge' to generate a merge migration.")
+		fmt.Println("Run 'makemigrations makemigrations --merge' to generate a merge migration.")
 	}
 
 	if !diff.HasChanges {

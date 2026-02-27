@@ -29,6 +29,7 @@ import (
 
 var (
 	initDatabaseType string
+	initGoMode       bool
 )
 
 // initCmd represents the init command
@@ -45,6 +46,9 @@ This command:
 - Creates an initial migration file (00001_initial.sql)
 - Sets up the YAML schema snapshot for future migrations
 
+Use --go to bootstrap the Go migration framework instead (generates main.go,
+go.mod, and an initial .go migration file from any existing schema snapshot).
+
 Use this command when setting up makemigrations for the first time in a project
 that uses YAML schema files.`,
 	RunE: runInit,
@@ -56,8 +60,13 @@ func init() {
 	initCmd.Flags().StringVar(&initDatabaseType, "database", "postgresql",
 		"Target database type (postgresql, mysql, sqlserver, sqlite)")
 	initCmd.Flags().BoolVar(&verbose, "verbose", false, "Show detailed processing information")
+	initCmd.Flags().BoolVar(&initGoMode, "go", false,
+		"Bootstrap the Go migration framework (generates main.go, go.mod, and initial .go migration)")
 }
 
 func runInit(_ *cobra.Command, _ []string) error {
+	if initGoMode {
+		return ExecuteGoMigrationInit(initDatabaseType, verbose)
+	}
 	return ExecuteYAMLInit(initDatabaseType, verbose)
 }

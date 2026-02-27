@@ -25,6 +25,7 @@ SOFTWARE.
 package migrate
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -166,13 +167,118 @@ func (a *App) buildFakeCommand() *cobra.Command {
 	}
 }
 
-// --- Runner stubs ---
-// These stub methods will be replaced by real implementations in Task 9
-// when runner.go is created. They currently return a "not yet implemented"
-// error to indicate the runner subsystem is pending.
+// --- Database helpers ---
 
-func (a *App) runUp(_ string) error            { return fmt.Errorf("runner not yet implemented") }
-func (a *App) runDown(_ int, _ string) error    { return fmt.Errorf("runner not yet implemented") }
-func (a *App) runStatus() error                 { return fmt.Errorf("runner not yet implemented") }
-func (a *App) runShowSQL() error                { return fmt.Errorf("runner not yet implemented") }
-func (a *App) runFake(_ string) error           { return fmt.Errorf("runner not yet implemented") }
+// openDB creates a *sql.DB from the app config.
+func (a *App) openDB() (*sql.DB, error) {
+	dsn := a.config.DatabaseURL
+	if dsn == "" {
+		dsn = buildDSN(a.config)
+	}
+	driver := driverName(a.config.DatabaseType)
+	db, err := sql.Open(driver, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("opening database: %w", err)
+	}
+	return db, nil
+}
+
+// buildDSN constructs a DSN from individual config fields.
+func buildDSN(cfg Config) string {
+	switch cfg.DatabaseType {
+	case "postgresql", "postgres":
+		return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
+	case "sqlite":
+		return cfg.DBName
+	default:
+		return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+			cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName)
+	}
+}
+
+// driverName maps DatabaseType to SQL driver name.
+func driverName(dbType string) string {
+	switch dbType {
+	case "mysql", "tidb":
+		return "mysql"
+	case "sqlserver":
+		return "sqlserver"
+	case "sqlite":
+		return "sqlite3"
+	default:
+		return "postgres"
+	}
+}
+
+// --- Runner wiring ---
+
+// buildRunner creates a fully-wired Runner from the app config and registry.
+func (a *App) buildRunner() (*Runner, error) {
+	reg := a.registry
+	g, err := BuildGraph(reg)
+	if err != nil {
+		return nil, fmt.Errorf("building graph: %w", err)
+	}
+	db, err := a.openDB()
+	if err != nil {
+		return nil, err
+	}
+	recorder := NewMigrationRecorder(db)
+	if err := recorder.EnsureTable(); err != nil {
+		return nil, err
+	}
+	p, err := buildProviderFromType(a.config.DatabaseType)
+	if err != nil {
+		return nil, err
+	}
+	return NewRunner(g, p, db, recorder), nil
+}
+
+func (a *App) runUp(to string) error {
+	r, err := a.buildRunner()
+	if err != nil {
+		return err
+	}
+	return r.Up(to)
+}
+
+func (a *App) runDown(steps int, to string) error {
+	r, err := a.buildRunner()
+	if err != nil {
+		return err
+	}
+	return r.Down(steps, to)
+}
+
+func (a *App) runStatus() error {
+	r, err := a.buildRunner()
+	if err != nil {
+		return err
+	}
+	return r.Status()
+}
+
+func (a *App) runShowSQL() error {
+	r, err := a.buildRunner()
+	if err != nil {
+		return err
+	}
+	return r.ShowSQL()
+}
+
+func (a *App) runFake(name string) error {
+	db, err := a.openDB()
+	if err != nil {
+		return err
+	}
+	recorder := NewMigrationRecorder(db)
+	if err := recorder.EnsureTable(); err != nil {
+		return err
+	}
+	if err := recorder.Fake(name); err != nil {
+		return err
+	}
+	fmt.Printf("Marked %q as applied (faked).\n", name)
+	return nil
+}

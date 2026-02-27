@@ -26,8 +26,11 @@ package migrate_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/ocomsoft/makemigrations/migrate"
 )
@@ -209,58 +212,162 @@ func TestApp_Run_DAG_EmptyRegistry(t *testing.T) {
 	}
 }
 
-func TestApp_Run_Up_Stub(t *testing.T) {
-	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
+func TestApp_Run_Up_SQLite(t *testing.T) {
+	// Use a temp file for SQLite so the App can open it via DSN
+	dbPath := filepath.Join(t.TempDir(), "test_up.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name: "users",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	// Redirect stdout to suppress output during tests
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
 	err := app.Run([]string{"up"})
-	if err == nil {
-		t.Fatal("expected error from stub runner")
-	}
-	if !strings.Contains(err.Error(), "runner not yet implemented") {
-		t.Fatalf("expected 'runner not yet implemented' error, got: %v", err)
+	if err != nil {
+		t.Fatalf("up command failed: %v", err)
 	}
 }
 
-func TestApp_Run_Down_Stub(t *testing.T) {
-	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
-	err := app.Run([]string{"down"})
-	if err == nil {
-		t.Fatal("expected error from stub runner")
+func TestApp_Run_Down_SQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_down.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name: "users",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	// Apply first, then roll back
+	if err := app.Run([]string{"up"}); err != nil {
+		t.Fatalf("up failed: %v", err)
 	}
-	if !strings.Contains(err.Error(), "runner not yet implemented") {
-		t.Fatalf("expected 'runner not yet implemented' error, got: %v", err)
+	if err := app.Run([]string{"down", "--steps", "1"}); err != nil {
+		t.Fatalf("down failed: %v", err)
 	}
 }
 
-func TestApp_Run_Status_Stub(t *testing.T) {
-	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
+func TestApp_Run_Status_SQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_status.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name: "users",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+				},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
 	err := app.Run([]string{"status"})
-	if err == nil {
-		t.Fatal("expected error from stub runner")
-	}
-	if !strings.Contains(err.Error(), "runner not yet implemented") {
-		t.Fatalf("expected 'runner not yet implemented' error, got: %v", err)
+	if err != nil {
+		t.Fatalf("status command failed: %v", err)
 	}
 }
 
-func TestApp_Run_ShowSQL_Stub(t *testing.T) {
-	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
+func TestApp_Run_ShowSQL_SQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_showsql.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name: "users",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+				},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
 	err := app.Run([]string{"showsql"})
-	if err == nil {
-		t.Fatal("expected error from stub runner")
-	}
-	if !strings.Contains(err.Error(), "runner not yet implemented") {
-		t.Fatalf("expected 'runner not yet implemented' error, got: %v", err)
+	if err != nil {
+		t.Fatalf("showsql command failed: %v", err)
 	}
 }
 
-func TestApp_Run_Fake_Stub(t *testing.T) {
-	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
+func TestApp_Run_Fake_SQLite(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_fake.db")
+	reg := migrate.NewRegistry()
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
 	err := app.Run([]string{"fake", "0001_initial"})
-	if err == nil {
-		t.Fatal("expected error from stub runner")
-	}
-	if !strings.Contains(err.Error(), "runner not yet implemented") {
-		t.Fatalf("expected 'runner not yet implemented' error, got: %v", err)
+	if err != nil {
+		t.Fatalf("fake command failed: %v", err)
 	}
 }
 

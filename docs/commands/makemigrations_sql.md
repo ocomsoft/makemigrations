@@ -1,6 +1,8 @@
-# makemigrations_sql Command
+# sql-migrations Command (Legacy)
 
-The `makemigrations_sql` command generates database migrations from **direct SQL input** rather than YAML schema files. This command provides a bridge between manual SQL development and automated migration generation.
+> **Legacy workflow.** This document covers the `sql-migrations` command (formerly `makemigrations`), which is part of the legacy YAML-to-SQL pipeline. For new projects, use `makemigrations makemigrations` instead to generate typed Go migration files. See [makemigrations](./makemigrations.md).
+
+The `makemigrations sql-migrations` command generates Goose-compatible `.sql` migration files from YAML schema changes. It is the legacy equivalent of `makemigrations makemigrations` and is activated via the `init --sql` workflow.
 
 ## Overview
 

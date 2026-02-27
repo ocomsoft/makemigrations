@@ -29,28 +29,25 @@ import (
 
 var (
 	initDatabaseType string
-	initGoMode       bool
+	initSQLMode      bool
 )
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize migrations directory and create initial migration from YAML schemas",
-	Long: `Initialize the migrations directory structure and create an initial migration
-from existing schema.yaml files.
+	Short: "Initialize migrations directory for the Go migration framework",
+	Long: `Bootstrap the migrations/ directory for the Django-style Go migration framework.
 
-This command:
+By default this command:
 - Creates the migrations/ directory if it doesn't exist
-- Scans for schema.yaml files in Go module dependencies
-- Merges all schemas into a unified schema
-- Creates an initial migration file (00001_initial.sql)
-- Sets up the YAML schema snapshot for future migrations
+- Generates migrations/main.go and migrations/go.mod
+- If a .schema_snapshot.yaml exists, generates an initial 0001_initial.go migration
+- Prints instructions for faking the initial migration on an existing database
 
-Use --go to bootstrap the Go migration framework instead (generates main.go,
-go.mod, and an initial .go migration file from any existing schema snapshot).
+Use --sql to initialise the legacy YAML-to-SQL workflow instead (generates an
+initial .sql migration file using Goose-compatible format).
 
-Use this command when setting up makemigrations for the first time in a project
-that uses YAML schema files.`,
+Use this command when setting up makemigrations for the first time in a project.`,
 	RunE: runInit,
 }
 
@@ -60,13 +57,13 @@ func init() {
 	initCmd.Flags().StringVar(&initDatabaseType, "database", "postgresql",
 		"Target database type (postgresql, mysql, sqlserver, sqlite)")
 	initCmd.Flags().BoolVar(&verbose, "verbose", false, "Show detailed processing information")
-	initCmd.Flags().BoolVar(&initGoMode, "go", false,
-		"Bootstrap the Go migration framework (generates main.go, go.mod, and initial .go migration)")
+	initCmd.Flags().BoolVar(&initSQLMode, "sql", false,
+		"Use the legacy YAML-to-SQL workflow (generates Goose-compatible .sql migration files)")
 }
 
 func runInit(_ *cobra.Command, _ []string) error {
-	if initGoMode {
-		return ExecuteGoMigrationInit(initDatabaseType, verbose)
+	if initSQLMode {
+		return ExecuteYAMLInit(initDatabaseType, verbose)
 	}
-	return ExecuteYAMLInit(initDatabaseType, verbose)
+	return ExecuteGoMigrationInit(initDatabaseType, verbose)
 }

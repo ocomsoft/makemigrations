@@ -1,44 +1,36 @@
 # Installation Guide
 
-This guide covers installing and setting up makemigrations for YAML-based database schema management.
+This guide covers installing and setting up makemigrations for Go-based database migration management.
 
 ## Prerequisites
 
-- **Go 1.24 or later** - Required for building and running makemigrations
-- **Git** - For cloning the repository  
-- **Database** - One of 12 supported databases: PostgreSQL, MySQL, SQLite, SQL Server, Redshift, ClickHouse, TiDB, Vertica, YDB, Turso, StarRocks, or Aurora DSQL
+- **Go 1.24 or later** — Required for building and running makemigrations
+- **Git** — For cloning the repository
+- **CGO_ENABLED=1** — Required only when using SQLite; PostgreSQL and MySQL do not need CGO
+- **Database** — One of the supported databases: PostgreSQL, MySQL, or SQLite
 
 ## Installation Methods
 
-### Option 1: Install from Source (Recommended)
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/ocomsoft/makemigrations.git
-   cd makemigrations
-   ```
-
-2. **Build the binary:**
-   ```bash
-   go build -o makemigrations .
-   ```
-
-3. **Install globally (optional):**
-   ```bash
-   # Install to GOPATH/bin
-   go install .
-   
-   # Or copy to system PATH
-   sudo cp makemigrations /usr/local/bin/
-   ```
-
-### Option 2: Go Install (Recommended)
+### Option 1: Go Install (Recommended)
 
 ```bash
 go install github.com/ocomsoft/makemigrations@latest
 ```
 
-### Option 3: Download Binary
+This places the `makemigrations` binary in `$(go env GOPATH)/bin`. Ensure that directory is on your `PATH`.
+
+### Option 2: Build from Source
+
+```bash
+git clone https://github.com/ocomsoft/makemigrations.git
+cd makemigrations
+go build -o makemigrations .
+
+# Optionally install globally
+sudo cp makemigrations /usr/local/bin/
+```
+
+### Option 3: Download Pre-Built Binary
 
 Download pre-built binaries from the [releases page](https://github.com/ocomsoft/makemigrations/releases):
 
@@ -51,46 +43,41 @@ chmod +x makemigrations
 curl -L https://github.com/ocomsoft/makemigrations/releases/latest/download/makemigrations-windows-amd64.exe -o makemigrations.exe
 ```
 
-## Project Setup
+## Verification
 
-### 1. Initialize Your Project
-
-Create a new project with YAML schema management:
+Confirm the installation is working:
 
 ```bash
-# Initialize migrations directory with YAML support
+makemigrations --help
+makemigrations init --help
+```
+
+## Quickstart: Go Migration Workflow
+
+This is the primary workflow. Migrations are generated as Go source files, compiled into a standalone binary, and applied directly against your database.
+
+### 1. Install
+
+```bash
+go install github.com/ocomsoft/makemigrations@latest
+```
+
+### 2. Initialise Your Project
+
+Run `init` from the root of your Go project. This creates a `migrations/` subdirectory with its own Go module and entry point:
+
+```bash
 makemigrations init
-
-# This creates:
-# migrations/
-# ├── makemigrations.config.yaml
-# └── .schema_snapshot.yaml
 ```
 
-### 2. Create Schema Directory
+### 3. Define Your Schema
 
-Create your schema directory structure:
-
-```bash
-mkdir -p schema
-touch schema/schema.yaml
-```
-
-### 3. Define Your First Schema
-
-Edit `schema/schema.yaml`:
+Edit `schema/schema.yaml` to describe your database tables and fields:
 
 ```yaml
 database:
   name: myapp
   version: 1.0.0
-
-defaults:
-  postgresql:
-    blank: ''
-    now: CURRENT_TIMESTAMP
-    new_uuid: gen_random_uuid()
-    # ... other defaults
 
 tables:
   - name: users
@@ -112,215 +99,173 @@ tables:
 ### 4. Generate Your First Migration
 
 ```bash
-# Generate migration from schema
-makemigrations makemigrations --name initial_schema
-
-# Review the generated migration
-cat migrations/YYYYMMDDHHMMSS_initial_schema.sql
+makemigrations makemigrations --name "initial"
+# Creates migrations/0001_initial.go
 ```
 
-## Database Setup
+### 5. Build the Migrations Binary
+
+```bash
+cd migrations && go mod tidy && go build -o migrate .
+```
+
+### 6. Apply Migrations
+
+```bash
+./migrations/migrate up
+```
+
+### 7. Ongoing Workflow
+
+After each change to `schema.yaml`, regenerate, rebuild, and apply:
+
+```bash
+makemigrations makemigrations
+cd migrations && go build -o migrate .
+./migrations/migrate up
+```
+
+### Project Layout After Init
+
+```
+myapp/
+├── go.mod
+├── schema/
+│   └── schema.yaml          # YAML schema definitions
+└── migrations/
+    ├── go.mod               # separate module for the migrations binary
+    ├── main.go              # migrations binary entry point
+    └── 0001_initial.go      # generated Go migration (after first makemigrations)
+```
+
+## Database Configuration
+
+The `./migrations/migrate` binary reads connection settings from environment variables.
 
 ### PostgreSQL
 
-1. **Install PostgreSQL driver dependencies:**
-   ```bash
-   # Already included in makemigrations binary
-   ```
-
-2. **Set environment variables:**
-   ```bash
-   export MAKEMIGRATIONS_DB_HOST=localhost
-   export MAKEMIGRATIONS_DB_PORT=5432
-   export MAKEMIGRATIONS_DB_USER=postgres
-   export MAKEMIGRATIONS_DB_PASSWORD=yourpassword
-   export MAKEMIGRATIONS_DB_NAME=yourdatabase
-   export MAKEMIGRATIONS_DB_SSLMODE=disable
-   ```
-
-3. **Test connection:**
-   ```bash
-   makemigrations goose status
-   ```
+```bash
+export MAKEMIGRATIONS_DB_TYPE=postgresql
+export MAKEMIGRATIONS_DB_HOST=localhost
+export MAKEMIGRATIONS_DB_PORT=5432
+export MAKEMIGRATIONS_DB_USER=postgres
+export MAKEMIGRATIONS_DB_PASSWORD=yourpassword
+export MAKEMIGRATIONS_DB_NAME=yourdb
+export MAKEMIGRATIONS_DB_SSLMODE=disable
+```
 
 ### MySQL
 
-1. **Set environment variables:**
-   ```bash
-   export MAKEMIGRATIONS_DB_HOST=localhost
-   export MAKEMIGRATIONS_DB_PORT=3306
-   export MAKEMIGRATIONS_DB_USER=root
-   export MAKEMIGRATIONS_DB_PASSWORD=yourpassword
-   export MAKEMIGRATIONS_DB_NAME=yourdatabase
-   ```
-
-2. **Update config for MySQL:**
-   ```yaml
-   # migrations/makemigrations.config.yaml
-   database:
-     type: mysql
-   ```
+```bash
+export MAKEMIGRATIONS_DB_TYPE=mysql
+export MAKEMIGRATIONS_DB_HOST=localhost
+export MAKEMIGRATIONS_DB_PORT=3306
+export MAKEMIGRATIONS_DB_USER=root
+export MAKEMIGRATIONS_DB_PASSWORD=yourpassword
+export MAKEMIGRATIONS_DB_NAME=yourdb
+```
 
 ### SQLite
 
-1. **Set database path:**
-   ```bash
-   export MAKEMIGRATIONS_DB_PATH=./database.db
-   ```
-
-2. **Update config:**
-   ```yaml
-   # migrations/makemigrations.config.yaml
-   database:
-     type: sqlite
-   ```
-
-## Verification
-
-### Test Installation
+SQLite requires CGO. Build with `CGO_ENABLED=1`:
 
 ```bash
-# Check version and help
-makemigrations --help
-
-# Test YAML schema parsing
-makemigrations makemigrations --dry-run
-
-# Test database connection (requires setup)
-makemigrations goose status
+export MAKEMIGRATIONS_DB_TYPE=sqlite
+export MAKEMIGRATIONS_DATABASE_URL=./database.db
 ```
 
-### Verify Schema Processing
+### Development .env File
+
+Create a `.env` file for local development:
 
 ```bash
-# Scan for schema files
-makemigrations dump_sql --verbose
-
-# Generate a test migration
-makemigrations makemigrations --dry-run --name test_migration
-```
-
-## IDE Integration
-
-### VS Code
-
-1. **Install YAML extension:**
-   - Install "YAML" by Red Hat
-   - Install "Go" by Google (for Go module support)
-
-2. **Configure YAML schema validation:**
-   ```json
-   // .vscode/settings.json
-   {
-     "yaml.schemas": {
-       "./schema_format.md": "schema/schema.yaml"
-     }
-   }
-   ```
-
-### GoLand/IntelliJ
-
-1. **Enable YAML support** in File → Settings → Plugins
-2. **Configure file associations** for `*.yaml` files in schema directories
-
-## Environment Configuration
-
-### Development Environment
-
-Create a `.env` file for development:
-
-```bash
-# Database connection
+MAKEMIGRATIONS_DB_TYPE=postgresql
 MAKEMIGRATIONS_DB_HOST=localhost
 MAKEMIGRATIONS_DB_PORT=5432
 MAKEMIGRATIONS_DB_USER=dev_user
 MAKEMIGRATIONS_DB_PASSWORD=dev_password
 MAKEMIGRATIONS_DB_NAME=myapp_development
-
-# Migration settings
-MAKEMIGRATIONS_MIGRATION_SILENT=false
-MAKEMIGRATIONS_OUTPUT_VERBOSE=true
 ```
 
 ### Production Environment
 
-Set environment variables in your deployment:
-
 ```bash
-# Required
+MAKEMIGRATIONS_DB_TYPE=postgresql
 MAKEMIGRATIONS_DB_HOST=production-db-host
 MAKEMIGRATIONS_DB_USER=app_user
 MAKEMIGRATIONS_DB_PASSWORD=secure_password
 MAKEMIGRATIONS_DB_NAME=myapp_production
-
-# Optional overrides
-MAKEMIGRATIONS_MIGRATION_SILENT=true
-MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 ```
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **"Command not found"**
-   ```bash
-   # Ensure binary is in PATH
-   export PATH=$PATH:$(go env GOPATH)/bin
-   
-   # Or use full path
-   ./makemigrations --help
-   ```
-
-2. **"No schema files found"**
-   ```bash
-   # Check schema directory structure
-   find . -name "schema.yaml" -type f
-   
-   # Verify file naming
-   ls -la schema/
-   ```
-
-3. **Database connection issues**
-   ```bash
-   # Test environment variables
-   echo $MAKEMIGRATIONS_DB_HOST
-   
-   # Test direct connection
-   psql -h $MAKEMIGRATIONS_DB_HOST -U $MAKEMIGRATIONS_DB_USER -d $MAKEMIGRATIONS_DB_NAME
-   ```
-
-4. **YAML parsing errors**
-   ```bash
-   # Validate YAML syntax
-   yamllint schema/schema.yaml
-   
-   # Check for indentation issues
-   cat -A schema/schema.yaml
-   ```
-
-### Debug Mode
-
-Enable verbose output for troubleshooting:
+### "Command not found"
 
 ```bash
-# Verbose schema processing
-makemigrations makemigrations --verbose --dry-run
+# Ensure GOPATH/bin is on your PATH
+export PATH=$PATH:$(go env GOPATH)/bin
 
-# Verbose goose operations
-makemigrations goose status --verbose
+# Or use the full path
+./makemigrations --help
 ```
+
+### "No schema files found"
+
+```bash
+# Check that schema.yaml exists in the expected location
+find . -name "schema.yaml" -type f
+
+# Verify directory structure
+ls -la schema/
+```
+
+### Database Connection Issues
+
+```bash
+# Check that environment variables are set
+echo $MAKEMIGRATIONS_DB_HOST
+echo $MAKEMIGRATIONS_DB_USER
+
+# Test a direct connection
+psql -h $MAKEMIGRATIONS_DB_HOST -U $MAKEMIGRATIONS_DB_USER -d $MAKEMIGRATIONS_DB_NAME
+```
+
+### YAML Parsing Errors
+
+```bash
+# Validate YAML syntax
+yamllint schema/schema.yaml
+```
+
+### SQLite: CGO Errors
+
+SQLite requires CGO. Rebuild the migrations binary with CGO enabled:
+
+```bash
+CGO_ENABLED=1 go build -o migrate .
+```
+
+## Legacy SQL Workflow
+
+For projects using the older YAML-to-SQL+Goose workflow, initialise with:
+
+```bash
+makemigrations init --sql
+```
+
+This generates raw `.sql` migration files managed by Goose instead of Go source files. See [docs/commands/init.md](commands/init.md) for full details.
 
 ## Next Steps
 
-1. **Read the [Configuration Guide](configuration.md)** to customize settings
+1. **Read the [Configuration Guide](configuration.md)** to customise settings
 2. **Review [Schema Format Documentation](schema-format.md)** for YAML schema syntax
 3. **Explore [Command Documentation](commands/)** for detailed usage
 4. **Set up CI/CD integration** using `--check` and `--silent` flags
 
 ## Support
 
-- **Documentation**: Browse `/docs` directory for detailed guides
-- **Examples**: Check `/example` directory for sample schemas
+- **Documentation**: Browse the `/docs` directory for detailed guides
+- **Examples**: Check the `/example` directory for sample schemas
 - **Issues**: Report problems on GitHub Issues
 - **Discussions**: Join GitHub Discussions for questions
 

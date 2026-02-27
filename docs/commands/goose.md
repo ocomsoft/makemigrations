@@ -1,6 +1,13 @@
 # Goose Integration
 
-The `makemigrations goose` subcommand provides direct access to [Goose](https://github.com/pressly/goose) database migration commands using the same configuration as makemigrations.
+> **Legacy workflow.** The `goose` subcommand is part of the legacy YAML-to-SQL pipeline. For new projects, use the Go migration framework instead:
+> - `makemigrations init` to bootstrap
+> - `makemigrations makemigrations` to generate typed `.go` migrations
+> - The compiled `./migrations/migrate` binary to apply them
+>
+> See [init](./init.md), [makemigrations](./makemigrations.md), and [migrate](./migrate.md) for the primary workflow.
+
+The `makemigrations goose` subcommand provides direct access to [Goose](https://github.com/pressly/goose) database migration commands using the same configuration as makemigrations. It is used with the legacy YAML-to-SQL workflow (enabled via `makemigrations init --sql`).
 
 ## Overview
 
@@ -219,19 +226,19 @@ makemigrations goose fix
    makemigrations goose up
    ```
 
-## Integration with Makemigrations
+## Integration with the Legacy SQL Workflow
 
-The goose subcommand complements the main makemigrations functionality:
+The goose subcommand is designed for use with the `sql-migrations` generator:
 
-1. **Use `makemigrations` to generate migrations** from YAML schemas
-2. **Use `makemigrations goose` to apply migrations** to the database
+1. **Use `makemigrations sql-migrations`** to generate `.sql` migration files from YAML schemas
+2. **Use `makemigrations goose`** to apply those `.sql` files to the database
 
 ### Example Workflow
 
 ```bash
-# Generate migration from schema changes
-makemigrations --dry-run
-makemigrations
+# Generate SQL migration from schema changes
+makemigrations sql-migrations --dry-run
+makemigrations sql-migrations
 
 # Check what migrations are pending
 makemigrations goose status

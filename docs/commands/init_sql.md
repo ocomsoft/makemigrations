@@ -1,6 +1,8 @@
-# init_sql Command
+# init --sql (Legacy SQL Workflow)
 
-The `init_sql` command initializes a new makemigrations project with **SQL-based** migration management. This is an alternative to the YAML-based approach, providing traditional SQL migration workflows similar to other migration tools.
+> **Legacy workflow.** This document covers initialisation of the legacy YAML-to-SQL pipeline using `makemigrations init --sql`. For new projects, use `makemigrations init` (without `--sql`) to set up the Go migration framework. See [init](./init.md).
+
+The `makemigrations init --sql` command initializes the legacy SQL-based migration workflow. It creates a project structure optimized for Goose-compatible `.sql` migration files rather than typed Go migration files.
 
 ## Overview
 

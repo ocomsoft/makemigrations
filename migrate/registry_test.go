@@ -25,6 +25,7 @@ SOFTWARE.
 package migrate_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/migrate"
@@ -44,8 +45,13 @@ func TestRegistry_Register(t *testing.T) {
 
 func TestRegistry_Register_Duplicate_Panics(t *testing.T) {
 	defer func() {
-		if r := recover(); r == nil {
+		r := recover()
+		if r == nil {
 			t.Fatal("expected panic for duplicate migration name")
+		}
+		msg, ok := r.(string)
+		if !ok || !strings.Contains(msg, "duplicate migration name") {
+			t.Fatalf("unexpected panic value: %v", r)
 		}
 	}()
 	reg := migrate.NewRegistry()
@@ -67,6 +73,36 @@ func TestRegistry_Get(t *testing.T) {
 	if ok {
 		t.Fatal("expected false for missing migration")
 	}
+}
+
+func TestRegistry_Register_Nil_Panics(t *testing.T) {
+	r := migrate.NewRegistry()
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			t.Fatal("expected panic for nil migration")
+		}
+		msg, ok := rec.(string)
+		if !ok || !strings.Contains(msg, "nil") {
+			t.Fatalf("unexpected panic value: %v", rec)
+		}
+	}()
+	r.Register(nil)
+}
+
+func TestRegistry_Register_EmptyName_Panics(t *testing.T) {
+	r := migrate.NewRegistry()
+	defer func() {
+		rec := recover()
+		if rec == nil {
+			t.Fatal("expected panic for empty migration name")
+		}
+		msg, ok := rec.(string)
+		if !ok || !strings.Contains(msg, "empty") {
+			t.Fatalf("unexpected panic value: %v", rec)
+		}
+	}()
+	r.Register(&migrate.Migration{Name: ""})
 }
 
 func TestRegistry_InsertionOrder(t *testing.T) {

@@ -43,6 +43,12 @@ func NewRegistry() *Registry {
 
 // Register adds a migration to this registry. Panics on duplicate names.
 func (r *Registry) Register(m *Migration) {
+	if m == nil {
+		panic("migration registration error: Register called with nil *Migration")
+	}
+	if m.Name == "" {
+		panic("migration registration error: Migration.Name must not be empty")
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.migrations[m.Name]; exists {

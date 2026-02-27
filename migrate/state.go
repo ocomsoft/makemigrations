@@ -30,14 +30,14 @@ import "fmt"
 // specific point in the migration graph. Operations call Mutate() to update
 // it as they are applied during graph traversal.
 type SchemaState struct {
-	Tables map[string]*TableState
+	Tables map[string]*TableState `json:"tables"`
 }
 
 // TableState holds the state of a single table.
 type TableState struct {
-	Name    string
-	Fields  []Field
-	Indexes []Index
+	Name    string  `json:"name"`
+	Fields  []Field `json:"fields"`
+	Indexes []Index `json:"indexes"`
 }
 
 // NewSchemaState returns an empty SchemaState.

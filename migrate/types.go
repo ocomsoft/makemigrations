@@ -28,43 +28,43 @@ package migrate
 
 // Migration represents a single database migration with its name, dependencies, and operations.
 type Migration struct {
-	Name         string      // Unique identifier e.g. "0001_initial"
-	Dependencies []string    // Names of migrations this depends on
-	Operations   []Operation // Ordered list of schema operations to apply
-	Replaces     []string    // For squashed migrations: names of migrations this replaces
+	Name         string      `json:"name"`                    // Unique identifier e.g. "0001_initial"
+	Dependencies []string    `json:"dependencies"`            // Names of migrations this depends on
+	Operations   []Operation `json:"-"`                       // Ordered list of schema operations to apply
+	Replaces     []string    `json:"replaces,omitempty"`      // For squashed migrations: names of migrations this replaces
 }
 
 // Field represents a database column definition used in migration operations.
 type Field struct {
-	Name       string
-	Type       string // varchar, text, integer, uuid, boolean, timestamp, foreign_key, etc.
-	PrimaryKey bool
-	Nullable   bool
-	Default    string // default reference name e.g. "new_uuid", "now", "true"
-	Length     int    // for varchar
-	Precision  int    // for decimal/numeric
-	Scale      int    // for decimal/numeric
-	AutoCreate bool   // auto-set on row creation (created_at)
-	AutoUpdate bool   // auto-set on row update (updated_at)
-	ForeignKey *ForeignKey
-	ManyToMany *ManyToMany
+	Name       string      `json:"name"`
+	Type       string      `json:"type"`                        // varchar, text, integer, uuid, boolean, timestamp, foreign_key, etc.
+	PrimaryKey bool        `json:"primary_key,omitempty"`
+	Nullable   bool        `json:"nullable,omitempty"`
+	Default    string      `json:"default,omitempty"`           // default reference name e.g. "new_uuid", "now", "true"
+	Length     int         `json:"length,omitempty"`            // for varchar
+	Precision  int         `json:"precision,omitempty"`         // for decimal/numeric
+	Scale      int         `json:"scale,omitempty"`             // for decimal/numeric
+	AutoCreate bool        `json:"auto_create,omitempty"`       // auto-set on row creation (created_at)
+	AutoUpdate bool        `json:"auto_update,omitempty"`       // auto-set on row update (updated_at)
+	ForeignKey *ForeignKey `json:"foreign_key,omitempty"`
+	ManyToMany *ManyToMany `json:"many_to_many,omitempty"`
 }
 
 // ForeignKey represents a foreign key constraint.
 type ForeignKey struct {
-	Table    string
-	OnDelete string
-	OnUpdate string
+	Table    string `json:"table"`
+	OnDelete string `json:"on_delete,omitempty"`
+	OnUpdate string `json:"on_update,omitempty"`
 }
 
 // ManyToMany represents a many-to-many relationship via junction table.
 type ManyToMany struct {
-	Table string
+	Table string `json:"table"`
 }
 
 // Index represents a database index definition.
 type Index struct {
-	Name   string
-	Fields []string
-	Unique bool
+	Name   string   `json:"name"`
+	Fields []string `json:"fields"`
+	Unique bool     `json:"unique,omitempty"`
 }

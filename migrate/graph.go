@@ -173,14 +173,24 @@ func (g *Graph) Leaves() []string {
 func (g *Graph) DetectBranches() [][]string {
 	leaves := g.Leaves()
 	if len(leaves) <= 1 {
-		return nil
+		return [][]string{}
 	}
 	return [][]string{leaves}
 }
 
-// HasBranches returns true if there are multiple leaf nodes.
+// HasBranches returns true if the graph contains any branching structure.
+// This includes divergent branches (multiple leaves) and diamond topologies
+// where a node has more than one child, even if the branches later converge.
 func (g *Graph) HasBranches() bool {
-	return len(g.Leaves()) > 1
+	if len(g.Leaves()) > 1 {
+		return true
+	}
+	for _, node := range g.nodes {
+		if len(node.children) > 1 {
+			return true
+		}
+	}
+	return false
 }
 
 // ReconstructState replays all operations in topological order to produce the
@@ -250,6 +260,9 @@ func (g *Graph) ToDAGOutput() (*DAGOutput, error) {
 		}
 		if ms.Dependencies == nil {
 			ms.Dependencies = []string{}
+		}
+		if ms.Operations == nil {
+			ms.Operations = []OperationSummary{}
 		}
 		for _, op := range mig.Operations {
 			ms.Operations = append(ms.Operations, OperationSummary{

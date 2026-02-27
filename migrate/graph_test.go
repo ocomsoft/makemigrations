@@ -31,6 +31,12 @@ func TestGraph_Linearize_Simple(t *testing.T) {
 	if order[0].Name != "0001_initial" {
 		t.Fatalf("expected first to be 0001_initial, got %q", order[0].Name)
 	}
+	if order[1].Name != "0002_add_phone" {
+		t.Fatalf("expected second to be 0002_add_phone, got %q", order[1].Name)
+	}
+	if order[2].Name != "0003_add_slug" {
+		t.Fatalf("expected third to be 0003_add_slug, got %q", order[2].Name)
+	}
 }
 
 func TestGraph_Leaves_Linear(t *testing.T) {
@@ -129,6 +135,59 @@ func TestGraph_ReconstructState(t *testing.T) {
 	}
 	if len(users.Fields) != 2 {
 		t.Fatalf("expected 2 fields, got %d", len(users.Fields))
+	}
+}
+
+func TestGraph_EmptyRegistry(t *testing.T) {
+	reg := migrate.NewRegistry()
+	g, err := migrate.BuildGraph(reg)
+	if err != nil {
+		t.Fatalf("BuildGraph with empty registry: %v", err)
+	}
+	order, err := g.Linearize()
+	if err != nil {
+		t.Fatalf("Linearize empty graph: %v", err)
+	}
+	if len(order) != 0 {
+		t.Fatalf("expected 0 migrations, got %d", len(order))
+	}
+	if len(g.Roots()) != 0 {
+		t.Fatalf("expected 0 roots, got %d", len(g.Roots()))
+	}
+	if len(g.Leaves()) != 0 {
+		t.Fatalf("expected 0 leaves, got %d", len(g.Leaves()))
+	}
+}
+
+func TestGraph_DiamondTopology(t *testing.T) {
+	// A -> B, A -> C, B -> D, C -> D (diamond)
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{Name: "0001_A", Dependencies: []string{}})
+	reg.Register(&migrate.Migration{Name: "0002_B", Dependencies: []string{"0001_A"}})
+	reg.Register(&migrate.Migration{Name: "0002_C", Dependencies: []string{"0001_A"}})
+	reg.Register(&migrate.Migration{Name: "0003_D", Dependencies: []string{"0002_B", "0002_C"}})
+
+	g, err := migrate.BuildGraph(reg)
+	if err != nil {
+		t.Fatalf("BuildGraph diamond: %v", err)
+	}
+	order, err := g.Linearize()
+	if err != nil {
+		t.Fatalf("Linearize diamond: %v", err)
+	}
+	if len(order) != 4 {
+		t.Fatalf("expected 4 migrations, got %d", len(order))
+	}
+	// 0001_A must be first, 0003_D must be last
+	if order[0].Name != "0001_A" {
+		t.Fatalf("expected 0001_A first, got %q", order[0].Name)
+	}
+	if order[3].Name != "0003_D" {
+		t.Fatalf("expected 0003_D last, got %q", order[3].Name)
+	}
+	// Diamond has 2 concurrent branches (B and C)
+	if !g.HasBranches() {
+		t.Fatal("diamond topology should have branches")
 	}
 }
 

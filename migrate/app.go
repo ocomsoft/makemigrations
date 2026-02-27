@@ -1,0 +1,178 @@
+/*
+MIT License
+
+# Copyright (c) 2025 OcomSoft
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+package migrate
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+// App is the CLI application embedded in each compiled migration binary.
+type App struct {
+	config   Config
+	root     *cobra.Command
+	registry *Registry
+}
+
+// NewApp creates a new App with the given configuration.
+// It uses the global registry by default.
+func NewApp(cfg Config) *App {
+	app := &App{config: cfg, registry: GlobalRegistry()}
+	app.root = app.buildRootCommand()
+	return app
+}
+
+// NewAppWithRegistry creates a new App with the given configuration and a
+// specific registry. This is primarily useful for testing.
+func NewAppWithRegistry(cfg Config, reg *Registry) *App {
+	app := &App{config: cfg, registry: reg}
+	app.root = app.buildRootCommand()
+	return app
+}
+
+// Run executes the CLI with the given arguments.
+func (a *App) Run(args []string) error {
+	a.root.SetArgs(args)
+	return a.root.Execute()
+}
+
+func (a *App) buildRootCommand() *cobra.Command {
+	root := &cobra.Command{
+		Use:           "migrate",
+		Short:         "makemigrations migration runner",
+		Long:          "Compiled migration binary -- apply, rollback, and inspect database migrations.",
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+
+	root.AddCommand(a.buildDAGCommand())
+	root.AddCommand(a.buildUpCommand())
+	root.AddCommand(a.buildDownCommand())
+	root.AddCommand(a.buildStatusCommand())
+	root.AddCommand(a.buildShowSQLCommand())
+	root.AddCommand(a.buildFakeCommand())
+
+	return root
+}
+
+func (a *App) buildDAGCommand() *cobra.Command {
+	var outputFormat string
+	cmd := &cobra.Command{
+		Use:   "dag",
+		Short: "Show the migration dependency graph",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			g, err := BuildGraph(a.registry)
+			if err != nil {
+				return fmt.Errorf("building graph: %w", err)
+			}
+			dagOut, err := g.ToDAGOutput()
+			if err != nil {
+				return fmt.Errorf("building DAG output: %w", err)
+			}
+			if outputFormat == "json" {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				return enc.Encode(dagOut)
+			}
+			fmt.Print(RenderDAGASCII(dagOut))
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&outputFormat, "format", "ascii", "Output format: ascii or json")
+	return cmd
+}
+
+func (a *App) buildUpCommand() *cobra.Command {
+	var toMigration string
+	cmd := &cobra.Command{
+		Use:   "up",
+		Short: "Apply pending migrations",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return a.runUp(toMigration)
+		},
+	}
+	cmd.Flags().StringVar(&toMigration, "to", "", "Apply up to this migration name")
+	return cmd
+}
+
+func (a *App) buildDownCommand() *cobra.Command {
+	var steps int
+	var toMigration string
+	cmd := &cobra.Command{
+		Use:   "down",
+		Short: "Rollback migrations",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return a.runDown(steps, toMigration)
+		},
+	}
+	cmd.Flags().IntVar(&steps, "steps", 1, "Number of migrations to roll back")
+	cmd.Flags().StringVar(&toMigration, "to", "", "Roll back to this migration name")
+	return cmd
+}
+
+func (a *App) buildStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status",
+		Short: "Show migration status",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return a.runStatus()
+		},
+	}
+}
+
+func (a *App) buildShowSQLCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "showsql",
+		Short: "Print SQL for pending migrations without executing",
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return a.runShowSQL()
+		},
+	}
+}
+
+func (a *App) buildFakeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "fake [migration-name]",
+		Short: "Mark a migration as applied without running its SQL",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			return a.runFake(args[0])
+		},
+	}
+}
+
+// --- Runner stubs ---
+// These stub methods will be replaced by real implementations in Task 9
+// when runner.go is created. They currently return a "not yet implemented"
+// error to indicate the runner subsystem is pending.
+
+func (a *App) runUp(_ string) error            { return fmt.Errorf("runner not yet implemented") }
+func (a *App) runDown(_ int, _ string) error    { return fmt.Errorf("runner not yet implemented") }
+func (a *App) runStatus() error                 { return fmt.Errorf("runner not yet implemented") }
+func (a *App) runShowSQL() error                { return fmt.Errorf("runner not yet implemented") }
+func (a *App) runFake(_ string) error           { return fmt.Errorf("runner not yet implemented") }

@@ -469,6 +469,74 @@ func TestGoGenerator_GenerateMigration_MultipleDependencies(t *testing.T) {
 	}
 }
 
+func TestGoGenerator_GenerateMigration_NullableDefaultIsTrue(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	// When yaml.Field.Nullable is nil (the default), it means nullable=true.
+	// The generator must emit Nullable: true in the m.Field{} literal.
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:      yaml.ChangeTypeFieldAdded,
+				TableName: "users",
+				FieldName: "bio",
+				NewValue:  yaml.Field{Name: "bio", Type: "text"}, // Nullable is nil
+			},
+		},
+	}
+	src, err := g.GenerateMigration("0010_add_bio", []string{"0001_initial"}, diff, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "Nullable: true") {
+		t.Errorf("expected 'Nullable: true' in output for nil Nullable field, got:\n%s", src)
+	}
+}
+
+func TestGoGenerator_GenerateMigration_ExplicitNotNullable(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	notNullable := false
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:      yaml.ChangeTypeFieldAdded,
+				TableName: "users",
+				FieldName: "email",
+				NewValue:  yaml.Field{Name: "email", Type: "varchar", Nullable: &notNullable},
+			},
+		},
+	}
+	src, err := g.GenerateMigration("0011_add_email", []string{"0001_initial"}, diff, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if strings.Contains(src, "Nullable: true") {
+		t.Errorf("expected no 'Nullable: true' for explicit false Nullable, got:\n%s", src)
+	}
+}
+
+func TestGoGenerator_GenerateMigration_DropIndex_EmptyName(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:      yaml.ChangeTypeIndexRemoved,
+				TableName: "users",
+				FieldName: "", // empty index name
+			},
+		},
+	}
+	_, err := g.GenerateMigration("0012_bad_drop_index", []string{}, diff, nil, nil)
+	if err == nil {
+		t.Fatal("expected error for empty index name in drop_index")
+	}
+	if !strings.Contains(err.Error(), "empty index name") {
+		t.Errorf("expected 'empty index name' in error, got: %v", err)
+	}
+}
+
 func TestMigrationFileName(t *testing.T) {
 	got := codegen.MigrationFileName("0001_initial")
 	want := "0001_initial.go"

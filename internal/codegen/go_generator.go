@@ -222,30 +222,44 @@ func (g *GoGenerator) generateAlterField(
 	change yaml.Change,
 	currentSchema, previousSchema *yaml.Schema,
 ) (string, error) {
-	var oldField, newField yaml.Field
+	var oldField, newField *yaml.Field
 
 	// Try to get full field definitions from the schemas
 	if currentSchema != nil && previousSchema != nil {
-		newField = g.lookupField(currentSchema, change.TableName, change.FieldName)
-		oldField = g.lookupField(previousSchema, change.TableName, change.FieldName)
-	} else {
-		// Fallback: construct minimal fields from the change itself
-		oldField = yaml.Field{
-			Name: change.FieldName,
-			Type: fmt.Sprintf("%v", change.OldValue),
-		}
-		newField = yaml.Field{
-			Name: change.FieldName,
-			Type: fmt.Sprintf("%v", change.NewValue),
-		}
+		nf := g.lookupField(currentSchema, change.TableName, change.FieldName)
+		newField = &nf
+		of := g.lookupField(previousSchema, change.TableName, change.FieldName)
+		oldField = &of
+	}
+
+	// For the no-schema fallback, only string OldValue/NewValue are reliable.
+	// Other types (bool, int, *ForeignKey) in OldValue/NewValue indicate a complex
+	// change that requires schema context to generate correctly. We emit an empty
+	// Type in those cases — the caller should always provide schemas for field_modified.
+	oldType := ""
+	if s, ok := change.OldValue.(string); ok {
+		oldType = s
+	}
+	newType := ""
+	if s, ok := change.NewValue.(string); ok {
+		newType = s
+	}
+
+	if oldField == nil {
+		f := yaml.Field{Name: change.FieldName, Type: oldType}
+		oldField = &f
+	}
+	if newField == nil {
+		f := yaml.Field{Name: change.FieldName, Type: newType}
+		newField = &f
 	}
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("\t\t\t&m.AlterField{\n\t\t\t\tTable: %q,\n", change.TableName))
 	b.WriteString("\t\t\t\tOldField: ")
-	b.WriteString(generateFieldLiteral(oldField))
+	b.WriteString(generateFieldLiteral(*oldField))
 	b.WriteString(",\n\t\t\t\tNewField: ")
-	b.WriteString(generateFieldLiteral(newField))
+	b.WriteString(generateFieldLiteral(*newField))
 	b.WriteString(",\n\t\t\t},\n")
 	return b.String(), nil
 }
@@ -293,6 +307,9 @@ func (g *GoGenerator) generateAddIndex(change yaml.Change) (string, error) {
 
 // generateDropIndex emits a &m.DropIndex{...} literal.
 func (g *GoGenerator) generateDropIndex(change yaml.Change) (string, error) {
+	if change.FieldName == "" {
+		return "", fmt.Errorf("drop_index change for table %q has empty index name", change.TableName)
+	}
 	return fmt.Sprintf("\t\t\t&m.DropIndex{Table: %q, Index: %q},\n",
 		change.TableName, change.FieldName), nil
 }
@@ -310,10 +327,10 @@ func generateFieldLiteral(f yaml.Field) string {
 	if f.PrimaryKey {
 		parts = append(parts, "PrimaryKey: true")
 	}
-	// yaml.Field.Nullable is *bool; migrate.Field.Nullable is bool.
-	// Default for yaml is nullable=true (when nil), but we only emit
-	// Nullable: true when explicitly set to true via pointer.
-	if f.Nullable != nil && *f.Nullable {
+	// yaml.Field.Nullable is *bool: nil means "nullable by default" (true),
+	// explicit false means NOT NULL. migrate.Field.Nullable is bool with false as zero-value.
+	// We must emit Nullable: true for nil (default) and *true; omit for *false.
+	if f.Nullable == nil || *f.Nullable {
 		parts = append(parts, "Nullable: true")
 	}
 	if f.Default != "" {

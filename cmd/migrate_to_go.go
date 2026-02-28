@@ -24,6 +24,7 @@ SOFTWARE.
 package cmd
 
 import (
+	"database/sql"
 	"fmt"
 	"go/format"
 	"io"
@@ -35,6 +36,7 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
 	"github.com/ocomsoft/makemigrations/internal/gooseparser"
+	"github.com/ocomsoft/makemigrations/migrate"
 	"github.com/spf13/cobra"
 )
 
@@ -175,11 +177,17 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 		}
 	}
 
-	// Step 6: Migrate goose history (Task 3 — stubbed out for now).
+	// Step 6: Migrate goose history.
 	if !noHistory && !dryRun {
-		// History migration will be implemented in Task 3.
-		// For now, print a reminder.
-		fmt.Fprintf(out, "%s Skipping history migration (not yet implemented)\n", yellow("⚠"))
+		cfg := config.LoadOrDefault(configFile)
+		db, dbErr := setupGooseDB(cfg)
+		if dbErr != nil {
+			return fmt.Errorf("connecting to database for history migration: %w (use --no-history to skip)", dbErr)
+		}
+		defer func() { _ = db.Close() }()
+		if histErr := migrateHistoryWithEntries(db, entries, dryRun, out); histErr != nil {
+			return fmt.Errorf("migrating history: %w", histErr)
+		}
 	}
 
 	// Step 7: Delete original SQL files.
@@ -294,4 +302,79 @@ func goRawString(s string) string {
 		b.WriteString("`")
 	}
 	return b.String()
+}
+
+// ExecuteMigrateGooseHistory migrates goose_db_version history to makemigrations_history.
+// It discovers SQL files in migrationsDir to build the version-ID-to-go-name mapping,
+// then reads goose_db_version and records each applied migration in makemigrations_history.
+// Exported for use in tests with an injected DB connection.
+func ExecuteMigrateGooseHistory(db *sql.DB, migrationsDir string, dryRun bool, out io.Writer) error {
+	sqlFiles, err := discoverSQLFiles(migrationsDir)
+	if err != nil {
+		return err
+	}
+	entries := make([]migrateEntry, 0, len(sqlFiles))
+	for i, f := range sqlFiles {
+		desc := gooseparser.ExtractDescription(f)
+		goName := fmt.Sprintf("%04d_%s", i+1, desc)
+		vid, vErr := gooseparser.ExtractVersionID(f)
+		if vErr != nil {
+			return vErr
+		}
+		entries = append(entries, migrateEntry{sqlFile: f, goName: goName, versionID: vid})
+	}
+	return migrateHistoryWithEntries(db, entries, dryRun, out)
+}
+
+// migrateHistoryWithEntries reads goose_db_version and inserts applied migrations
+// into makemigrations_history using the new Go migration names.
+func migrateHistoryWithEntries(db *sql.DB, entries []migrateEntry, dryRun bool, out io.Writer) error {
+	// Read last state per version_id from goose_db_version.
+	// Iterate all rows in insertion order; last write per version_id wins.
+	rows, err := db.Query("SELECT version_id, is_applied FROM goose_db_version ORDER BY id ASC")
+	if err != nil {
+		// If the table doesn't exist, warn and skip rather than failing.
+		if strings.Contains(err.Error(), "no such table") || strings.Contains(err.Error(), "does not exist") {
+			fmt.Fprintf(out, "%s goose_db_version table not found — skipping history migration\n", yellow("⚠"))
+			return nil
+		}
+		return fmt.Errorf("querying goose_db_version: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	appliedVersions := map[int64]bool{}
+	for rows.Next() {
+		var vid int64
+		var isApplied int64
+		if scanErr := rows.Scan(&vid, &isApplied); scanErr != nil {
+			return fmt.Errorf("scanning goose_db_version: %w", scanErr)
+		}
+		appliedVersions[vid] = isApplied != 0
+	}
+	if rowErr := rows.Err(); rowErr != nil {
+		return fmt.Errorf("iterating goose_db_version: %w", rowErr)
+	}
+
+	recorder := migrate.NewMigrationRecorder(db)
+	if !dryRun {
+		if ensureErr := recorder.EnsureTable(); ensureErr != nil {
+			return ensureErr
+		}
+	}
+
+	fmt.Fprintf(out, "\nMigrating history (goose_db_version → makemigrations_history):\n")
+	for _, e := range entries {
+		isApplied := appliedVersions[e.versionID]
+		status := "pending"
+		if isApplied {
+			status = "applied"
+		}
+		fmt.Fprintf(out, "  %-30s %s\n", e.goName, status)
+		if isApplied && !dryRun {
+			if recErr := recorder.RecordApplied(e.goName); recErr != nil {
+				return fmt.Errorf("recording %s as applied: %w", e.goName, recErr)
+			}
+		}
+	}
+	return nil
 }

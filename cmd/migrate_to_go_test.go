@@ -24,6 +24,7 @@ SOFTWARE.
 package cmd_test
 
 import (
+	"database/sql"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,6 +32,8 @@ import (
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/cmd"
+
+	_ "github.com/mattn/go-sqlite3" // SQLite driver for testing
 )
 
 func writeSQLFile(t *testing.T, dir, name, content string) {
@@ -192,5 +195,74 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err == nil {
 		t.Fatal("expected error when .go migration files already exist")
+	}
+}
+
+func TestMigrateGooseHistory_MarksAppliedMigrations(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create SQL files matching the version IDs we'll insert into goose_db_version.
+	writeSQLFile(t, dir, "00001_initial.sql", `-- +goose Up
+CREATE TABLE users (id INTEGER PRIMARY KEY);
+-- +goose Down
+DROP TABLE users;
+`)
+	writeSQLFile(t, dir, "00002_add_phone.sql", `-- +goose Up
+ALTER TABLE users ADD COLUMN phone TEXT;
+-- +goose Down
+ALTER TABLE users DROP COLUMN phone;
+`)
+
+	// Set up in-memory SQLite DB with goose_db_version data.
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("opening DB: %v", err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE goose_db_version (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		version_id INTEGER NOT NULL,
+		is_applied INTEGER NOT NULL,
+		tstamp TEXT DEFAULT CURRENT_TIMESTAMP
+	)`)
+	if err != nil {
+		t.Fatalf("creating goose_db_version: %v", err)
+	}
+
+	// version 1 is applied, version 2 is pending.
+	_, err = db.Exec(`INSERT INTO goose_db_version (version_id, is_applied) VALUES (1, 1), (2, 0)`)
+	if err != nil {
+		t.Fatalf("inserting goose history: %v", err)
+	}
+
+	if err := cmd.ExecuteMigrateGooseHistory(db, dir, false, io.Discard); err != nil {
+		t.Fatalf("ExecuteMigrateGooseHistory: %v", err)
+	}
+
+	// Check makemigrations_history -- only 0001_initial should be present.
+	rows, err := db.Query("SELECT name FROM makemigrations_history ORDER BY name")
+	if err != nil {
+		t.Fatalf("querying history: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var names []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			t.Fatalf("scanning: %v", err)
+		}
+		names = append(names, n)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows error: %v", err)
+	}
+
+	if len(names) != 1 {
+		t.Fatalf("expected 1 applied migration, got %d: %v", len(names), names)
+	}
+	if names[0] != "0001_initial" {
+		t.Errorf("expected 0001_initial, got %q", names[0])
 	}
 }

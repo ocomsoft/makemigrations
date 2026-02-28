@@ -3,6 +3,7 @@ package gooseparser_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/gooseparser"
@@ -59,11 +60,19 @@ DROP TABLE posts;
 	if got.ForwardSQL == "" {
 		t.Error("ForwardSQL should not be empty")
 	}
-	if contains(got.ForwardSQL, "StatementBegin") {
+	if strings.Contains(got.ForwardSQL, "StatementBegin") {
 		t.Error("ForwardSQL should not contain StatementBegin marker")
 	}
-	if contains(got.BackwardSQL, "StatementEnd") {
+	if strings.Contains(got.BackwardSQL, "StatementEnd") {
 		t.Error("BackwardSQL should not contain StatementEnd marker")
+	}
+	wantForward := "CREATE TABLE posts (\n    id INTEGER PRIMARY KEY,\n    body TEXT\n);"
+	if got.ForwardSQL != wantForward {
+		t.Errorf("ForwardSQL:\ngot  %q\nwant %q", got.ForwardSQL, wantForward)
+	}
+	wantBackward := "DROP TABLE posts;"
+	if got.BackwardSQL != wantBackward {
+		t.Errorf("BackwardSQL:\ngot  %q\nwant %q", got.BackwardSQL, wantBackward)
 	}
 }
 
@@ -98,10 +107,10 @@ DROP TABLE a;
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
 	}
-	if !contains(got.ForwardSQL, "CREATE TABLE a") {
+	if !strings.Contains(got.ForwardSQL, "CREATE TABLE a") {
 		t.Error("ForwardSQL missing CREATE TABLE a")
 	}
-	if !contains(got.ForwardSQL, "CREATE TABLE b") {
+	if !strings.Contains(got.ForwardSQL, "CREATE TABLE b") {
 		t.Error("ForwardSQL missing CREATE TABLE b")
 	}
 }
@@ -115,6 +124,7 @@ func TestExtractDescription(t *testing.T) {
 		{"00001_initial.sql", "initial"},
 		{"20240102_add_phone_field.sql", "add_phone_field"},
 		{"0001_my_migration.sql", "my_migration"},
+		{"justname.sql", "justname"},
 	}
 	for _, tt := range tests {
 		got := gooseparser.ExtractDescription(tt.filename)
@@ -146,11 +156,3 @@ func TestExtractVersionID(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}

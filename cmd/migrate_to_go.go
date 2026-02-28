@@ -26,6 +26,7 @@ package cmd
 import (
 	"fmt"
 	"go/format"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,7 +42,7 @@ import (
 type migrateEntry struct {
 	sqlFile   string
 	goName    string
-	versionID int64
+	versionID int64 // used by history migration to match against goose_db_version.version_id
 }
 
 // Package-level flag variables for the migrate-to-go command.
@@ -64,7 +65,13 @@ By default, the original .sql files are deleted after successful conversion.
 Use --no-delete to keep them. Use --dry-run to preview changes without writing.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := config.LoadOrDefault(configFile)
-		return ExecuteMigrateToGo(cfg.Migration.Directory, migrateToGoDryRun, migrateToGoNoHistory, migrateToGoNoDelete)
+		return ExecuteMigrateToGo(
+			cfg.Migration.Directory,
+			migrateToGoDryRun,
+			migrateToGoNoHistory,
+			migrateToGoNoDelete,
+			cmd.OutOrStdout(),
+		)
 	},
 }
 
@@ -80,7 +87,7 @@ func init() {
 // ExecuteMigrateToGo is the main entry point for the migrate-to-go conversion.
 // It discovers SQL files in migrationsDir, parses them with gooseparser, generates
 // Go RunSQL migration files, and optionally cleans up the SQL originals.
-func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool) error {
+func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, out io.Writer) error {
 	// Step 1: Discover SQL files.
 	sqlFiles, err := discoverSQLFiles(migrationsDir)
 	if err != nil {
@@ -134,15 +141,15 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool) 
 		}
 
 		if dryRun {
-			fmt.Printf("Would create %s.go:\n%s\n", entry.goName, src)
+			fmt.Fprintf(out, "Would create %s.go:\n%s\n", entry.goName, src)
 			continue
 		}
 
 		goPath := filepath.Join(migrationsDir, entry.goName+".go")
-		if writeErr := os.WriteFile(goPath, []byte(src), 0644); writeErr != nil {
+		if writeErr := os.WriteFile(goPath, []byte(src), 0o644); writeErr != nil {
 			return fmt.Errorf("writing %s: %w", goPath, writeErr)
 		}
-		fmt.Printf("%s Created %s\n", green("✓"), goPath)
+		fmt.Fprintf(out, "%s Created %s\n", green("✓"), goPath)
 	}
 
 	// Step 5: Generate main.go and go.mod if not present (skip in dry-run).
@@ -151,20 +158,20 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool) 
 
 		mainPath := filepath.Join(migrationsDir, "main.go")
 		if _, statErr := os.Stat(mainPath); os.IsNotExist(statErr) {
-			if writeErr := os.WriteFile(mainPath, []byte(gen.GenerateMainGo()), 0644); writeErr != nil {
+			if writeErr := os.WriteFile(mainPath, []byte(gen.GenerateMainGo()), 0o644); writeErr != nil {
 				return fmt.Errorf("writing main.go: %w", writeErr)
 			}
-			fmt.Printf("%s Created %s\n", green("✓"), mainPath)
+			fmt.Fprintf(out, "%s Created %s\n", green("✓"), mainPath)
 		}
 
 		goModPath := filepath.Join(migrationsDir, "go.mod")
 		if _, statErr := os.Stat(goModPath); os.IsNotExist(statErr) {
 			moduleName := readModuleName() + "/migrations"
 			version := "v0.3.0"
-			if writeErr := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version)), 0644); writeErr != nil {
+			if writeErr := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version)), 0o644); writeErr != nil {
 				return fmt.Errorf("writing go.mod: %w", writeErr)
 			}
-			fmt.Printf("%s Created %s\n", green("✓"), goModPath)
+			fmt.Fprintf(out, "%s Created %s\n", green("✓"), goModPath)
 		}
 	}
 
@@ -172,7 +179,7 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool) 
 	if !noHistory && !dryRun {
 		// History migration will be implemented in Task 3.
 		// For now, print a reminder.
-		fmt.Printf("%s Skipping history migration (not yet implemented)\n", yellow("⚠"))
+		fmt.Fprintf(out, "%s Skipping history migration (not yet implemented)\n", yellow("⚠"))
 	}
 
 	// Step 7: Delete original SQL files.
@@ -182,7 +189,7 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool) 
 			if rmErr := os.Remove(sqlPath); rmErr != nil {
 				return fmt.Errorf("deleting %s: %w", sqlPath, rmErr)
 			}
-			fmt.Printf("%s Deleted %s\n", cyan("✗"), sqlPath)
+			fmt.Fprintf(out, "%s Deleted %s\n", cyan("✗"), sqlPath)
 		}
 	}
 

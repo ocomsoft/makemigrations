@@ -24,6 +24,7 @@ SOFTWARE.
 package cmd_test
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,14 +35,14 @@ import (
 
 func writeSQLFile(t *testing.T, dir, name, content string) {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 		t.Fatalf("writing %s: %v", name, err)
 	}
 }
 
 func TestMigrateToGo_NoSQLFiles(t *testing.T) {
 	dir := t.TempDir()
-	err := cmd.ExecuteMigrateToGo(dir, true, true, false)
+	err := cmd.ExecuteMigrateToGo(dir, true, true, false, io.Discard)
 	if err == nil {
 		t.Fatal("expected error when no SQL files present")
 	}
@@ -63,7 +64,7 @@ ALTER TABLE users ADD COLUMN phone TEXT;
 ALTER TABLE users DROP COLUMN phone;
 `)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -85,7 +86,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 DROP TABLE users;
 `)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -105,7 +106,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 DROP TABLE users;
 `)
 
-	err := cmd.ExecuteMigrateToGo(dir, true, true, false)
+	err := cmd.ExecuteMigrateToGo(dir, true, true, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo dry-run: %v", err)
 	}
@@ -130,7 +131,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 DROP TABLE users;
 `)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, true)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -151,7 +152,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 DROP TABLE users;
 `)
 
-	if err := cmd.ExecuteMigrateToGo(dir, false, true, true); err != nil {
+	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard); err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
 
@@ -184,11 +185,11 @@ func TestMigrateToGo_ExistingGoFilesBlocked(t *testing.T) {
 	writeSQLFile(t, dir, "00001_initial.sql", `-- +goose Up
 CREATE TABLE users (id INTEGER PRIMARY KEY);
 `)
-	if err := os.WriteFile(filepath.Join(dir, "0001_initial.go"), []byte("package main"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "0001_initial.go"), []byte("package main"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err == nil {
 		t.Fatal("expected error when .go migration files already exist")
 	}

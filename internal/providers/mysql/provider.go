@@ -270,7 +270,28 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 }
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	oldType := p.ConvertFieldType(oldField)
+	newType := p.ConvertFieldType(newField)
+
+	// MySQL uses MODIFY COLUMN which requires the full column definition.
+	// Only emit a statement if something actually changed.
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+		return "", nil
+	}
+
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	stmt := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s", tbl, col, newType)
+	if !newField.IsNullable() {
+		stmt += " NOT NULL"
+	}
+	if newField.Default != "" {
+		stmt += fmt.Sprintf(" DEFAULT '%s'", newField.Default)
+	}
+	stmt += ";"
+
+	return stmt, nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

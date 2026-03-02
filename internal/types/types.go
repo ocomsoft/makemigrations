@@ -33,10 +33,11 @@ type Include struct {
 
 // Schema represents a YAML schema file structure
 type Schema struct {
-	Database Database  `yaml:"database"`
-	Include  []Include `yaml:"include,omitempty"`
-	Defaults Defaults  `yaml:"defaults"`
-	Tables   []Table   `yaml:"tables"`
+	Database     Database     `yaml:"database"`
+	Include      []Include    `yaml:"include,omitempty"`
+	Defaults     Defaults     `yaml:"defaults"`
+	TypeMappings TypeMappings `yaml:"type_mappings"`
+	Tables       []Table      `yaml:"tables"`
 }
 
 // Database represents the database metadata
@@ -60,6 +61,56 @@ type Defaults struct {
 	Turso      map[string]string `yaml:"turso"`
 	StarRocks  map[string]string `yaml:"starrocks"`
 	AuroraDSQL map[string]string `yaml:"auroradsql"`
+}
+
+// TypeMappings represents custom SQL type overrides per database.
+// Values are SQL type strings. For parameterised types use Go template
+// syntax: "DECIMAL({{.Precision}},{{.Scale}})" or "VARCHAR({{.Length}})".
+type TypeMappings struct {
+	PostgreSQL map[string]string `yaml:"postgresql"`
+	MySQL      map[string]string `yaml:"mysql"`
+	SQLServer  map[string]string `yaml:"sqlserver"`
+	SQLite     map[string]string `yaml:"sqlite"`
+	Redshift   map[string]string `yaml:"redshift"`
+	ClickHouse map[string]string `yaml:"clickhouse"`
+	TiDB       map[string]string `yaml:"tidb"`
+	Vertica    map[string]string `yaml:"vertica"`
+	YDB        map[string]string `yaml:"ydb"`
+	Turso      map[string]string `yaml:"turso"`
+	StarRocks  map[string]string `yaml:"starrocks"`
+	AuroraDSQL map[string]string `yaml:"auroradsql"`
+}
+
+// ForProvider returns the type mapping overrides for the given database type, or nil.
+func (tm *TypeMappings) ForProvider(dbType DatabaseType) map[string]string {
+	switch dbType {
+	case DatabasePostgreSQL:
+		return tm.PostgreSQL
+	case DatabaseMySQL:
+		return tm.MySQL
+	case DatabaseSQLServer:
+		return tm.SQLServer
+	case DatabaseSQLite:
+		return tm.SQLite
+	case DatabaseRedshift:
+		return tm.Redshift
+	case DatabaseClickHouse:
+		return tm.ClickHouse
+	case DatabaseTiDB:
+		return tm.TiDB
+	case DatabaseVertica:
+		return tm.Vertica
+	case DatabaseYDB:
+		return tm.YDB
+	case DatabaseTurso:
+		return tm.Turso
+	case DatabaseStarRocks:
+		return tm.StarRocks
+	case DatabaseAuroraDSQL:
+		return tm.AuroraDSQL
+	default:
+		return nil
+	}
 }
 
 // Table represents a database table definition

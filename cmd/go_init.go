@@ -35,9 +35,10 @@ import (
 )
 
 // ExecuteGoMigrationInit initializes the migrations/ directory for the Go migration framework.
-// If a .schema_snapshot.yaml exists in the migrations directory, it generates an initial
-// Go migration file from the snapshot. Always generates main.go and go.mod if they
-// don't already exist.
+// If Goose-style *.sql files are detected in the migrations directory, it automatically
+// delegates to ExecuteMigrateToGo to convert them. Otherwise, if a .schema_snapshot.yaml
+// exists it generates an initial Go migration from it. Always generates main.go and go.mod
+// if they don't already exist.
 func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 	cfg := config.DefaultConfig()
 	migrationsDir := cfg.Migration.Directory
@@ -45,6 +46,14 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 
 	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
 		return fmt.Errorf("creating migrations directory: %w", err)
+	}
+
+	// Auto-upgrade: if Goose SQL migrations exist, convert them to Go migrations.
+	sqlFiles, _ := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
+	if len(sqlFiles) > 0 {
+		fmt.Printf("Detected %d Goose SQL migration(s) in %s — running migrate-to-go...\n",
+			len(sqlFiles), migrationsDir)
+		return ExecuteMigrateToGo(migrationsDir, false, true, false, os.Stdout)
 	}
 
 	var initialMigName string

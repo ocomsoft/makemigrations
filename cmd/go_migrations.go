@@ -276,7 +276,12 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 
 	buildCmd := exec.Command("go", "build", "-o", tmpBin, ".")
 	buildCmd.Dir = migrationsDir
-	buildCmd.Env = os.Environ()
+	// GOWORK=off: the migrations directory has its own go.mod (separate module).
+	// If a go.work workspace file exists in a parent directory, Go would try to
+	// resolve the package through the workspace and fail with "main module does
+	// not contain package". Disabling the workspace lets go use the migrations
+	// module's own go.mod directly.
+	buildCmd.Env = append(os.Environ(), "GOWORK=off")
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
 		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
 	}

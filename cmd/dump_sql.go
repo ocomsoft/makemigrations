@@ -27,7 +27,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var databaseType string
+var (
+	databaseType string
+	pending      bool
+)
 
 // dumpSQLCmd represents the dump_sql command
 var dumpSQLCmd = &cobra.Command{
@@ -65,7 +68,7 @@ but is sent to stdout instead of being written to a file.`,
 
 // runDumpSQL executes the dump_sql command
 func runDumpSQL(cmd *cobra.Command, args []string) error {
-	return ExecuteDumpSQL(cmd, databaseType, verbose)
+	return ExecuteDumpSQL(cmd, databaseType, pending, verbose)
 }
 
 func init() {
@@ -74,6 +77,8 @@ func init() {
 	// Add flags
 	dumpSQLCmd.Flags().StringVar(&databaseType, "database", "postgresql",
 		"Target database type (postgresql, mysql, sqlserver, sqlite)")
+	dumpSQLCmd.Flags().BoolVar(&pending, "pending", false,
+		"Show SQL for pending schema changes only (requires existing migrations)")
 	dumpSQLCmd.Flags().BoolVar(&verbose, "verbose", false,
 		"Show detailed processing information")
 }

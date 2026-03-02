@@ -26,6 +26,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -149,13 +150,10 @@ func MergeAndValidateSchemas(components *YAMLComponents, allSchemas []*yamlpkg.S
 	return mergedSchema, nil
 }
 
-// ExecuteDumpSQL handles the complete dump SQL process
-func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, verbose bool) error {
-	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Dumping merged schema as SQL\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "============================\n")
-	}
-
+// ExecuteDumpSQL handles the complete dump SQL process.
+// When pending is true, it shows only the SQL for pending schema changes
+// (what the next migration would do). When false, it dumps the full schema.
+func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, pending bool, verbose bool) error {
 	// Parse database type
 	dbType, err := yamlpkg.ParseDatabaseType(databaseType)
 	if err != nil {
@@ -164,15 +162,21 @@ func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, verbose bool) error
 
 	// Initialize YAML components
 	components := InitializeYAMLComponents(dbType, verbose)
-	sqlConverter := yamlpkg.NewSQLConverter(dbType, verbose)
 
 	if verbose {
+		if pending {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Dumping pending schema changes as SQL\n")
+			fmt.Fprintf(cmd.ErrOrStderr(), "=====================================\n")
+		} else {
+			fmt.Fprintf(cmd.ErrOrStderr(), "Dumping merged schema as SQL\n")
+			fmt.Fprintf(cmd.ErrOrStderr(), "============================\n")
+		}
 		fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
 	}
 
-	// Scan and parse schemas using shared function but adapt verbose output for dump_sql
-	allSchemas, err := ScanAndParseSchemas(components, false) // Don't use verbose mode here since we customize output
+	// Scan and parse schemas
+	allSchemas, err := ScanAndParseSchemas(components, false)
 	if err != nil {
 		if err.Error() == "no YAML schema files found" {
 			fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to dump.\n")
@@ -185,18 +189,31 @@ func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, verbose bool) error
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
 	}
 
-	// Merge and validate schemas using shared function
-	mergedSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, false) // Don't use verbose here since we customize output
+	// Merge and validate schemas
+	mergedSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, false)
 	if err != nil {
 		return fmt.Errorf("merged schema validation failed: %w", err)
 	}
 
 	if verbose {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
+	}
+
+	if pending {
+		return executePendingDumpSQL(cmd, dbType, mergedSchema, verbose)
+	}
+
+	return executeFullDumpSQL(cmd, dbType, mergedSchema, verbose)
+}
+
+// executeFullDumpSQL dumps the complete schema as CREATE TABLE statements.
+func executeFullDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, mergedSchema *yamlpkg.Schema, verbose bool) error {
+	sqlConverter := yamlpkg.NewSQLConverter(dbType, verbose)
+
+	if verbose {
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Generating SQL...\n")
 	}
 
-	// Convert to SQL
 	sql, err := sqlConverter.ConvertSchema(mergedSchema)
 	if err != nil {
 		return fmt.Errorf("failed to generate SQL: %w", err)
@@ -208,9 +225,80 @@ func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, verbose bool) error
 		fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
 	}
 
-	// Output SQL to stdout
 	fmt.Print(sql)
+	return nil
+}
 
+// executePendingDumpSQL shows only SQL for pending schema changes by comparing
+// the current YAML schema against the state from existing migrations.
+func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, currentSchema *yamlpkg.Schema, verbose bool) error {
+	cfg := config.LoadOrDefault(configFile)
+	migrationsDir := cfg.Migration.Directory
+
+	// Check for existing migration files
+	var prevSchema *yamlpkg.Schema
+
+	goFiles, err := filepath.Glob(filepath.Join(migrationsDir, "*.go"))
+	if err != nil {
+		return fmt.Errorf("scanning migrations directory: %w", err)
+	}
+
+	// Filter to migration files only (exclude main.go)
+	var migFiles []string
+	for _, f := range goFiles {
+		if filepath.Base(f) != "main.go" {
+			migFiles = append(migFiles, f)
+		}
+	}
+
+	if len(migFiles) > 0 {
+		if verbose {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Querying migration DAG for previous state...\n")
+		}
+		dagOut, err := queryDAG(migrationsDir, verbose)
+		if err != nil {
+			return fmt.Errorf("querying migration DAG: %w", err)
+		}
+		prevSchema = schemaStateToYAMLSchema(dagOut.SchemaState)
+	} else {
+		if verbose {
+			fmt.Fprintf(cmd.ErrOrStderr(), "\n3. No existing migrations found, treating previous state as empty...\n")
+		}
+	}
+
+	// Diff previous state against current schema
+	if verbose {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Computing schema diff...\n")
+	}
+	diffEngine := yamlpkg.NewDiffEngine(verbose)
+	diff, err := diffEngine.CompareSchemas(prevSchema, currentSchema)
+	if err != nil {
+		return fmt.Errorf("computing schema diff: %w", err)
+	}
+
+	if !diff.HasChanges {
+		fmt.Fprintln(cmd.ErrOrStderr(), "No pending changes.")
+		return nil
+	}
+
+	if verbose {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Found %d pending changes\n", len(diff.Changes))
+		fmt.Fprintf(cmd.ErrOrStderr(), "\n5. Generating SQL for pending changes...\n")
+	}
+
+	// Convert diff to SQL using silent mode (no interactive prompts)
+	sqlConverter := yamlpkg.NewSQLConverterWithConfig(dbType, verbose, false, "", nil, true, "")
+	upSQL, _, err := sqlConverter.ConvertDiffToSQL(diff, prevSchema, currentSchema)
+	if err != nil {
+		return fmt.Errorf("failed to generate pending SQL: %w", err)
+	}
+
+	if verbose {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nPending SQL Output:\n")
+		fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
+	}
+
+	fmt.Print(upSQL)
 	return nil
 }
 

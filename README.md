@@ -250,18 +250,14 @@ makemigrations migrate-to-go --dir migrations/
 
 ### Database connection
 
-The compiled binary reads connection details from environment variables set in `migrations/main.go`:
+The compiled binary reads connection details from `migrations/main.go`. The generated file uses `DATABASE_URL` and `DB_TYPE`:
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost/mydb"
-# or individual fields:
-export DB_TYPE=postgresql
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres
-export DB_PASSWORD=secret
-export DB_NAME=mydb
+export DB_TYPE=postgresql   # optional, defaults to postgresql
 ```
+
+`DB_HOST`, `DB_PORT`, `DB_USER` etc. can be added by editing `migrations/main.go` — see the [Manual Build Guide](docs/manual-migration-build.md#running-the-binary).
 
 ### Configuration file
 

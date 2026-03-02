@@ -291,18 +291,16 @@ func main() {
 
 ### Environment Variables
 
+The **generated** `main.go` reads only two variables:
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | (none) | Full DSN — overrides all individual fields |
+| `DATABASE_URL` | `""` | Full DSN (e.g. `postgresql://user:pass@host/db`) |
 | `DB_TYPE` | `postgresql` | Database type: `postgresql`, `mysql`, `sqlserver`, `sqlite` |
-| `DB_HOST` | `localhost` | Database host |
-| `DB_PORT` | `5432` | Database port |
-| `DB_USER` | `postgres` | Database user |
-| `DB_PASSWORD` | (none) | Database password |
-| `DB_NAME` | `mydb` | Database name |
-| `DB_SSLMODE` | `disable` | SSL mode (PostgreSQL only) |
 
-> The actual environment variable names are determined by the `main.go` in your `migrations/` directory. You can customise them to match your project's conventions.
+`DB_HOST`, `DB_PORT`, `DB_USER` etc. are available on `m.Config` but are **not wired up by default**. Edit `migrations/main.go` to add them if your project needs them — see the [Manual Build Guide](../manual-migration-build.md#running-the-binary) for an example.
+
+> The variable names and defaults are entirely determined by your `migrations/main.go`. Customise them freely to match your project's conventions.
 
 ---
 

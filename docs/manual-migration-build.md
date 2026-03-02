@@ -99,11 +99,11 @@ GOWORK=off go build -o migrations/migrate ./migrations/
 
 ## Running the binary
 
-The binary reads database connection details from environment variables set in `migrations/main.go`. A typical invocation:
+The binary reads database connection details from environment variables wired up in `migrations/main.go`. The **generated** `main.go` only reads `DB_TYPE` and `DATABASE_URL`:
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost/mydb"
-export DB_TYPE="postgresql"
+export DB_TYPE="postgresql"   # optional, defaults to "postgresql"
 
 ./migrations/migrate up
 ./migrations/migrate status
@@ -111,18 +111,22 @@ export DB_TYPE="postgresql"
 ./migrations/migrate down --steps 1
 ```
 
-Or using individual fields instead of `DATABASE_URL`:
+If you need to support individual `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` fields, edit `migrations/main.go` to populate them:
 
-```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=postgres
-export DB_PASSWORD=secret
-export DB_NAME=mydb
-export DB_SSLMODE=disable
-
-./migrations/migrate up
+```go
+app := m.NewApp(m.Config{
+    DatabaseType: m.EnvOr("DB_TYPE", "postgresql"),
+    DatabaseURL:  m.EnvOr("DATABASE_URL", ""),
+    DBHost:       m.EnvOr("DB_HOST", "localhost"),
+    DBPort:       m.EnvOr("DB_PORT", "5432"),
+    DBUser:       m.EnvOr("DB_USER", "postgres"),
+    DBPassword:   os.Getenv("DB_PASSWORD"),
+    DBName:       m.EnvOr("DB_NAME", "mydb"),
+    DBSSLMode:    m.EnvOr("DB_SSLMODE", "disable"),
+})
 ```
+
+`DATABASE_URL` takes priority over the individual fields when both are set.
 
 ---
 

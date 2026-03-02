@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -280,12 +281,18 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 		fmt.Printf("Building migration binary from %s...\n", absMigrationsDir)
 	}
 
-	// Read the Go version from the nearest parent go.work or go.mod so the
-	// temp workspace uses the same (already-cached) toolchain as the project.
+	// Determine the Go version for the temp workspace.
+	// Prefer the toolchain directive from the nearest parent go.work/go.mod
+	// (e.g. "go1.25.7" → "1.25.7"), which has an exact patch version and is
+	// already cached locally. Fall back to the version of the currently running
+	// binary (runtime.Version() strips the leading "go"). A plain major.minor
+	// like "1.25" from a go directive is not enough — Go would try to download
+	// a toolchain to satisfy it.
 	parentDir := filepath.Dir(absMigrationsDir)
 	goVersion := findParentGoVersion(parentDir)
-	if goVersion == "" {
-		goVersion = "1.22"
+	if !isFullGoVersion(goVersion) {
+		// runtime.Version() returns e.g. "go1.25.7"; strip the "go" prefix.
+		goVersion = strings.TrimPrefix(runtime.Version(), "go")
 	}
 
 	// Check parent go.mod files for a local replace of makemigrations.
@@ -464,23 +471,34 @@ func goGenerateMerge(migrationsDir string, dagOut *migrate.DAGOutput, dryRun, ve
 	return nil
 }
 
-// findParentGoVersion walks up from startDir looking for a go.work or go.mod
-// and returns the Go version declared in it (e.g. "1.25"). go.work is checked
-// first because it represents the workspace-level version. Returns "" if no
-// version is found.
+// findParentGoVersion walks up from startDir looking for a go.work or go.mod.
+// It returns the most specific Go version found, preferring the toolchain
+// directive (e.g. "1.25.7") over the go directive (e.g. "1.25"), because the
+// toolchain directive has the full patch version that is already cached locally.
+// Returns "" if nothing is found.
 func findParentGoVersion(startDir string) string {
 	dir := startDir
 	for {
 		workPath := filepath.Join(dir, "go.work")
 		if data, err := os.ReadFile(workPath); err == nil {
-			if f, err := modfile.ParseWork(workPath, data, nil); err == nil && f.Go != nil {
-				return f.Go.Version
+			if f, err := modfile.ParseWork(workPath, data, nil); err == nil {
+				if f.Toolchain != nil && f.Toolchain.Name != "" {
+					return strings.TrimPrefix(f.Toolchain.Name, "go")
+				}
+				if f.Go != nil {
+					return f.Go.Version
+				}
 			}
 		}
 		modPath := filepath.Join(dir, "go.mod")
 		if data, err := os.ReadFile(modPath); err == nil {
-			if f, err := modfile.Parse(modPath, data, nil); err == nil && f.Go != nil {
-				return f.Go.Version
+			if f, err := modfile.Parse(modPath, data, nil); err == nil {
+				if f.Toolchain != nil && f.Toolchain.Name != "" {
+					return strings.TrimPrefix(f.Toolchain.Name, "go")
+				}
+				if f.Go != nil {
+					return f.Go.Version
+				}
 			}
 		}
 		parent := filepath.Dir(dir)
@@ -489,6 +507,15 @@ func findParentGoVersion(startDir string) string {
 		}
 		dir = parent
 	}
+}
+
+// isFullGoVersion reports whether v is a complete three-part Go version
+// (e.g. "1.25.7") rather than a partial major.minor like "1.25". A partial
+// version used in a go.work 'go' directive causes Go to attempt a toolchain
+// download rather than reusing an already-installed binary.
+func isFullGoVersion(v string) bool {
+	parts := strings.Split(v, ".")
+	return len(parts) >= 3
 }
 
 // findLocalMakemigrations walks up from startDir looking for a go.mod that

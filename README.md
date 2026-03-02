@@ -1,62 +1,50 @@
 # makemigrations
 
-A **YAML-first** database migration tool that generates [Goose](https://github.com/pressly/goose)-compatible migration files from declarative YAML schema definitions. Build database-agnostic schemas that automatically convert to database-specific SQL migrations.
+A **Go-first** database migration tool with a Django-style workflow. Define your schema in YAML, generate type-safe Go migration files, and run them with a compiled binary that embeds every migration your project has ever had.
 
-## ✨ Why YAML Schemas?
+## ✨ Why Go Migrations?
 
-**The YAML schema format is the primary interface for makemigrations.** It provides:
+- 🔒 **Type-safe**: Migrations are Go code — caught by the compiler, not at runtime
+- 📦 **Self-contained binary**: One compiled binary knows all migrations, their dependencies, and their SQL
+- 🗄️ **Database-agnostic schema**: Write YAML once, deploy to PostgreSQL, MySQL, SQLite, or SQL Server
+- 🔀 **DAG-based ordering**: Migrations form a dependency graph so parallel branches merge cleanly
+- 🔄 **Auto change detection**: Diff YAML schemas, generate only what changed
+- ⚠️ **Safe destructive ops**: Field removals, table drops, and renames require explicit review
+- 🔧 **Zero runtime dependency**: The compiled binary has no runtime dependency on makemigrations itself
 
-- 🗄️ **Database-agnostic**: Write once, deploy to PostgreSQL, MySQL, SQLite, or SQL Server
-- 🔧 **Declarative**: Define what you want, not how to build it
-- 🤖 **Automatic migration generation**: Changes detected and converted to SQL migrations
-- 🔗 **Relationship management**: Foreign keys and many-to-many relationships handled automatically
-- ✅ **Built-in validation**: Schema validation with helpful error messages
-- 🔄 **Change tracking**: Automatic schema snapshots and diff generation
+---
 
 ## 🚀 Quick Start
 
-### 1. Install makemigrations
+### 1. Install
 
 ```bash
-# Install from GitHub
 go install github.com/ocomsoft/makemigrations@latest
-
-# Or build from source
-git clone https://github.com/ocomsoft/makemigrations
-cd makemigrations
-go build -o makemigrations .
 ```
 
-### 2. Initialize your project
+### 2. Initialise your project
 
 ```bash
-# Create project structure with YAML schema support
+cd your-project
 makemigrations init
-
-# This creates:
-# migrations/makemigrations.config.yaml   # Configuration
-# migrations/.schema_snapshot.yaml        # State tracking (empty initially)
-# schema/schema.yaml                      # Your schema definition
 ```
 
-### 3. Define your database schema
+This creates:
 
-Edit `schema/schema.yaml`:
+```
+your-project/
+└── migrations/
+    ├── main.go     ← compiled binary entry point
+    └── go.mod      ← dedicated migrations module
+```
+
+If `*.sql` Goose files already exist in `migrations/`, they are **automatically converted** to Go migrations. See [Upgrading from Goose](#upgrading-from-goose-sql-migrations).
+
+### 3. Define your schema
+
+`schema/schema.yaml`:
 
 ```yaml
-database:
-  name: myapp
-  version: 1.0.0
-
-defaults:
-  postgresql:
-    blank: ''
-    now: CURRENT_TIMESTAMP
-    new_uuid: gen_random_uuid()
-    zero: "0"
-    true: "true"
-    false: "false"
-
 tables:
   - name: users
     fields:
@@ -70,7 +58,6 @@ tables:
         nullable: false
       - name: created_at
         type: timestamp
-        default: now
         auto_create: true
 
   - name: posts
@@ -85,7 +72,6 @@ tables:
         nullable: false
       - name: user_id
         type: foreign_key
-        nullable: false
         foreign_key:
           table: users
           on_delete: CASCADE
@@ -94,445 +80,241 @@ tables:
 ### 4. Generate your first migration
 
 ```bash
-# Generate migration from YAML schema
-makemigrations makemigrations --name "initial_schema"
-
-# Output:
-# migrations/20240122134500_initial_schema.sql
+makemigrations makemigrations --name "initial"
+# Creates: migrations/0001_initial.go
 ```
 
-### 5. Set up database connection
+### 5. Apply to your database
 
 ```bash
-# PostgreSQL
-export MAKEMIGRATIONS_DB_HOST=localhost
-export MAKEMIGRATIONS_DB_PORT=5432
-export MAKEMIGRATIONS_DB_USER=postgres
-export MAKEMIGRATIONS_DB_PASSWORD=yourpassword
-export MAKEMIGRATIONS_DB_NAME=yourdb
-
-# MySQL, SQLite, SQL Server also supported
+export DATABASE_URL="postgresql://user:pass@localhost/mydb"
+makemigrations migrate up
 ```
 
-### 6. Apply migrations to your database
+`makemigrations migrate` compiles the migration binary automatically and runs it with the correct Go workspace settings. No manual `go build` required.
+
+---
+
+## 🔄 Day-to-Day Workflow
 
 ```bash
-# Apply all pending migrations
-makemigrations goose up
+# 1. Edit your YAML schema
+vim schema/schema.yaml
 
-# Check migration status
-makemigrations goose status
-```
-
-## 🏗️ Core Features
-
-### Database-Agnostic Schemas
-
-Write your schema once in YAML, deploy anywhere:
-
-```yaml
-# Same YAML schema generates different SQL for each database
-
-# PostgreSQL:
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    metadata JSONB DEFAULT '{}'
-);
-
-# MySQL:
-CREATE TABLE users (
-    id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
-    metadata JSON DEFAULT ('{}')
-);
-
-# SQLite:
-CREATE TABLE users (
-    id TEXT PRIMARY KEY DEFAULT '',
-    metadata TEXT DEFAULT '{}'
-);
-```
-
-### Automatic Relationship Management
-
-Define relationships declaratively:
-
-```yaml
-# Foreign keys
-- name: user_id
-  type: foreign_key
-  foreign_key:
-    table: users
-    on_delete: CASCADE
-
-# Many-to-many relationships (use explicit junction tables)
-# Define the junction table separately:
-- name: post_categories  # Junction table
-  fields:
-    - name: post_id
-      type: foreign_key
-      foreign_key:
-        table: posts
-        on_delete: CASCADE
-    - name: category_id
-      type: foreign_key
-      foreign_key:
-        table: categories
-        on_delete: CASCADE
-```
-
-### Smart Change Detection
-
-makemigrations tracks your schema state and generates only the necessary changes:
-
-```bash
-# Add a new field to your YAML schema
-- name: phone
-  type: varchar
-  length: 20
-  nullable: true
-
-# Run makemigrations
-makemigrations makemigrations
-
-# Generates migration with only the new field:
-# ALTER TABLE users ADD COLUMN phone VARCHAR(20);
-```
-
-### Safety Features
-
-Destructive operations require review:
-
-```sql
--- +goose Up
--- REVIEW: The following operation is destructive and requires manual review
--- +goose StatementBegin
-DROP TABLE old_users;
--- +goose StatementEnd
-```
-
-## 📖 Documentation
-
-### Essential Guides
-
-- **[Installation Guide](docs/installation.md)** - Complete setup instructions
-- **[Schema Format Guide](docs/schema-format.md)** - Complete YAML schema reference
-- **[Configuration Guide](docs/configuration.md)** - Configuration options and environment variables
-
-### Command Reference
-
-- **[makemigrations](docs/commands/makemigrations.md)** - Generate migrations from YAML schemas ⭐ **Primary command**
-- **[init](docs/commands/init.md)** - Initialize new YAML-based projects
-- **[goose](docs/commands/goose.md)** - Apply migrations to database
-- **[dump_sql](docs/commands/dump_sql.md)** - Preview generated SQL from schemas
-
-### Additional Tools
-
-- **[struct2schema](docs/commands/struct2schema.md)** - Generate YAML schemas from Go structs ⭐ **New feature**
-- **[init_sql](docs/commands/init_sql.md)** - Initialize SQL-based projects (alternative workflow)
-- **[makemigrations_sql](docs/commands/makemigrations_sql.md)** - Generate migrations from raw SQL
-
-## 🗄️ Database Support
-
-makemigrations supports 12 different database types with comprehensive provider implementations:
-
-### Core Databases (Original Support)
-| Database | Status | Testing | Features |
-|----------|--------|---------|----------|
-| **PostgreSQL** | ✅ Full support | ✅ **Fully tested** | UUID, JSONB, arrays, advanced types |
-| **MySQL** | ✅ Supported | ⚠️ Provider tested only | JSON, AUTO_INCREMENT, InnoDB features |
-| **SQLite** | ✅ Supported | ⚠️ Provider tested only | Simplified types, basic constraints |
-| **SQL Server** | ✅ Supported | ⚠️ Provider tested only | UNIQUEIDENTIFIER, NVARCHAR, BIT types |
-| **Amazon Redshift** | ✅ Provider ready | ⚠️ Provider tested only | SUPER JSON type, IDENTITY sequences, VARCHAR limits |
-| **ClickHouse** | ✅ Provider ready | ⚠️ Provider tested only | MergeTree engine, columnar storage, Nullable types |
-| **TiDB** | ✅ Provider ready | ⚠️ Provider tested only | MySQL-compatible, distributed, native BOOLEAN |
-| **Vertica** | ✅ Provider ready | ⚠️ Provider tested only | Columnar analytics, LONG VARCHAR, CASCADE support |
-| **YDB (Yandex)** | ✅ Provider ready | ⚠️ Provider tested only | Distributed SQL, Optional<Type>, native JSON |
-| **Turso** | ✅ Provider ready | ⚠️ Provider tested only | Edge SQLite, distributed capabilities |
-| **StarRocks** | ✅ Provider ready | ⚠️ Provider tested only | MPP analytics, OLAP engine, STRING types |
-| **Aurora DSQL** | ✅ Provider ready | ⚠️ Provider tested only | AWS serverless, PostgreSQL-compatible |
-
-**Note**: Only PostgreSQL has been tested with real database instances. All other providers have comprehensive unit tests and follow database-specific SQL syntax, but may require additional testing and refinement for production use.
-
-## 💻 Command Overview
-
-### Primary YAML Commands
-
-```bash
-# Initialize YAML-based project
-makemigrations init
-
-# Generate migrations from YAML schemas
-makemigrations makemigrations
-
-# Preview changes without creating files
+# 2. Preview what will be generated
 makemigrations makemigrations --dry-run
 
-# Check if migrations are needed (CI/CD)
-makemigrations makemigrations --check
+# 3. Generate the migration
+makemigrations makemigrations --name "add user preferences"
+# Creates: migrations/0004_add_user_preferences.go
+
+# 4. Review the SQL before applying
+makemigrations migrate showsql
+
+# 5. Apply
+makemigrations migrate up
+
+# 6. Verify
+makemigrations migrate status
 ```
 
-### Database Operations
+---
+
+## 📋 migrate Subcommands
+
+`makemigrations migrate` compiles and runs the migration binary. All arguments are forwarded:
 
 ```bash
-# Apply migrations
-makemigrations goose up
-
-# Check migration status
-makemigrations goose status
-
-# Rollback last migration
-makemigrations goose down
-
-# Create custom migration
-makemigrations goose create add_indexes
+makemigrations migrate up                       # apply all pending
+makemigrations migrate up --to 0003_add_index   # apply up to a specific migration
+makemigrations migrate down                     # roll back one
+makemigrations migrate down --steps 3           # roll back multiple
+makemigrations migrate status                   # show applied / pending
+makemigrations migrate showsql                  # print SQL without running it
+makemigrations migrate fake 0001_initial        # mark applied without running SQL
+makemigrations migrate dag                      # show migration dependency graph
+makemigrations migrate --verbose up             # show build output
 ```
 
-### Utilities
-
-```bash
-# Preview SQL without generating migrations
-makemigrations dump_sql
-
-# Generate YAML schemas from Go structs
-makemigrations struct2schema --input ./models --output schema/schema.yaml
-
-```
+---
 
 ## 🏗️ Project Structure
 
 ```
-myproject/
+your-project/
 ├── schema/
-│   └── schema.yaml              # Your YAML schema definition
+│   └── schema.yaml              ← your YAML schema definition
 ├── migrations/
-│   ├── makemigrations.config.yaml    # Configuration
-│   ├── .schema_snapshot.yaml          # State tracking
-│   ├── 20240122134500_initial.sql     # Generated migrations
-│   └── 20240123102000_add_posts.sql
+│   ├── main.go                  ← binary entry point (generated by init)
+│   ├── go.mod                   ← dedicated module (generated by init)
+│   ├── 0001_initial.go          ← migration files (generated by makemigrations)
+│   ├── 0002_add_posts.go
+│   └── 0003_add_index.go
 ├── go.mod
 └── main.go
 ```
 
-## ⚙️ Configuration
+---
 
-### Environment Variables
+## 🗄️ Database Support
 
-```bash
-# Database connection
-export MAKEMIGRATIONS_DB_HOST=localhost
-export MAKEMIGRATIONS_DB_USER=postgres
-export MAKEMIGRATIONS_DB_PASSWORD=password
-export MAKEMIGRATIONS_DB_NAME=myapp
+| Database | Status | Notes |
+|----------|--------|-------|
+| **PostgreSQL** | ✅ Full | UUID, JSONB, arrays, advanced types |
+| **MySQL** | ✅ Supported | JSON, AUTO_INCREMENT, InnoDB |
+| **SQLite** | ✅ Supported | Simplified types, basic constraints |
+| **SQL Server** | ✅ Supported | UNIQUEIDENTIFIER, NVARCHAR, BIT |
+| **Amazon Redshift** | ✅ Provider ready | SUPER JSON, IDENTITY sequences |
+| **ClickHouse** | ✅ Provider ready | MergeTree engine, Nullable types |
+| **TiDB** | ✅ Provider ready | MySQL-compatible, distributed |
+| **Vertica** | ✅ Provider ready | Columnar analytics |
+| **YDB (Yandex)** | ✅ Provider ready | Optional<Type>, native JSON |
+| **Turso** | ✅ Provider ready | Edge SQLite |
+| **StarRocks** | ✅ Provider ready | MPP analytics, OLAP |
+| **Aurora DSQL** | ✅ Provider ready | AWS serverless, PostgreSQL-compatible |
 
-# Tool behavior (12 database types supported)
-export MAKEMIGRATIONS_DATABASE_TYPE=postgresql  # postgresql, mysql, sqlite, sqlserver, redshift, clickhouse, tidb, vertica, ydb, turso, starrocks, auroradsql
-export MAKEMIGRATIONS_MIGRATION_SILENT=false
-export MAKEMIGRATIONS_OUTPUT_VERBOSE=true
+> PostgreSQL has been tested against real database instances. All other providers have comprehensive unit tests but may need additional validation for production.
+
+---
+
+## ⚠️ Destructive Operations
+
+When a field removal, table drop, or rename is detected, makemigrations prompts before generating:
+
+```
+⚠  Destructive operation detected: field_removed on "users" (field: "legacy_col")
+  1) Generate  — include SQL in migration
+  2) Review    — include with // REVIEW comment
+  3) Omit      — skip SQL; schema state still advances (SchemaOnly)
+  4) Exit      — cancel migration generation
+  5) All       — generate all remaining destructive ops without prompting
+Choice [1-5]:
 ```
 
-### Configuration File
+---
+
+## 🔀 Branch & Merge
+
+When two developers generate migrations concurrently the DAG develops branches:
+
+```
+0001_initial
+├── 0002_add_messaging   (developer A)
+└── 0003_add_payments    (developer B)
+```
+
+Resolve with a merge migration:
+
+```bash
+makemigrations makemigrations --merge
+# Creates: migrations/0004_merge_0002_add_messaging_and_0003_add_payments.go
+```
+
+---
+
+## ⬆️ Upgrading from Goose SQL migrations
+
+Run `makemigrations init` in a directory containing Goose `*.sql` files and they are converted automatically:
+
+```bash
+# migrations/ has 00001_initial.sql, 00002_add_phone.sql ...
+makemigrations init
+
+# Detected 2 Goose SQL migration(s) — running migrate-to-go...
+# ✓ Created migrations/0001_initial.go
+# ✓ Created migrations/0002_add_phone.go
+# ✓ Created migrations/main.go
+# ✓ Created migrations/go.mod
+# ✓ Created migrations/0003_schema_state.go (schema-state bootstrap)
+# ✗ Deleted migrations/00001_initial.sql
+# ✗ Deleted migrations/00002_add_phone.sql
+```
+
+If the schema is already applied to your database, fake the historical migrations:
+
+```bash
+makemigrations migrate fake 0001_initial
+makemigrations migrate fake 0002_add_phone
+makemigrations migrate status
+```
+
+Or use the dedicated conversion command for more control:
+
+```bash
+makemigrations migrate-to-go --dir migrations/
+```
+
+---
+
+## ⚙️ Configuration
+
+### Database connection
+
+The compiled binary reads connection details from environment variables set in `migrations/main.go`:
+
+```bash
+export DATABASE_URL="postgresql://user:pass@localhost/mydb"
+# or individual fields:
+export DB_TYPE=postgresql
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_USER=postgres
+export DB_PASSWORD=secret
+export DB_NAME=mydb
+```
+
+### Configuration file
 
 `migrations/makemigrations.config.yaml`:
 
 ```yaml
 database:
   type: postgresql
-  quote_identifiers: true
 
 migration:
   directory: migrations
   include_down_sql: true
-  review_comment_prefix: "-- REVIEW: "
 
 output:
   verbose: false
-  color_enabled: true
 ```
 
 See the [Configuration Guide](docs/configuration.md) for complete options.
 
-## 🔧 Advanced Features
+---
 
-### Multi-Database Deployment
+## 📖 Documentation
 
-```bash
-# Generate PostgreSQL migrations (fully tested)
-makemigrations makemigrations --database postgresql
+### Guides
 
-# Generate MySQL migrations for the same schema
-makemigrations makemigrations --database mysql
+- **[Installation Guide](docs/installation.md)**
+- **[Schema Format Guide](docs/schema-format.md)** — complete YAML schema reference
+- **[Configuration Guide](docs/configuration.md)**
+- **[Manual Build Guide](docs/manual-migration-build.md)** — GOWORK/GOTOOLCHAIN details for CI/CD
 
-# Generate migrations for cloud/analytics databases
-makemigrations makemigrations --database redshift
-makemigrations makemigrations --database clickhouse
-makemigrations makemigrations --database tidb
+### Command Reference
 
-# Same YAML schema, database-specific SQL output
-```
+| Command | Description |
+|---------|-------------|
+| **[init](docs/commands/init.md)** | Bootstrap the `migrations/` directory |
+| **[makemigrations](docs/commands/makemigrations.md)** | Generate `.go` migration files from YAML schema |
+| **[migrate](docs/commands/migrate.md)** | Build and run the compiled migration binary |
+| **[migrate-to-go](docs/commands/migrate_to_go.md)** | Convert existing Goose SQL migrations to Go |
+| [struct2schema](docs/commands/struct2schema.md) | Generate YAML schemas from Go structs |
+| [dump_sql](docs/commands/dump_sql.md) | Preview generated SQL from schemas |
+| [db2schema](docs/commands/db2schema.md) | Reverse-engineer schema from existing database |
 
-### Complex Relationships
+### Legacy SQL Workflow
 
-```yaml
-# Self-referencing foreign keys
-- name: parent_id
-  type: foreign_key
-  nullable: true
-  foreign_key:
-    table: categories
-    on_delete: SET_NULL
-
-# Many-to-many with explicit junction table
-- name: post_tags  # Junction table
-  fields:
-    - name: post_id
-      type: foreign_key
-      foreign_key:
-        table: posts
-        on_delete: CASCADE
-    - name: tag_id
-      type: foreign_key
-      foreign_key:
-        table: tags
-        on_delete: CASCADE
-  indexes:
-    - name: post_tags_unique
-      fields: [post_id, tag_id]
-      unique: true
-```
-
-### Custom Default Values
-
-```yaml
-defaults:
-  postgresql:
-    custom_uuid: custom_uuid_function()
-    app_timestamp: custom_timestamp()
-    
-tables:
-  - name: events
-    fields:
-      - name: id
-        type: uuid
-        default: custom_uuid  # Uses your custom function
-```
-
-## 🚀 Workflow Examples
-
-### Development Workflow
+For projects that predate the Go migration framework, the original YAML→SQL→Goose workflow is still supported:
 
 ```bash
-# 1. Modify schema/schema.yaml
-vim schema/schema.yaml
-
-# 2. Preview changes
-makemigrations makemigrations --dry-run
-
-# 3. Generate migration
-makemigrations makemigrations --name "add_user_preferences"
-
-# 4. Review generated SQL
-cat migrations/20240122134500_add_user_preferences.sql
-
-# 5. Apply to database
-makemigrations goose up
+makemigrations init --sql          # create SQL-based project
+makemigrations makemigrations_sql  # generate Goose-compatible SQL files
+makemigrations goose up            # apply via Goose
 ```
 
-### Team Development
-
-```bash
-# Developer A: Add new feature schema
-git pull
-vim schema/schema.yaml  # Add new tables
-makemigrations makemigrations --name "add_messaging_system"
-git add . && git commit -m "Add messaging schema"
-
-# Developer B: Pull and apply
-git pull
-makemigrations goose up  # Apply new migrations
-```
-
-### CI/CD Integration
-
-```yaml
-# .github/workflows/migrations.yml
-- name: Check for schema changes
-  run: |
-    makemigrations makemigrations --check
-    if [ $? -eq 1 ]; then
-      echo "Schema changes detected - migrations needed"
-      exit 1
-    fi
-
-- name: Apply migrations
-  run: makemigrations goose up
-```
-
-## 🛡️ Best Practices
-
-### 1. Schema Organization
-
-```yaml
-# Good: Organized, clear field definitions
-tables:
-  - name: users
-    fields:
-      - name: id
-        type: uuid
-        primary_key: true
-        default: new_uuid
-      - name: email
-        type: varchar
-        length: 255
-        nullable: false
-```
-
-### 2. Migration Naming
-
-```bash
-# Good: Descriptive migration names
-makemigrations makemigrations --name "add_user_authentication"
-makemigrations makemigrations --name "optimize_product_queries"
-
-# Avoid: Generic names
-makemigrations makemigrations --name "changes"
-```
-
-### 3. Testing Migrations
-
-```bash
-# Always test rollback capability
-makemigrations goose up-by-one
-makemigrations goose down
-makemigrations goose up-by-one
-```
-
-## 🔄 Alternative Workflows
-
-While **YAML schemas are the primary and recommended approach**, makemigrations also supports:
-
-### SQL-Based Migrations
-
-For teams preferring direct SQL control:
-
-```bash
-# Initialize SQL-based project
-makemigrations init_sql
-
-# Generate migration from raw SQL
-makemigrations makemigrations_sql --sql "CREATE TABLE test (id SERIAL);"
-```
-
-### Go Struct Integration
-
-Generate schemas from Go structs:
-
-```bash
-# Convert Go structs to YAML
-makemigrations struct2schema --input ./models --output schema/schema.yaml
-
-# Process specific files with custom configuration
-makemigrations struct2schema --input models.go --config struct2schema.yaml --database postgresql
-```
+---
 
 ## 🤝 Contributing
 
@@ -544,14 +326,8 @@ makemigrations struct2schema --input models.go --config struct2schema.yaml --dat
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Documentation**: Browse the [`/docs`](docs/) directory
-- **Issues**: Report bugs on [GitHub Issues](https://github.com/ocomsoft/makemigrations/issues)
-- **Discussions**: Join [GitHub Discussions](https://github.com/ocomsoft/makemigrations/discussions)
+MIT License — see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Ready to get started?** Check out the [Installation Guide](docs/installation.md) and [Schema Format Guide](docs/schema-format.md)!
+**Ready to get started?** Run `makemigrations init` in your project directory.

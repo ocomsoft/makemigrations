@@ -31,7 +31,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -275,22 +274,36 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 		fmt.Printf("Building migration binary from %s...\n", migrationsDir)
 	}
 
-	buildCmd := exec.Command("go", "build", "-o", tmpBin, ".")
-	buildCmd.Dir = migrationsDir
+	// goEnv is shared by all sub-commands in this function.
 	// GOWORK=off: the migrations directory has its own go.mod (separate module).
 	// If a go.work workspace file exists in a parent directory, Go would try to
 	// resolve the package through the workspace and fail with "main module does
 	// not contain package". Disabling the workspace lets go use the migrations
 	// module's own go.mod directly.
-	//
-	// GOTOOLCHAIN=<running version>: pin the build to the exact same Go toolchain
-	// that is running makemigrations right now. This avoids two failure modes:
-	//   - GOTOOLCHAIN=local fails when the installed Go is older than the version
-	//     declared in the migrations go.mod (e.g. installed=1.22, go.mod=1.24).
-	//   - No override causes Go to try downloading a different toolchain version,
-	//     which fails in air-gapped or restricted environments.
-	// runtime.Version() returns "go1.X.Y", which is a valid GOTOOLCHAIN value.
-	buildCmd.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN="+runtime.Version())
+	// We do NOT override GOTOOLCHAIN: the caller's environment already has the
+	// right setting (typically "auto"). Since the running binary already satisfies
+	// the go.mod version requirement, "auto" will reuse the current toolchain
+	// without downloading anything.
+	goEnv := append(os.Environ(), "GOWORK=off")
+
+	// Sync go.sum before building. The migrations go.sum may be stale if
+	// dependencies were updated since the last tidy (e.g. a new subpackage was
+	// added to makemigrations). This is equivalent to running `go mod download`
+	// in the migrations directory and does not modify go.mod.
+	downloadCmd := exec.Command("go", "mod", "download")
+	downloadCmd.Dir = migrationsDir
+	downloadCmd.Env = goEnv
+	if out, dlErr := downloadCmd.CombinedOutput(); dlErr != nil {
+		// Non-fatal: if download fails we still try to build; the build error
+		// will be more descriptive.
+		if verbose {
+			fmt.Printf("go mod download warning: %s\n", string(out))
+		}
+	}
+
+	buildCmd := exec.Command("go", "build", "-o", tmpBin, ".")
+	buildCmd.Dir = migrationsDir
+	buildCmd.Env = goEnv
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
 		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
 	}

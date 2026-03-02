@@ -301,11 +301,17 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
-	return ""
+	constraintName := fmt.Sprintf("fk_%s_%s", tableName, fieldName)
+	onDeleteClause := ""
+	if onDelete != "" {
+		onDeleteClause = fmt.Sprintf(" ON DELETE %s", strings.ToUpper(onDelete))
+	}
+	return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s%s;",
+		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause)
 }
 
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
-	return ""
+	return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", p.QuoteName(tableName), p.QuoteName(constraintName))
 }
 
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
@@ -313,11 +319,35 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 }
 
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
-	return ""
+	return "BIGINT"
 }
 
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
-	return ""
+	var indexes []string
+
+	for _, table := range schema.Tables {
+		for _, field := range table.Fields {
+			if field.Type == "foreign_key" {
+				indexName := fmt.Sprintf("idx_%s_%s", table.Name, field.Name)
+				indexSQL := fmt.Sprintf("CREATE INDEX %s ON %s (%s);",
+					p.QuoteName(indexName),
+					p.QuoteName(table.Name),
+					p.QuoteName(field.Name))
+				indexes = append(indexes, indexSQL)
+			}
+		}
+
+		for _, index := range table.Indexes {
+			indexSQL := p.GenerateCreateIndex(&index, table.Name)
+			indexes = append(indexes, indexSQL)
+		}
+	}
+
+	if len(indexes) == 0 {
+		return ""
+	}
+
+	return strings.Join(indexes, "\n")
 }
 
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {

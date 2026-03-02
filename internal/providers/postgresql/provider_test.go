@@ -132,6 +132,25 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 	}
 }
 
+func TestProvider_GenerateForeignKeyConstraint(t *testing.T) {
+	p := New()
+	got := p.GenerateForeignKeyConstraint("users", "org_id", "organizations", "cascade")
+	if !strings.Contains(got, "FOREIGN KEY") {
+		t.Errorf("expected FOREIGN KEY in:\n%s", got)
+	}
+	if !strings.Contains(got, "ON DELETE CASCADE") {
+		t.Errorf("expected ON DELETE CASCADE in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateDropForeignKeyConstraint(t *testing.T) {
+	p := New()
+	got := p.GenerateDropForeignKeyConstraint("users", "fk_users_org_id")
+	if got == "" {
+		t.Error("expected non-empty drop constraint SQL")
+	}
+}
+
 func TestProvider_IsNotFoundError(t *testing.T) {
 	p := New()
 	cases := []struct {
@@ -150,5 +169,16 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
 		}
+	}
+}
+
+func TestProvider_InferForeignKeyType(t *testing.T) {
+	provider := New()
+
+	result := provider.InferForeignKeyType("users", &types.Schema{})
+	expected := "BIGINT"
+
+	if result != expected {
+		t.Errorf("InferForeignKeyType() = %s; expected %s", result, expected)
 	}
 }

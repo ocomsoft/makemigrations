@@ -263,10 +263,13 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
+	// SQLite doesn't support ALTER TABLE ADD CONSTRAINT for foreign keys
+	// FKs must be defined inline in CREATE TABLE
 	return ""
 }
 
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
+	// SQLite doesn't support ALTER TABLE DROP CONSTRAINT for foreign keys
 	return ""
 }
 
@@ -275,11 +278,35 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 }
 
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
-	return ""
+	return "INTEGER"
 }
 
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
-	return ""
+	var indexes []string
+
+	for _, table := range schema.Tables {
+		for _, field := range table.Fields {
+			if field.Type == "foreign_key" {
+				indexName := fmt.Sprintf("idx_%s_%s", table.Name, field.Name)
+				indexSQL := fmt.Sprintf("CREATE INDEX %s ON %s (%s);",
+					p.QuoteName(indexName),
+					p.QuoteName(table.Name),
+					p.QuoteName(field.Name))
+				indexes = append(indexes, indexSQL)
+			}
+		}
+
+		for _, index := range table.Indexes {
+			indexSQL := p.GenerateCreateIndex(&index, table.Name)
+			indexes = append(indexes, indexSQL)
+		}
+	}
+
+	if len(indexes) == 0 {
+		return ""
+	}
+
+	return strings.Join(indexes, "\n")
 }
 
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {

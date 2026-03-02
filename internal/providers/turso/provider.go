@@ -253,10 +253,13 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
+	// Turso (libSQL) doesn't support ALTER TABLE ADD CONSTRAINT for foreign keys
+	// FKs must be defined inline in CREATE TABLE
 	return ""
 }
 
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
+	// Turso (libSQL) doesn't support ALTER TABLE DROP CONSTRAINT for foreign keys
 	return ""
 }
 

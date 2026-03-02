@@ -293,11 +293,17 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
-	return ""
+	constraintName := fmt.Sprintf("fk_%s_%s", tableName, fieldName)
+	onDeleteClause := ""
+	if onDelete != "" {
+		onDeleteClause = fmt.Sprintf(" ON DELETE %s", strings.ToUpper(onDelete))
+	}
+	return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s%s;",
+		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause)
 }
 
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
-	return ""
+	return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s;", p.QuoteName(tableName), p.QuoteName(constraintName))
 }
 
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {

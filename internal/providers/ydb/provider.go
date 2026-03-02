@@ -241,7 +241,22 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 
 // Remaining interface methods with YDB-specific implementations or placeholders
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	oldType := p.ConvertFieldType(oldField)
+	newType := p.ConvertFieldType(newField)
+
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+		return "", nil
+	}
+
+	// YDB only supports changing the column type
+	if oldField.IsNullable() != newField.IsNullable() || oldField.Default != newField.Default {
+		return "", fmt.Errorf("YDB only supports column type changes; nullability and default changes require table recreation")
+	}
+
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET %s;", tbl, col, newType), nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

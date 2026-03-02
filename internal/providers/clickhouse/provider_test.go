@@ -25,6 +25,7 @@ package clickhouse
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -295,6 +296,47 @@ ENGINE = Log();`
 
 	if result != expected {
 		t.Errorf("GenerateCreateTable() = %s; expected %s", result, expected)
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestProvider_GenerateAlterColumn_TypeChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "score", Type: "integer"}
+	nw := &types.Field{Name: "score", Type: "bigint"}
+	got, err := p.GenerateAlterColumn("results", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "MODIFY COLUMN") {
+		t.Errorf("expected MODIFY COLUMN in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AddDefault(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "status", Type: "varchar", Length: 50}
+	nw := &types.Field{Name: "status", Type: "varchar", Length: 50, Default: "active"}
+	got, err := p.GenerateAlterColumn("orders", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "DEFAULT 'active'") {
+		t.Errorf("expected DEFAULT in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "name", Type: "varchar", Length: 100}
+	nw := &types.Field{Name: "name", Type: "varchar", Length: 100}
+	got, err := p.GenerateAlterColumn("things", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty string for no-change alter, got: %q", got)
 	}
 }
 

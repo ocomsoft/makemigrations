@@ -270,7 +270,24 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 // Placeholder implementations for remaining interface methods
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	oldType := p.ConvertFieldType(oldField)
+	newType := p.ConvertFieldType(newField)
+
+	// ClickHouse has no NOT NULL concept, so only check type and default
+	if oldType == newType && oldField.Default == newField.Default {
+		return "", nil
+	}
+
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	stmt := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s", tbl, col, newType)
+	if newField.Default != "" {
+		stmt += fmt.Sprintf(" DEFAULT '%s'", newField.Default)
+	}
+	stmt += ";"
+
+	return stmt, nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

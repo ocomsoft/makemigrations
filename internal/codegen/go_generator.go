@@ -57,11 +57,19 @@ func NextMigrationNumber(count int) string {
 // with the global registry via an init() function. The file is in package main and
 // imports the migrate package aliased as "m". currentSchema and previousSchema are
 // optional and used for AlterField operations when available.
+//
+// decisions is an optional map keyed by change index that controls how destructive
+// operations are emitted:
+//   - yaml.PromptOmit      → operation is emitted with SchemaOnly: true (advances
+//     schema state without executing SQL in the database)
+//   - yaml.PromptReview    → operation is preceded by a // REVIEW comment
+//   - yaml.PromptGenerate / yaml.PromptGenerateAll / nil entry → emitted normally
 func (g *GoGenerator) GenerateMigration(
 	name string,
 	deps []string,
 	diff *yaml.SchemaDiff,
 	currentSchema, previousSchema *yaml.Schema,
+	decisions map[int]yaml.PromptResponse,
 ) (string, error) {
 	if diff == nil || !diff.HasChanges {
 		return "", fmt.Errorf("no changes to generate migration for")
@@ -93,11 +101,18 @@ func (g *GoGenerator) GenerateMigration(
 
 	// Operations
 	b.WriteString("\t\tOperations: []m.Operation{\n")
-	for _, change := range diff.Changes {
-		op, err := g.generateOperation(change, currentSchema, previousSchema)
+	for i, change := range diff.Changes {
+		decision := decisions[i] // zero value (0) when map is nil or key absent
+		schemaOnly := decision == yaml.PromptOmit
+		review := decision == yaml.PromptReview
+
+		op, err := g.generateOperation(change, currentSchema, previousSchema, schemaOnly)
 		if err != nil {
 			return "", fmt.Errorf("generating operation for change %s on %s: %w",
 				change.Type, change.TableName, err)
+		}
+		if review {
+			b.WriteString("\t\t\t// REVIEW: destructive operation — verify before running\n")
 		}
 		b.WriteString(op)
 	}
@@ -116,21 +131,24 @@ func (g *GoGenerator) GenerateMigration(
 
 // generateOperation converts a single yaml.Change into the Go source literal
 // for one migrate.Operation (e.g. &m.CreateTable{...}).
+// schemaOnly is passed to destructive operations (DropTable, DropField) to emit
+// SchemaOnly: true when the user chose to defer the SQL execution.
 func (g *GoGenerator) generateOperation(
 	change yaml.Change,
 	currentSchema, previousSchema *yaml.Schema,
+	schemaOnly bool,
 ) (string, error) {
 	switch change.Type {
 	case yaml.ChangeTypeTableAdded:
 		return g.generateCreateTable(change)
 	case yaml.ChangeTypeTableRemoved:
-		return g.generateDropTable(change)
+		return g.generateDropTable(change, schemaOnly)
 	case yaml.ChangeTypeTableRenamed:
 		return g.generateRenameTable(change)
 	case yaml.ChangeTypeFieldAdded:
 		return g.generateAddField(change)
 	case yaml.ChangeTypeFieldRemoved:
-		return g.generateDropField(change)
+		return g.generateDropField(change, schemaOnly)
 	case yaml.ChangeTypeFieldModified:
 		return g.generateAlterField(change, currentSchema, previousSchema)
 	case yaml.ChangeTypeFieldRenamed:
@@ -181,7 +199,12 @@ func (g *GoGenerator) generateCreateTable(change yaml.Change) (string, error) {
 }
 
 // generateDropTable emits a &m.DropTable{...} literal.
-func (g *GoGenerator) generateDropTable(change yaml.Change) (string, error) {
+// When schemaOnly is true, SchemaOnly: true is included so the runner updates
+// the schema state without executing DROP TABLE against the database.
+func (g *GoGenerator) generateDropTable(change yaml.Change, schemaOnly bool) (string, error) {
+	if schemaOnly {
+		return fmt.Sprintf("\t\t\t&m.DropTable{Name: %q, SchemaOnly: true},\n", change.TableName), nil
+	}
 	return fmt.Sprintf("\t\t\t&m.DropTable{Name: %q},\n", change.TableName), nil
 }
 
@@ -210,7 +233,13 @@ func (g *GoGenerator) generateAddField(change yaml.Change) (string, error) {
 }
 
 // generateDropField emits a &m.DropField{...} literal.
-func (g *GoGenerator) generateDropField(change yaml.Change) (string, error) {
+// When schemaOnly is true, SchemaOnly: true is included so the runner updates
+// the schema state without executing DROP COLUMN against the database.
+func (g *GoGenerator) generateDropField(change yaml.Change, schemaOnly bool) (string, error) {
+	if schemaOnly {
+		return fmt.Sprintf("\t\t\t&m.DropField{Table: %q, Field: %q, SchemaOnly: true},\n",
+			change.TableName, change.FieldName), nil
+	}
 	return fmt.Sprintf("\t\t\t&m.DropField{Table: %q, Field: %q},\n",
 		change.TableName, change.FieldName), nil
 }

@@ -178,3 +178,77 @@ func TestAllTypenames(t *testing.T) {
 		}
 	}
 }
+
+func TestDropTable_SchemaOnly_NoSQL(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	// Pre-populate state so Down() can reconstruct the CREATE TABLE.
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	op := &migrate.DropTable{Name: "users", SchemaOnly: true}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL != "" {
+		t.Errorf("expected empty Up SQL with SchemaOnly, got %q", upSQL)
+	}
+
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if downSQL != "" {
+		t.Errorf("expected empty Down SQL with SchemaOnly, got %q", downSQL)
+	}
+
+	// Mutate must still advance schema state.
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if _, exists := state.Tables["users"]; exists {
+		t.Error("expected table 'users' to be removed from state after Mutate")
+	}
+}
+
+func TestDropField_SchemaOnly_NoSQL(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("users", []migrate.Field{
+		{Name: "id", Type: "integer", PrimaryKey: true},
+		{Name: "phone", Type: "varchar"},
+	}, nil)
+
+	op := &migrate.DropField{Table: "users", Field: "phone", SchemaOnly: true}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL != "" {
+		t.Errorf("expected empty Up SQL with SchemaOnly, got %q", upSQL)
+	}
+
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if downSQL != "" {
+		t.Errorf("expected empty Down SQL with SchemaOnly, got %q", downSQL)
+	}
+
+	// Mutate must still advance schema state.
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	ts, exists := state.Tables["users"]
+	if !exists {
+		t.Fatal("expected table 'users' to still exist in state")
+	}
+	for _, f := range ts.Fields {
+		if f.Name == "phone" {
+			t.Error("expected field 'phone' to be removed from state after Mutate")
+		}
+	}
+}

@@ -178,8 +178,14 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	count := len(migFiles)
 	name := BuildMigrationName(count, goMigName, diffEngine.GenerateMigrationName(diff))
 
-	// 7. Generate Go source
-	src, err := gen.GenerateMigration(name, deps, diff, currentSchema, prevSchema)
+	// 7. Prompt for destructive operations and build per-change decisions.
+	decisions, err := promptGoMigDecisions(diff)
+	if err != nil {
+		return err // includes user-requested exit
+	}
+
+	// 8. Generate Go source
+	src, err := gen.GenerateMigration(name, deps, diff, currentSchema, prevSchema, decisions)
 	if err != nil {
 		return fmt.Errorf("generating migration source: %w", err)
 	}
@@ -189,7 +195,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// 8. Write file
+	// 9. Write file
 	if err := os.MkdirAll(migrationsDir, 0o755); err != nil {
 		return fmt.Errorf("creating migrations directory: %w", err)
 	}
@@ -199,6 +205,58 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Printf("Created %s\n", outPath)
 	return nil
+}
+
+// promptGoMigDecisions iterates through diff.Changes and, for each destructive
+// operation, interactively asks the user what to do. The returned map is keyed
+// by change index and holds the user's PromptResponse for that change.
+//
+// If the user chooses PromptOmit the generated operation will have SchemaOnly: true
+// (schema state advances but no SQL is executed). If the user chooses PromptExit
+// an error is returned and migration generation is cancelled.
+func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptResponse, error) {
+	decisions := make(map[int]yamlpkg.PromptResponse)
+	generateAll := false
+
+	for i, change := range diff.Changes {
+		if !yamlpkg.IsDestructiveOperation(change.Type) {
+			continue
+		}
+		if generateAll {
+			decisions[i] = yamlpkg.PromptGenerate
+			continue
+		}
+
+		fmt.Printf("\n⚠  Destructive operation detected: %s on %q\n", change.Type, change.TableName)
+		fmt.Println("  1) Generate  — include SQL in migration")
+		fmt.Println("  2) Review    — include with // REVIEW comment")
+		fmt.Println("  3) Omit      — skip SQL; schema state still advances (SchemaOnly)")
+		fmt.Println("  4) Exit      — cancel migration generation")
+		fmt.Println("  5) All       — generate all remaining destructive ops without prompting")
+		fmt.Print("Choice [1-5]: ")
+
+		var input string
+		if _, err := fmt.Scanln(&input); err != nil {
+			return nil, fmt.Errorf("reading input: %w", err)
+		}
+
+		switch strings.TrimSpace(input) {
+		case "1":
+			decisions[i] = yamlpkg.PromptGenerate
+		case "2":
+			decisions[i] = yamlpkg.PromptReview
+		case "3":
+			decisions[i] = yamlpkg.PromptOmit
+		case "4":
+			return nil, fmt.Errorf("migration generation cancelled by user")
+		case "5":
+			decisions[i] = yamlpkg.PromptGenerate
+			generateAll = true
+		default:
+			decisions[i] = yamlpkg.PromptGenerate
+		}
+	}
+	return decisions, nil
 }
 
 // queryDAG builds the migrations binary in a temporary directory and runs

@@ -166,7 +166,14 @@ func (op *CreateTable) Mutate(state *SchemaState) error {
 // --- DropTable ---
 
 // DropTable is a migration operation that drops an existing database table.
-type DropTable struct{ Name string }
+// When SchemaOnly is true the operation advances the in-memory schema state
+// (via Mutate) but does not execute any SQL against the database, allowing the
+// developer to acknowledge a removal in the schema definition without
+// immediately dropping the live table.
+type DropTable struct {
+	Name       string
+	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
+}
 
 // TypeName returns the operation type identifier.
 func (op *DropTable) TypeName() string { return "drop_table" }
@@ -180,13 +187,20 @@ func (op *DropTable) IsDestructive() bool { return true }
 // Describe returns a human-readable description of this operation.
 func (op *DropTable) Describe() string { return fmt.Sprintf("Drop table %s", op.Name) }
 
-// Up generates the DROP TABLE SQL statement.
+// Up generates the DROP TABLE SQL statement, or returns empty string when SchemaOnly is set.
 func (op *DropTable) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return p.GenerateDropTable(op.Name), nil
 }
 
 // Down reconstructs the CREATE TABLE SQL by reading the table's pre-drop state.
+// Returns empty string when SchemaOnly is set.
 func (op *DropTable) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	ts, exists := state.Tables[op.Name]
 	if !exists {
 		return "", fmt.Errorf("table %q not found in state for Down generation", op.Name)
@@ -279,9 +293,14 @@ func (op *AddField) Mutate(state *SchemaState) error {
 // --- DropField ---
 
 // DropField is a migration operation that removes a column from an existing table.
+// When SchemaOnly is true the operation advances the in-memory schema state
+// (via Mutate) but does not execute any SQL against the database, allowing the
+// developer to acknowledge a removal in the schema definition without
+// immediately dropping the live column.
 type DropField struct {
-	Table string
-	Field string
+	Table      string
+	Field      string
+	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
 }
 
 // TypeName returns the operation type identifier.
@@ -298,13 +317,20 @@ func (op *DropField) Describe() string {
 	return fmt.Sprintf("Drop field %s.%s", op.Table, op.Field)
 }
 
-// Up generates the DROP COLUMN SQL statement.
+// Up generates the DROP COLUMN SQL statement, or returns empty string when SchemaOnly is set.
 func (op *DropField) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return p.GenerateDropColumn(op.Table, op.Field), nil
 }
 
 // Down reconstructs the ADD COLUMN SQL by reading the field's pre-drop state.
+// Returns empty string when SchemaOnly is set.
 func (op *DropField) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	ts, exists := state.Tables[op.Table]
 	if !exists {
 		return "", fmt.Errorf("table %q not found in state", op.Table)

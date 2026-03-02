@@ -54,7 +54,7 @@ func TestGoGenerator_GenerateMigration_CreateTable(t *testing.T) {
 		},
 	}
 
-	src, err := g.GenerateMigration("0001_initial", []string{}, diff, nil, nil)
+	src, err := g.GenerateMigration("0001_initial", []string{}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestGoGenerator_GenerateMigration_AddField(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0002_add_phone", []string{"0001_initial"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0002_add_phone", []string{"0001_initial"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestGoGenerator_GenerateMigration_ValidGoFormat(t *testing.T) {
 			{Type: yaml.ChangeTypeTableRemoved, TableName: "old_table", OldValue: yaml.Table{Name: "old_table"}},
 		},
 	}
-	src, err := g.GenerateMigration("0003_drop_table", []string{"0002_add_phone"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0003_drop_table", []string{"0002_add_phone"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestGoGenerator_GenerateMigration_DropField(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0004_drop_phone", []string{"0003_drop_table"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0004_drop_phone", []string{"0003_drop_table"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestGoGenerator_GenerateMigration_AlterField_NoSchemas(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0005_alter_email", []string{"0004_drop_phone"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0005_alter_email", []string{"0004_drop_phone"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestGoGenerator_GenerateMigration_AlterField_WithSchemas(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0006_widen_email", []string{"0005_alter_email"}, diff, currSchema, prevSchema)
+	src, err := g.GenerateMigration("0006_widen_email", []string{"0005_alter_email"}, diff, currSchema, prevSchema, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestGoGenerator_GenerateMigration_AddIndex(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0007_add_index", []string{"0006_widen_email"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0007_add_index", []string{"0006_widen_email"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestGoGenerator_GenerateMigration_DropIndex(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0008_drop_index", []string{"0007_add_index"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0008_drop_index", []string{"0007_add_index"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestGoGenerator_GenerateMigration_RenameTable(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0009_rename_table", []string{}, diff, nil, nil)
+	src, err := g.GenerateMigration("0009_rename_table", []string{}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -343,7 +343,7 @@ func TestGoGenerator_GenerateMigration_RenameField(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0010_rename_field", []string{}, diff, nil, nil)
+	src, err := g.GenerateMigration("0010_rename_field", []string{}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestGoGenerator_GenerateMigration_RenameField(t *testing.T) {
 
 func TestGoGenerator_GenerateMigration_NilDiff(t *testing.T) {
 	g := codegen.NewGoGenerator()
-	_, err := g.GenerateMigration("test", nil, nil, nil, nil)
+	_, err := g.GenerateMigration("test", nil, nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for nil diff")
 	}
@@ -369,7 +369,7 @@ func TestGoGenerator_GenerateMigration_NilDiff(t *testing.T) {
 func TestGoGenerator_GenerateMigration_NoChanges(t *testing.T) {
 	g := codegen.NewGoGenerator()
 	diff := &yaml.SchemaDiff{HasChanges: false}
-	_, err := g.GenerateMigration("test", nil, diff, nil, nil)
+	_, err := g.GenerateMigration("test", nil, diff, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for no changes")
 	}
@@ -396,7 +396,7 @@ func TestGoGenerator_GenerateMigration_CreateTableWithIndexes(t *testing.T) {
 		},
 	}
 
-	src, err := g.GenerateMigration("0011_products", []string{}, diff, nil, nil)
+	src, err := g.GenerateMigration("0011_products", []string{}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -434,7 +434,7 @@ func TestGoGenerator_GenerateMigration_FieldWithForeignKey(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0012_fk", []string{}, diff, nil, nil)
+	src, err := g.GenerateMigration("0012_fk", []string{}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -457,7 +457,7 @@ func TestGoGenerator_GenerateMigration_MultipleDependencies(t *testing.T) {
 			{Type: yaml.ChangeTypeTableRemoved, TableName: "temp"},
 		},
 	}
-	src, err := g.GenerateMigration("0013_multi_deps", []string{"0001_initial", "0002_add_phone"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0013_multi_deps", []string{"0001_initial", "0002_add_phone"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -484,7 +484,7 @@ func TestGoGenerator_GenerateMigration_NullableDefaultIsTrue(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0010_add_bio", []string{"0001_initial"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0010_add_bio", []string{"0001_initial"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -507,7 +507,7 @@ func TestGoGenerator_GenerateMigration_ExplicitNotNullable(t *testing.T) {
 			},
 		},
 	}
-	src, err := g.GenerateMigration("0011_add_email", []string{"0001_initial"}, diff, nil, nil)
+	src, err := g.GenerateMigration("0011_add_email", []string{"0001_initial"}, diff, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("GenerateMigration: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestGoGenerator_GenerateMigration_DropIndex_EmptyName(t *testing.T) {
 			},
 		},
 	}
-	_, err := g.GenerateMigration("0012_bad_drop_index", []string{}, diff, nil, nil)
+	_, err := g.GenerateMigration("0012_bad_drop_index", []string{}, diff, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error for empty index name in drop_index")
 	}
@@ -561,5 +561,83 @@ func TestNextMigrationNumber(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("NextMigrationNumber(%d): got %q, want %q", tt.count, got, tt.want)
 		}
+	}
+}
+
+func TestGoGenerator_DropField_PromptOmit_EmitsSchemaOnly(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeFieldRemoved, TableName: "users", FieldName: "phone"},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptOmit}
+	src, err := g.GenerateMigration("0020_drop_phone_deferred", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "SchemaOnly: true") {
+		t.Errorf("expected SchemaOnly: true in output, got:\n%s", src)
+	}
+}
+
+func TestGoGenerator_DropTable_PromptOmit_EmitsSchemaOnly(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeTableRemoved, TableName: "old_table"},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptOmit}
+	src, err := g.GenerateMigration("0021_drop_table_deferred", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "SchemaOnly: true") {
+		t.Errorf("expected SchemaOnly: true in output, got:\n%s", src)
+	}
+}
+
+func TestGoGenerator_DropField_PromptReview_EmitsComment(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeFieldRemoved, TableName: "users", FieldName: "phone"},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptReview}
+	src, err := g.GenerateMigration("0022_drop_phone_review", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "// REVIEW:") {
+		t.Errorf("expected // REVIEW: comment in output, got:\n%s", src)
+	}
+	// Should NOT have SchemaOnly for a Review decision.
+	if strings.Contains(src, "SchemaOnly") {
+		t.Error("expected no SchemaOnly for PromptReview")
+	}
+}
+
+func TestGoGenerator_DropField_NilDecisions_Normal(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeFieldRemoved, TableName: "users", FieldName: "phone"},
+		},
+	}
+	src, err := g.GenerateMigration("0023_drop_phone_normal", []string{}, diff, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if strings.Contains(src, "SchemaOnly") {
+		t.Error("expected no SchemaOnly when decisions is nil")
+	}
+	if strings.Contains(src, "// REVIEW:") {
+		t.Error("expected no REVIEW comment when decisions is nil")
 	}
 }

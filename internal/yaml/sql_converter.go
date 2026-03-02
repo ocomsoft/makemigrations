@@ -89,6 +89,13 @@ const (
 	DefaultMigrationsDir = "migrations"
 )
 
+// IsDestructiveOperation returns true if the operation type may cause data loss.
+// Exported so callers outside this package (e.g. cmd) can apply the same logic
+// when building per-change decisions before code generation.
+func IsDestructiveOperation(changeType ChangeType) bool {
+	return isDestructiveOperation(changeType)
+}
+
 // isDestructiveOperation returns true if the operation type is actually destructive
 func isDestructiveOperation(changeType ChangeType) bool {
 	switch changeType {

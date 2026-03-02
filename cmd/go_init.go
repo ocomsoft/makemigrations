@@ -55,7 +55,7 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 	if err == nil && existingSchema != nil {
 		initialMigName = "0001_initial"
 		diff := schemaToInitialDiff(existingSchema)
-		src, err := gen.GenerateMigration(initialMigName, []string{}, diff, existingSchema, nil)
+		src, err := gen.GenerateMigration(initialMigName, []string{}, diff, existingSchema, nil, nil)
 		if err != nil {
 			return fmt.Errorf("generating initial migration: %w", err)
 		}

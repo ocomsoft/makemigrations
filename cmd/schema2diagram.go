@@ -108,7 +108,7 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize YAML components using existing functions from yaml_common.go
-	components := InitializeYAMLComponents(dbType, verbose, false)
+	components := InitializeYAMLComponents(dbType, verbose)
 
 	if verbose {
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")

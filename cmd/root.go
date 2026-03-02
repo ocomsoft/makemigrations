@@ -36,43 +36,24 @@ import (
 var (
 	cfgFile    string
 	configFile string // Config file path
-	dryRun     bool
-	check      bool
-	customName string
 	verbose    bool
-	silent     bool
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "makemigrations",
-	Short: "Django-style migration generator for Go",
-	Long: `Generate database migrations from schema.sql files in Go modules.
-
-This tool scans Go module dependencies for schema.sql files, merges them into 
-a unified schema, and generates Goose-compatible migration files by comparing 
-against the last known schema state.
-
-When run without a subcommand, defaults to 'makemigrations_sql'.
+	Short: "Django-style Go migration generator",
+	Long: `Generate database migrations from YAML schema files as typed Go code.
 
 Available commands:
-- init: Initialize migrations directory and create initial migration from YAML schemas
-- init_sql: Initialize migrations directory and create initial migration from SQL schemas
-- makemigrations: Generate migrations from YAML schemas
-- makemigrations_sql: Generate migrations from schema.sql files
-
-Features:
-- Scans direct Go module dependencies for sql/schema.sql files
-- Merges duplicate tables with intelligent conflict resolution
-- Handles foreign key dependencies and circular references
-- Generates both UP and DOWN migrations
-- Adds REVIEW comments for destructive operations
-- Compatible with Goose migration runner`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Default to makemigrations_sql when no subcommand is provided
-		// Import the logic directly since this is the default behavior
-		return runDefaultMakeMigrations(cmd, args)
-	},
+  init              Initialize migrations directory and create initial migration
+  makemigrations    Generate Go migration files from YAML schema changes
+  migrate           Build and run the compiled migrations binary
+  db2schema         Extract database schema to YAML
+  struct2schema     Convert Go structs to YAML schema
+  dump_sql          Dump merged YAML schema as SQL
+  schema2diagram    Generate diagram from YAML schema
+  find_includes     Discover schema includes in Go modules`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications
@@ -88,23 +69,11 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-// runDefaultMakeMigrations runs the makemigrations_sql functionality as the default command
-func runDefaultMakeMigrations(cmd *cobra.Command, args []string) error {
-	return ExecuteSQLMakeMigrations(verbose, dryRun, check, customName)
-}
-
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flag for config file
 	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "Config file path (default: migrations/makemigrations.config.yaml)")
-
-	// Add the main command flags
-	rootCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be generated without creating files")
-	rootCmd.Flags().BoolVar(&check, "check", false, "Exit with error code if migrations are needed (for CI/CD)")
-	rootCmd.Flags().StringVar(&customName, "name", "", "Override auto-generated migration name")
-	rootCmd.Flags().BoolVar(&verbose, "verbose", false, "Show detailed processing information")
-	rootCmd.Flags().BoolVar(&silent, "silent", false, "Skip prompts for destructive operations (use review comments instead)")
 }
 
 // initConfig reads in config file and ENV variables if set.

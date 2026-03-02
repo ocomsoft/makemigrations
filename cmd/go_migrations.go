@@ -133,7 +133,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid database type: %w", err)
 	}
-	components := InitializeYAMLComponents(dbType, goMigVerbose, false)
+	components := InitializeYAMLComponents(dbType, goMigVerbose)
 	allSchemas, err := ScanAndParseSchemas(components, goMigVerbose)
 	if err != nil {
 		return fmt.Errorf("parsing YAML schema: %w", err)

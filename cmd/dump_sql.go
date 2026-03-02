@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var databaseType string
+
 // dumpSQLCmd represents the dump_sql command
 var dumpSQLCmd = &cobra.Command{
 	Use:   "dump_sql",

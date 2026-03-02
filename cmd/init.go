@@ -27,10 +27,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	initDatabaseType string
-	initSQLMode      bool
-)
+var initDatabaseType string
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -38,17 +35,16 @@ var initCmd = &cobra.Command{
 	Short: "Initialize migrations directory for the Go migration framework",
 	Long: `Bootstrap the migrations/ directory for the Django-style Go migration framework.
 
-By default this command:
+This command:
 - Creates the migrations/ directory if it doesn't exist
 - Generates migrations/main.go and migrations/go.mod
 - If a .schema_snapshot.yaml exists, generates an initial 0001_initial.go migration
 - Prints instructions for faking the initial migration on an existing database
 
-Use --sql to initialise the legacy YAML-to-SQL workflow instead (generates an
-initial .sql migration file using Goose-compatible format).
-
 Use this command when setting up makemigrations for the first time in a project.`,
-	RunE: runInit,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		return ExecuteGoMigrationInit(initDatabaseType, verbose)
+	},
 }
 
 func init() {
@@ -57,13 +53,4 @@ func init() {
 	initCmd.Flags().StringVar(&initDatabaseType, "database", "postgresql",
 		"Target database type (postgresql, mysql, sqlserver, sqlite)")
 	initCmd.Flags().BoolVar(&verbose, "verbose", false, "Show detailed processing information")
-	initCmd.Flags().BoolVar(&initSQLMode, "sql", false,
-		"Use the legacy YAML-to-SQL workflow (generates Goose-compatible .sql migration files)")
-}
-
-func runInit(_ *cobra.Command, _ []string) error {
-	if initSQLMode {
-		return ExecuteYAMLInit(initDatabaseType, verbose)
-	}
-	return ExecuteGoMigrationInit(initDatabaseType, verbose)
 }

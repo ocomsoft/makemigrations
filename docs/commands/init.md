@@ -9,10 +9,9 @@ Running `makemigrations init` bootstraps everything needed to start writing Go-b
 - Creates the `migrations/` directory
 - Generates `migrations/main.go` — the entry point for the compiled migration binary
 - Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/makemigrations/migrate`
-- **If `*.sql` Goose migration files are detected**, automatically runs `migrate-to-go` to convert them to Go migrations (see [Auto-upgrade from Goose SQL migrations](#auto-upgrade-from-goose-sql-migrations))
 - If an existing `migrations/.schema_snapshot.yaml` is found, generates `migrations/0001_initial.go` with `CreateTable` operations for every table already defined in that snapshot, and prints instructions for fake-applying it
 
-If no snapshot is found and no SQL files are present, the command creates an empty setup and prints instructions for generating the first migration.
+If no snapshot is found the command creates an empty setup and prints instructions for generating the first migration.
 
 ## Usage
 
@@ -130,41 +129,6 @@ func init() {
 
 ---
 
-## Auto-upgrade from Goose SQL migrations
-
-If `*.sql` files following the Goose naming convention (`00001_name.sql`) are detected inside the `migrations/` directory when `init` is run, it **automatically delegates to `migrate-to-go`** rather than performing a bare scaffold. This means a single command upgrades an existing Goose project to the Go migration framework:
-
-```bash
-# migrations/ contains 00001_initial.sql, 00002_add_phone.sql, ...
-makemigrations init
-
-# Output:
-# Detected 2 Goose SQL migration(s) in migrations — running migrate-to-go...
-# ✓ Created migrations/0001_initial.go
-# ✓ Created migrations/0002_add_phone.go
-# ✓ Created migrations/main.go
-# ✓ Created migrations/go.mod
-# ✓ Created migrations/0003_schema_state.go (schema-state bootstrap, SchemaOnly)
-# ✗ Deleted migrations/00001_initial.sql
-# ✗ Deleted migrations/00002_add_phone.sql
-```
-
-After this completes:
-
-```bash
-# Apply all migrations (build is handled automatically)
-makemigrations migrate up
-
-# Or fake them all if the schema is already applied
-makemigrations migrate fake 0001_initial
-makemigrations migrate fake 0002_add_phone
-makemigrations migrate status
-```
-
-See the [migrate-to-go command](./migrate_to_go.md) for full documentation of the conversion process.
-
----
-
 ## Examples
 
 ### Fresh Project — No Existing Schema
@@ -255,7 +219,6 @@ makemigrations init --verbose
 |----------|----------|
 | Fresh project | `makemigrations makemigrations --name "initial"` → `makemigrations migrate up` |
 | Existing DB (snapshot found) | `makemigrations migrate fake 0001_initial` → `makemigrations migrate status` |
-| Existing Goose SQL migrations | `makemigrations init` auto-converts them → `makemigrations migrate fake <each>` or `makemigrations migrate up` |
 
 ---
 
@@ -413,8 +376,8 @@ See the [Manual Build Guide](../manual-migration-build.md) if you need to contro
 ## See Also
 
 - [migrate command](./migrate.md) — run `up`, `down`, `status`, `fake` etc. without manual builds
-- [migrate-to-go command](./migrate_to_go.md) — convert Goose SQL migrations to Go
 - [Manual Build Guide](../manual-migration-build.md) — build the binary with explicit GOWORK/GOTOOLCHAIN
 - [makemigrations Command](./makemigrations.md) — Generate a new migration file
+- [migrate-to-go command](./migrate_to_go.md) — convert existing Goose SQL migrations to Go
 - [Configuration Guide](../configuration.md) — Full configuration reference
 - [Schema Format Guide](../schema-format.md) — YAML schema syntax

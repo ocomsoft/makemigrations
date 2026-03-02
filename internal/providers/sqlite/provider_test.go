@@ -80,6 +80,44 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 	}
 }
 
+func TestProvider_GenerateForeignKeyConstraints(t *testing.T) {
+	p := New()
+	schema := &types.Schema{
+		Tables: []types.Table{
+			{
+				Name: "orders",
+				Fields: []types.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					{Name: "user_id", Type: "foreign_key", ForeignKey: &types.ForeignKey{Table: "users", OnDelete: "cascade"}},
+				},
+			},
+		},
+	}
+	got := p.GenerateForeignKeyConstraints(schema, nil)
+	// SQLite's GenerateForeignKeyConstraint returns "", so this should also be empty
+	if got != "" {
+		t.Errorf("expected empty for SQLite FK constraints, got:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateForeignKeyConstraints_Empty(t *testing.T) {
+	p := New()
+	schema := &types.Schema{
+		Tables: []types.Table{
+			{
+				Name: "simple",
+				Fields: []types.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+				},
+			},
+		},
+	}
+	got := p.GenerateForeignKeyConstraints(schema, nil)
+	if got != "" {
+		t.Errorf("expected empty for no FKs, got:\n%s", got)
+	}
+}
+
 func TestProvider_InferForeignKeyType(t *testing.T) {
 	provider := New()
 

@@ -300,7 +300,24 @@ func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName st
 }
 
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	t1, t2 := table1, table2
+	if t1 > t2 {
+		t1, t2 = t2, t1
+	}
+
+	junctionName := fmt.Sprintf("%s_%s", t1, t2)
+	col1 := fmt.Sprintf("%s_id", t1)
+	col2 := fmt.Sprintf("%s_id", t2)
+
+	fkType1 := p.InferForeignKeyType(t1, schema)
+	fkType2 := p.InferForeignKeyType(t2, schema)
+
+	return fmt.Sprintf("CREATE TABLE %s (\n    %s %s,\n    %s %s\n)\nENGINE = MergeTree()\nPRIMARY KEY (%s, %s);",
+		p.QuoteName(junctionName),
+		p.QuoteName(col1), fkType1,
+		p.QuoteName(col2), fkType2,
+		p.QuoteName(col1), p.QuoteName(col2),
+	), nil
 }
 
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {

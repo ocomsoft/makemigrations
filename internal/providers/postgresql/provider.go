@@ -389,8 +389,26 @@ func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName st
 }
 
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
-	// TODO: Implement
-	return "", fmt.Errorf("not implemented yet")
+	t1, t2 := table1, table2
+	if t1 > t2 {
+		t1, t2 = t2, t1
+	}
+
+	junctionName := fmt.Sprintf("%s_%s", t1, t2)
+	col1 := fmt.Sprintf("%s_id", t1)
+	col2 := fmt.Sprintf("%s_id", t2)
+
+	fkType1 := p.InferForeignKeyType(t1, schema)
+	fkType2 := p.InferForeignKeyType(t2, schema)
+
+	return fmt.Sprintf("CREATE TABLE %s (\n    %s %s NOT NULL,\n    %s %s NOT NULL,\n    PRIMARY KEY (%s, %s),\n    FOREIGN KEY (%s) REFERENCES %s ON DELETE CASCADE,\n    FOREIGN KEY (%s) REFERENCES %s ON DELETE CASCADE\n);",
+		p.QuoteName(junctionName),
+		p.QuoteName(col1), fkType1,
+		p.QuoteName(col2), fkType2,
+		p.QuoteName(col1), p.QuoteName(col2),
+		p.QuoteName(col1), p.QuoteName(t1),
+		p.QuoteName(col2), p.QuoteName(t2),
+	), nil
 }
 
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
@@ -428,8 +446,34 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 }
 
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
-	// TODO: Implement
-	return ""
+	var constraints []string
+
+	for _, table := range schema.Tables {
+		for _, field := range table.Fields {
+			if field.Type == "foreign_key" && field.ForeignKey != nil {
+				constraint := p.GenerateForeignKeyConstraint(table.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				if constraint != "" {
+					constraints = append(constraints, constraint)
+				}
+			}
+		}
+	}
+
+	for _, junctionTable := range junctionTables {
+		for _, field := range junctionTable.Fields {
+			if field.Type == "foreign_key" && field.ForeignKey != nil {
+				constraint := p.GenerateForeignKeyConstraint(junctionTable.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				if constraint != "" {
+					constraints = append(constraints, constraint)
+				}
+			}
+		}
+	}
+
+	if len(constraints) == 0 {
+		return ""
+	}
+	return strings.Join(constraints, "\n")
 }
 
 // GetDatabaseSchema extracts schema information from a PostgreSQL database

@@ -25,6 +25,7 @@ package redshift
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -238,6 +239,73 @@ func TestProvider_GenerateCreateTable(t *testing.T) {
 
 	if result != expected {
 		t.Errorf("GenerateCreateTable() = %s; expected %s", result, expected)
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestProvider_GenerateAlterColumn_TypeChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "score", Type: "integer"}
+	nw := &types.Field{Name: "score", Type: "bigint"}
+	got, err := p.GenerateAlterColumn("results", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, `ALTER COLUMN "score" TYPE`) {
+		t.Errorf("expected TYPE clause in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NullableToNotNull(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(true)}
+	nw := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(false)}
+	got, err := p.GenerateAlterColumn("users", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "SET NOT NULL") {
+		t.Errorf("expected SET NOT NULL in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AddDefault(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "status", Type: "varchar"}
+	nw := &types.Field{Name: "status", Type: "varchar", Default: "active"}
+	got, err := p.GenerateAlterColumn("orders", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "SET DEFAULT 'active'") {
+		t.Errorf("expected SET DEFAULT in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_DropDefault(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "status", Type: "varchar", Default: "active"}
+	nw := &types.Field{Name: "status", Type: "varchar"}
+	got, err := p.GenerateAlterColumn("orders", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "DROP DEFAULT") {
+		t.Errorf("expected DROP DEFAULT in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "name", Type: "varchar"}
+	nw := &types.Field{Name: "name", Type: "varchar"}
+	got, err := p.GenerateAlterColumn("things", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty for no-change, got: %q", got)
 	}
 }
 

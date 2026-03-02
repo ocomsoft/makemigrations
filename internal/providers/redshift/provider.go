@@ -268,7 +268,28 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 // Placeholder implementations for remaining interface methods
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	var stmts []string
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	if p.ConvertFieldType(oldField) != p.ConvertFieldType(newField) {
+		stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s TYPE %s;", tbl, col, p.ConvertFieldType(newField)))
+	}
+	if oldField.IsNullable() != newField.IsNullable() {
+		if newField.IsNullable() {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;", tbl, col))
+		} else {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;", tbl, col))
+		}
+	}
+	if oldField.Default != newField.Default {
+		if newField.Default == "" {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;", tbl, col))
+		} else {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT '%s';", tbl, col, newField.Default))
+		}
+	}
+	return strings.Join(stmts, "\n"), nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

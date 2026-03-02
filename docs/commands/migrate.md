@@ -2,7 +2,7 @@
 
 The `migrate` binary is the runtime component of the Go migration framework. It is compiled from the `migrations/` directory in your project and is the primary way to apply, rollback, and inspect database migrations.
 
-> **This is the primary workflow.** Run `makemigrations init` to generate the `migrations/` directory, then compile the binary as shown below.
+> **This is the primary workflow.** Run `makemigrations init` to generate the `migrations/` directory, then use `makemigrations migrate` or compile the binary manually as shown below.
 
 ## Overview
 
@@ -18,7 +18,28 @@ your-project/
     └── migrate             ← compiled binary (you build this)
 ```
 
-## Building the Binary
+## Running via `makemigrations migrate` (Recommended)
+
+`makemigrations migrate` automatically builds the migrations binary with the correct Go workspace and toolchain settings, then runs it. All arguments are forwarded unchanged.
+
+```bash
+makemigrations migrate up
+makemigrations migrate down --steps 2
+makemigrations migrate status
+makemigrations migrate showsql
+makemigrations migrate fake 0001_initial
+makemigrations migrate dag
+```
+
+Add `--verbose` to see the build step:
+
+```bash
+makemigrations migrate --verbose up
+```
+
+This is the recommended approach during development because it handles Go workspace conflicts and toolchain version selection automatically. See the [Manual Build Guide](../manual-migration-build.md) for how to build the binary yourself.
+
+## Building the Binary Manually
 
 ```bash
 cd migrations && go mod tidy && go build -o migrate .
@@ -27,6 +48,8 @@ cd migrations && go mod tidy && go build -o migrate .
 Run this after:
 - `makemigrations init` (first time setup)
 - `makemigrations makemigrations` (after generating new migrations)
+
+> If your project uses a `go.work` file or a non-system Go toolchain, see the [Manual Build Guide](../manual-migration-build.md) for the correct environment flags.
 
 ## Commands
 
@@ -307,14 +330,11 @@ This table is created automatically on first `up` or `status` run. It is created
 # 1. Generate initial migration (if you have an existing schema snapshot)
 makemigrations init
 
-# 2. Build the binary
-cd migrations && go mod tidy && go build -o migrate .
+# 2. Apply all migrations
+makemigrations migrate up
 
-# 3. Apply all migrations
-./migrate up
-
-# 4. Verify
-./migrate status
+# 3. Verify
+makemigrations migrate status
 ```
 
 ### First-time setup on an existing database (fake initial)
@@ -322,16 +342,13 @@ cd migrations && go mod tidy && go build -o migrate .
 ```bash
 # 1. Generate initial migration from existing schema
 makemigrations init
-# This prints: ./migrate fake 0001_initial
+# This prints: makemigrations migrate fake 0001_initial
 
-# 2. Build the binary
-cd migrations && go mod tidy && go build -o migrate .
+# 2. Mark the initial migration as already applied
+makemigrations migrate fake 0001_initial
 
-# 3. Mark the initial migration as already applied
-./migrate fake 0001_initial
-
-# 4. Verify
-./migrate status
+# 3. Verify
+makemigrations migrate status
 ```
 
 ### Day-to-day development cycle
@@ -344,13 +361,13 @@ makemigrations makemigrations --name "add user preferences"
 # Creates: migrations/0004_add_user_preferences.go
 
 # 3. Preview the SQL before applying
-cd migrations && go build -o migrate . && ./migrate showsql
+makemigrations migrate showsql
 
 # 4. Apply
-./migrate up
+makemigrations migrate up
 
 # 5. Verify
-./migrate status
+makemigrations migrate status
 ```
 
 ### CI/CD pipeline
@@ -360,20 +377,20 @@ cd migrations && go build -o migrate . && ./migrate showsql
 makemigrations makemigrations --check
 
 # Apply migrations as part of deployment
-cd migrations && go build -o migrate . && ./migrate up
+makemigrations migrate up
 ```
 
 ### Rollback in production
 
 ```bash
 # Review what will be rolled back
-./migrate status
+makemigrations migrate status
 
 # Roll back the last migration
-./migrate down
+makemigrations migrate down
 
 # Or roll back multiple steps
-./migrate down --steps 3
+makemigrations migrate down --steps 3
 ```
 
 ---

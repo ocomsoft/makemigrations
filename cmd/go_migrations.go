@@ -265,20 +265,21 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 	return decisions, nil
 }
 
-// queryDAG builds the migrations binary in a temporary directory and runs
-// `dag --format json` to retrieve the current migration graph state. The
-// binary is cleaned up automatically when the function returns.
-func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
+// buildMigrationsBinary compiles the migrations module in migrationsDir into a
+// temporary binary. It returns the binary path and a cleanup function that
+// removes the temporary directory. The caller must invoke cleanup() when done.
+func buildMigrationsBinary(migrationsDir string, verbose bool) (binPath string, cleanup func(), err error) {
 	absMigrationsDir, err := filepath.Abs(migrationsDir)
 	if err != nil {
-		return nil, fmt.Errorf("resolving migrations dir: %w", err)
+		return "", nil, fmt.Errorf("resolving migrations dir: %w", err)
 	}
 
 	tmpDir, err := os.MkdirTemp("", "makemigrations-*")
 	if err != nil {
-		return nil, fmt.Errorf("creating temp dir: %w", err)
+		return "", nil, fmt.Errorf("creating temp dir: %w", err)
 	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
+	cleanup = func() { _ = os.RemoveAll(tmpDir) }
+
 	tmpBin := filepath.Join(tmpDir, "migrations-bin")
 
 	if verbose {
@@ -348,10 +349,24 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 	buildCmd.Dir = absMigrationsDir
 	buildCmd.Env = goEnv
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
-		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
+		cleanup()
+		return "", nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
 	}
 
-	dagCmd := exec.Command(tmpBin, "dag", "--format", "json")
+	return tmpBin, cleanup, nil
+}
+
+// queryDAG builds the migrations binary in a temporary directory and runs
+// `dag --format json` to retrieve the current migration graph state. The
+// binary is cleaned up automatically when the function returns.
+func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
+	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	dagCmd := exec.Command(binPath, "dag", "--format", "json")
 	dagOutput, err := dagCmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("running dag command: %w", err)

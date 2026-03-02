@@ -99,7 +99,7 @@ The `--format json` output is used internally by `makemigrations makemigrations`
 Apply all pending migrations in topological order.
 
 ```
-./migrations/migrate up [--to <migration-name>]
+./migrations/migrate up [--to <migration-name>] [--warn-on-missing-drop]
 ```
 
 **Flags:**
@@ -107,6 +107,7 @@ Apply all pending migrations in topological order.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--to` | (none) | Stop after applying the named migration |
+| `--warn-on-missing-drop` | `false` | Warn and continue when a `DROP TABLE`, `DROP COLUMN`, or `DROP INDEX` fails because the object does not exist |
 
 **Examples:**
 
@@ -116,6 +117,9 @@ Apply all pending migrations in topological order.
 
 # Apply only up to a specific migration
 ./migrations/migrate up --to 0003_add_index
+
+# Continue past drop operations that target objects already absent from the database
+./migrations/migrate up --warn-on-missing-drop
 ```
 
 **Output:**
@@ -135,7 +139,7 @@ If a migration fails, it prints `FAILED` and returns a non-zero exit code. Migra
 Roll back applied migrations in reverse topological order.
 
 ```
-./migrations/migrate down [--steps <n>] [--to <migration-name>]
+./migrations/migrate down [--steps <n>] [--to <migration-name>] [--warn-on-missing-drop]
 ```
 
 **Flags:**
@@ -144,6 +148,7 @@ Roll back applied migrations in reverse topological order.
 |------|---------|-------------|
 | `--steps` | `1` | Number of migrations to roll back |
 | `--to` | (none) | Roll back until (but not including) this migration name |
+| `--warn-on-missing-drop` | `false` | Warn and continue when a `DROP TABLE`, `DROP COLUMN`, or `DROP INDEX` fails because the object does not exist |
 
 **Examples:**
 
@@ -156,6 +161,9 @@ Roll back applied migrations in reverse topological order.
 
 # Roll back until 0001_initial (rolls back everything after it)
 ./migrations/migrate down --to 0001_initial
+
+# Continue past drop operations that target objects already absent from the database
+./migrations/migrate down --warn-on-missing-drop
 ```
 
 **Output:**
@@ -444,6 +452,17 @@ echo $DB_HOST $DB_USER $DB_NAME
 ### Migration fails mid-run
 
 The binary stops at the first failure and prints `FAILED`. Migrations already completed in that run are recorded as applied. Fix the failing migration and re-run `up`.
+
+### "DROP TABLE / DROP COLUMN / DROP INDEX" fails because the object doesn't exist
+
+If someone manually removed a database object that a migration is trying to drop, `up` or `down` will fail. Use `--warn-on-missing-drop` to print a warning and continue instead of stopping:
+
+```bash
+./migrations/migrate up --warn-on-missing-drop
+./migrations/migrate down --warn-on-missing-drop
+```
+
+A `[WARNING]` line is printed for each skipped drop, and the migration is recorded as applied. Only true missing-object errors are skipped — all other errors still stop the migration.
 
 ### "no migration named X"
 

@@ -25,8 +25,112 @@ package postgresql
 
 import (
 	"errors"
+	"strings"
 	"testing"
+
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestProvider_GenerateAlterColumn_TypeChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "score", Type: "integer"}
+	nw := &types.Field{Name: "score", Type: "bigint"}
+	got, err := p.GenerateAlterColumn("results", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `ALTER TABLE "results" ALTER COLUMN "score" TYPE BIGINT;`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NullableToNotNull(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(true)}
+	nw := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(false)}
+	got, err := p.GenerateAlterColumn("users", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `ALTER TABLE "users" ALTER COLUMN "email" SET NOT NULL;`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NotNullToNullable(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(false)}
+	nw := &types.Field{Name: "email", Type: "varchar", Nullable: boolPtr(true)}
+	got, err := p.GenerateAlterColumn("users", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `ALTER TABLE "users" ALTER COLUMN "email" DROP NOT NULL;`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AddDefault(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "status", Type: "varchar"}
+	nw := &types.Field{Name: "status", Type: "varchar", Default: "active"}
+	got, err := p.GenerateAlterColumn("orders", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `ALTER TABLE "orders" ALTER COLUMN "status" SET DEFAULT 'active';`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_DropDefault(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "status", Type: "varchar", Default: "active"}
+	nw := &types.Field{Name: "status", Type: "varchar"}
+	got, err := p.GenerateAlterColumn("orders", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := `ALTER TABLE "orders" ALTER COLUMN "status" DROP DEFAULT;`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_MultipleChanges(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "ref_id", Type: "integer", Nullable: boolPtr(true)}
+	nw := &types.Field{Name: "ref_id", Type: "bigint", Nullable: boolPtr(false)}
+	got, err := p.GenerateAlterColumn("items", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, `ALTER COLUMN "ref_id" TYPE BIGINT`) {
+		t.Errorf("expected TYPE clause in:\n%s", got)
+	}
+	if !strings.Contains(got, `ALTER COLUMN "ref_id" SET NOT NULL`) {
+		t.Errorf("expected SET NOT NULL clause in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "name", Type: "varchar"}
+	nw := &types.Field{Name: "name", Type: "varchar"}
+	got, err := p.GenerateAlterColumn("things", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty string for no-change alter, got: %q", got)
+	}
+}
 
 func TestProvider_IsNotFoundError(t *testing.T) {
 	p := New()

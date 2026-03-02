@@ -114,3 +114,40 @@ func TestRegistry_InsertionOrder(t *testing.T) {
 		t.Fatal("expected insertion order preserved")
 	}
 }
+
+func TestRegistry_Resolve_ExactMatch(t *testing.T) {
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{Name: "0001_initial"})
+	got, err := reg.Resolve("0001_initial")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "0001_initial" {
+		t.Fatalf("expected %q, got %q", "0001_initial", got)
+	}
+}
+
+func TestRegistry_Resolve_PartialName_Errors(t *testing.T) {
+	// fake "0001" must not silently match "0001_initial" — require the full name.
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{Name: "0001_initial"})
+	_, err := reg.Resolve("0001")
+	if err == nil {
+		t.Fatal("expected error for partial (non-exact) name")
+	}
+	if !strings.Contains(err.Error(), "no migration") {
+		t.Fatalf("expected 'no migration' in error, got: %v", err)
+	}
+}
+
+func TestRegistry_Resolve_NotFound(t *testing.T) {
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{Name: "0001_initial"})
+	_, err := reg.Resolve("9999_missing")
+	if err == nil {
+		t.Fatal("expected error for non-existent migration")
+	}
+	if !strings.Contains(err.Error(), "no migration") {
+		t.Fatalf("expected 'no migration' in error, got: %v", err)
+	}
+}

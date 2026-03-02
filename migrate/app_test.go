@@ -25,6 +25,7 @@ SOFTWARE.
 package migrate_test
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -354,6 +355,16 @@ func TestApp_Run_ShowSQL_SQLite(t *testing.T) {
 func TestApp_Run_Fake_SQLite(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test_fake.db")
 	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "users",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
 	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
 	app := migrate.NewAppWithRegistry(cfg, reg)
 
@@ -368,6 +379,58 @@ func TestApp_Run_Fake_SQLite(t *testing.T) {
 	err := app.Run([]string{"fake", "0001_initial"})
 	if err != nil {
 		t.Fatalf("fake command failed: %v", err)
+	}
+}
+
+func TestApp_Run_Fake_ByPrefix_ThenUpIsNoop(t *testing.T) {
+	// Regression: fake must record the full resolved name so that a subsequent
+	// "up" does not attempt to re-apply the already-faked migration.
+	dbPath := filepath.Join(t.TempDir(), "test_fake_prefix.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name: "users",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+				},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	// Fake by full name — must record exactly "0001_initial".
+	if err := app.Run([]string{"fake", "0001_initial"}); err != nil {
+		t.Fatalf("fake failed: %v", err)
+	}
+
+	// Up must be a no-op: the table already exists in the DB only notionally
+	// (faked), so if the runner tries to CREATE TABLE again it will fail.
+	// Create the table manually to simulate a pre-existing schema.
+	sqliteDB, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("opening sqlite: %v", err)
+	}
+	defer func() { _ = sqliteDB.Close() }()
+	if _, err := sqliteDB.Exec("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY)"); err != nil {
+		t.Fatalf("creating users table: %v", err)
+	}
+	_ = sqliteDB.Close()
+
+	if err := app.Run([]string{"up"}); err != nil {
+		t.Fatalf("up after fake-by-prefix failed (migration not recognised as applied): %v", err)
 	}
 }
 
@@ -516,5 +579,101 @@ func TestApp_Run_DAG_MultiStep(t *testing.T) {
 	err = app.Run([]string{"dag", "--format", "json"})
 	if err != nil {
 		t.Fatalf("dag json with multi-step chain failed: %v", err)
+	}
+}
+
+// TestApp_Run_Up_WarnOnMissingDrop confirms that the --warn-on-missing-drop
+// flag is accepted by the up command and propagates to the runner so that a
+// drop operation targeting a non-existent object prints a warning and does
+// not return an error.
+func TestApp_Run_Up_WarnOnMissingDrop(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_warn_up.db")
+
+	// Seed the DB with the history table and mark the initial migration as
+	// applied so that the second (drop) migration is the only pending one.
+	seedDB, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("opening seed db: %v", err)
+	}
+	if _, err := seedDB.Exec(`CREATE TABLE makemigrations_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
+		t.Fatalf("creating history table: %v", err)
+	}
+	if _, err := seedDB.Exec(`INSERT INTO makemigrations_history (name) VALUES ('0001_initial')`); err != nil {
+		t.Fatalf("recording initial: %v", err)
+	}
+	// Intentionally do NOT create the "widgets" table, so the drop in 0002 fails.
+	_ = seedDB.Close()
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "widgets",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
+	reg.Register(&migrate.Migration{
+		Name:         "0002_drop_widgets",
+		Dependencies: []string{"0001_initial"},
+		Operations: []migrate.Operation{
+			&migrate.DropTable{Name: "widgets"},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	if err := app.Run([]string{"up", "--warn-on-missing-drop"}); err != nil {
+		t.Fatalf("up --warn-on-missing-drop should succeed when drop target is missing, got: %v", err)
+	}
+}
+
+// TestApp_Run_Down_WarnOnMissingDrop confirms that the --warn-on-missing-drop
+// flag is accepted by the down command and does not affect a normal rollback.
+func TestApp_Run_Down_WarnOnMissingDrop(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_warn_down.db")
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "items",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	// Apply the migration first so there is something to roll back.
+	if err := app.Run([]string{"up"}); err != nil {
+		t.Fatalf("up failed: %v", err)
+	}
+
+	// --warn-on-missing-drop is accepted and a clean rollback still succeeds.
+	if err := app.Run([]string{"down", "--warn-on-missing-drop"}); err != nil {
+		t.Fatalf("down --warn-on-missing-drop failed: %v", err)
 	}
 }

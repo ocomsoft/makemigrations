@@ -329,9 +329,49 @@ func (p *Provider) convertDefaultValue(schema *types.Schema, defaultValue string
 	return fmt.Sprintf("'%s'", defaultValue)
 }
 
+// GenerateAlterColumn generates one or more ALTER TABLE … ALTER COLUMN statements
+// to transition a column from oldField to newField.  Each distinct change (type,
+// nullability, default) becomes its own statement, separated by newlines.
+// Returns an empty string when no attributes differ.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	// TODO: Implement
-	return "", fmt.Errorf("not implemented yet")
+	var stmts []string
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	// Type change
+	if p.ConvertFieldType(oldField) != p.ConvertFieldType(newField) {
+		stmts = append(stmts, fmt.Sprintf(
+			"ALTER TABLE %s ALTER COLUMN %s TYPE %s;",
+			tbl, col, p.ConvertFieldType(newField)))
+	}
+
+	// Nullability change
+	if oldField.IsNullable() != newField.IsNullable() {
+		if newField.IsNullable() {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s DROP NOT NULL;",
+				tbl, col))
+		} else {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s SET NOT NULL;",
+				tbl, col))
+		}
+	}
+
+	// Default change
+	if oldField.Default != newField.Default {
+		if newField.Default == "" {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;",
+				tbl, col))
+		} else {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s SET DEFAULT '%s';",
+				tbl, col, newField.Default))
+		}
+	}
+
+	return strings.Join(stmts, "\n"), nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

@@ -110,29 +110,33 @@ func (a *App) buildDAGCommand() *cobra.Command {
 
 func (a *App) buildUpCommand() *cobra.Command {
 	var toMigration string
+	var warnOnMissingDrop bool
 	cmd := &cobra.Command{
 		Use:   "up",
 		Short: "Apply pending migrations",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return a.runUp(toMigration)
+			return a.runUp(toMigration, RunOptions{WarnOnMissingDrop: warnOnMissingDrop})
 		},
 	}
 	cmd.Flags().StringVar(&toMigration, "to", "", "Apply up to this migration name")
+	cmd.Flags().BoolVar(&warnOnMissingDrop, "warn-on-missing-drop", false, "Warn and continue when a drop fails because the object does not exist")
 	return cmd
 }
 
 func (a *App) buildDownCommand() *cobra.Command {
 	var steps int
 	var toMigration string
+	var warnOnMissingDrop bool
 	cmd := &cobra.Command{
 		Use:   "down",
 		Short: "Rollback migrations",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return a.runDown(steps, toMigration)
+			return a.runDown(steps, toMigration, RunOptions{WarnOnMissingDrop: warnOnMissingDrop})
 		},
 	}
 	cmd.Flags().IntVar(&steps, "steps", 1, "Number of migrations to roll back")
 	cmd.Flags().StringVar(&toMigration, "to", "", "Roll back to this migration name")
+	cmd.Flags().BoolVar(&warnOnMissingDrop, "warn-on-missing-drop", false, "Warn and continue when a drop fails because the object does not exist")
 	return cmd
 }
 
@@ -235,20 +239,20 @@ func (a *App) buildRunner() (*Runner, error) {
 	return NewRunner(g, p, db, recorder), nil
 }
 
-func (a *App) runUp(to string) error {
+func (a *App) runUp(to string, opts RunOptions) error {
 	r, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
-	return r.Up(to, RunOptions{})
+	return r.Up(to, opts)
 }
 
-func (a *App) runDown(steps int, to string) error {
+func (a *App) runDown(steps int, to string, opts RunOptions) error {
 	r, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
-	return r.Down(steps, to, RunOptions{})
+	return r.Down(steps, to, opts)
 }
 
 func (a *App) runStatus() error {

@@ -90,3 +90,17 @@ func Register(m *Migration) {
 func GlobalRegistry() *Registry {
 	return globalRegistry
 }
+
+// Resolve validates that name matches a registered migration exactly and returns it.
+// Returns an error if no migration with that exact name is registered.
+// Exact matching is required so that "fake 0002" is rejected when multiple
+// migrations share the same numeric prefix (e.g. 0002_add_users, 0002_add_orders).
+func (r *Registry) Resolve(name string) (string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if _, ok := r.migrations[name]; ok {
+		return name, nil
+	}
+	return "", fmt.Errorf("no migration matches %q (use the full migration name)", name)
+}

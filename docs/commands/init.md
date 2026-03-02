@@ -9,9 +9,10 @@ Running `makemigrations init` bootstraps everything needed to start writing Go-b
 - Creates the `migrations/` directory
 - Generates `migrations/main.go` — the entry point for the compiled migration binary
 - Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/makemigrations/migrate`
+- **If `*.sql` Goose migration files are detected**, automatically runs `migrate-to-go` to convert them to Go migrations (see [Auto-upgrade from Goose SQL migrations](#auto-upgrade-from-goose-sql-migrations))
 - If an existing `migrations/.schema_snapshot.yaml` is found, generates `migrations/0001_initial.go` with `CreateTable` operations for every table already defined in that snapshot, and prints instructions for fake-applying it
 
-If no snapshot is found the command creates an empty setup and prints instructions for generating the first migration.
+If no snapshot is found and no SQL files are present, the command creates an empty setup and prints instructions for generating the first migration.
 
 ## Usage
 
@@ -49,17 +50,27 @@ project/
 
 ### `migrations/main.go`
 
-The generated entry point wires up the migration runner:
+The generated entry point reads database connection details from environment variables and runs the compiled CLI:
 
 ```go
 package main
 
 import (
-    "github.com/ocomsoft/makemigrations/migrate"
+    "fmt"
+    "os"
+
+    m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func main() {
-    migrate.Run()
+    app := m.NewApp(m.Config{
+        DatabaseType: m.EnvOr("DB_TYPE", "postgresql"),
+        DatabaseURL:  m.EnvOr("DATABASE_URL", ""),
+    })
+    if err := app.Run(os.Args[1:]); err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+        os.Exit(1)
+    }
 }
 ```
 
@@ -70,14 +81,14 @@ A self-contained module so migration dependencies are isolated from the main app
 ```
 module <your-project>/migrations
 
-go 1.21
+go 1.25.7     ← matches the parent project's Go version
 
 require (
-    github.com/ocomsoft/makemigrations/migrate v0.x.x
+    github.com/ocomsoft/makemigrations main
 )
 ```
 
-The module name is derived from the parent project's `go.mod`. The `--database` flag is recorded in the generated config hint inside this file's comments so `go mod tidy` fetches the correct driver.
+The module name is derived from the parent project's `go.mod`. The Go version is read from the nearest `go.work` or `go.mod` in the parent tree so the binary is always built with a locally-available toolchain.
 
 ### `migrations/0001_initial.go` (snapshot import)
 
@@ -119,6 +130,41 @@ func init() {
 
 ---
 
+## Auto-upgrade from Goose SQL migrations
+
+If `*.sql` files following the Goose naming convention (`00001_name.sql`) are detected inside the `migrations/` directory when `init` is run, it **automatically delegates to `migrate-to-go`** rather than performing a bare scaffold. This means a single command upgrades an existing Goose project to the Go migration framework:
+
+```bash
+# migrations/ contains 00001_initial.sql, 00002_add_phone.sql, ...
+makemigrations init
+
+# Output:
+# Detected 2 Goose SQL migration(s) in migrations — running migrate-to-go...
+# ✓ Created migrations/0001_initial.go
+# ✓ Created migrations/0002_add_phone.go
+# ✓ Created migrations/main.go
+# ✓ Created migrations/go.mod
+# ✓ Created migrations/0003_schema_state.go (schema-state bootstrap, SchemaOnly)
+# ✗ Deleted migrations/00001_initial.sql
+# ✗ Deleted migrations/00002_add_phone.sql
+```
+
+After this completes:
+
+```bash
+# Apply all migrations (build is handled automatically)
+makemigrations migrate up
+
+# Or fake them all if the schema is already applied
+makemigrations migrate fake 0001_initial
+makemigrations migrate fake 0002_add_phone
+makemigrations migrate status
+```
+
+See the [migrate-to-go command](./migrate_to_go.md) for full documentation of the conversion process.
+
+---
+
 ## Examples
 
 ### Fresh Project — No Existing Schema
@@ -128,15 +174,17 @@ func init() {
 makemigrations init
 
 # Output:
-# Created directory: migrations/
-# Generated: migrations/go.mod
-# Generated: migrations/main.go
-# No schema snapshot found — starting with empty setup.
+# Created migrations/main.go
+# Created migrations/go.mod
 #
-# Next steps:
+# Initialization complete. No existing schema found.
+#
+# To generate your first migration:
 #   makemigrations makemigrations --name "initial"
+#
+# Then build and run:
 #   cd migrations && go mod tidy && go build -o migrate .
-#   ./migrations/migrate up
+#   ./migrate up
 ```
 
 Step-by-step after a fresh init:
@@ -145,11 +193,8 @@ Step-by-step after a fresh init:
 # 1. Generate your first migration
 makemigrations makemigrations --name "initial"
 
-# 2. Download dependencies and compile the migration binary
-cd migrations && go mod tidy && go build -o migrate .
-
-# 3. Apply migrations to the database
-./migrations/migrate up
+# 2. Apply migrations to the database (build is handled automatically)
+makemigrations migrate up
 ```
 
 ### Existing Project — Snapshot Found
@@ -160,30 +205,24 @@ When a `migrations/.schema_snapshot.yaml` already exists (for example when migra
 makemigrations init
 
 # Output:
-# Created directory: migrations/
-# Generated: migrations/go.mod
-# Generated: migrations/main.go
-# Snapshot found — generated: migrations/0001_initial.go (3 tables)
+# Created migrations/0001_initial.go (from existing schema snapshot)
+# Created migrations/main.go
+# Created migrations/go.mod
 #
-# Your database already contains these tables.
-# Fake-apply the initial migration so the runner knows it has been applied:
+# Your database already has these tables applied.
+# Mark this migration as applied without re-running SQL:
 #
-#   cd migrations && go mod tidy && go build -o migrate .
-#   ./migrations/migrate fake 0001_initial
-#   ./migrations/migrate status
+#   makemigrations migrate fake 0001_initial
 ```
 
 Step-by-step after a snapshot-based init:
 
 ```bash
-# 1. Download dependencies and compile the migration binary
-cd migrations && go mod tidy && go build -o migrate .
+# 1. Mark the initial migration as already applied (schema already in DB)
+makemigrations migrate fake 0001_initial
 
-# 2. Mark the initial migration as already applied (schema already in DB)
-./migrations/migrate fake 0001_initial
-
-# 3. Confirm status
-./migrations/migrate status
+# 2. Confirm status
+makemigrations migrate status
 ```
 
 ### Initialise for a Different Database
@@ -214,8 +253,9 @@ makemigrations init --verbose
 
 | Scenario | Commands |
 |----------|----------|
-| Fresh project | `makemigrations makemigrations --name "initial"` then `cd migrations && go mod tidy && go build -o migrate . && ./migrations/migrate up` |
-| Existing DB (snapshot found) | `cd migrations && go mod tidy && go build -o migrate . && ./migrations/migrate fake 0001_initial && ./migrations/migrate status` |
+| Fresh project | `makemigrations makemigrations --name "initial"` → `makemigrations migrate up` |
+| Existing DB (snapshot found) | `makemigrations migrate fake 0001_initial` → `makemigrations migrate status` |
+| Existing Goose SQL migrations | `makemigrations init` auto-converts them → `makemigrations migrate fake <each>` or `makemigrations migrate up` |
 
 ---
 
@@ -360,17 +400,21 @@ cd migrations && go mod tidy
 
 ### Rebuild After Changes
 
-The migration binary must be recompiled whenever migration files are added or changed:
+The migration binary must be recompiled whenever migration files are added or changed. `makemigrations migrate` handles this automatically, or do it manually:
 
 ```bash
 cd migrations && go build -o migrate .
 ```
 
+See the [Manual Build Guide](../manual-migration-build.md) if you need to control `GOWORK` or `GOTOOLCHAIN` explicitly.
+
 ---
 
 ## See Also
 
+- [migrate command](./migrate.md) — run `up`, `down`, `status`, `fake` etc. without manual builds
+- [migrate-to-go command](./migrate_to_go.md) — convert Goose SQL migrations to Go
+- [Manual Build Guide](../manual-migration-build.md) — build the binary with explicit GOWORK/GOTOOLCHAIN
 - [makemigrations Command](./makemigrations.md) — Generate a new migration file
 - [Configuration Guide](../configuration.md) — Full configuration reference
 - [Schema Format Guide](../schema-format.md) — YAML schema syntax
-- [Installation Guide](../installation.md) — Setup and installation

@@ -821,7 +821,10 @@ func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema 
 			return "", "", fmt.Errorf("failed to convert change %s: %w", change.Description, err)
 		}
 
-		// Handle UP statement
+		// Handle UP statement — track the user's decision to mirror it for DOWN.
+		includeDown := true
+		reviewDown := false
+
 		if upStmt != "" {
 			if sc.shouldAddReviewComment(change) {
 				// Prompt user for destructive operations (unless in silent mode)
@@ -835,12 +838,13 @@ func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema 
 					// User chose to generate - add statement without any prefix
 					upStatements = append(upStatements, upStmt)
 				case PromptReview:
-					// User chose to mark for review - apply review comment
+					// User chose to mark for review - mirror review tag on DOWN
 					upStmt = sc.addReviewComment(upStmt)
 					upStatements = append(upStatements, upStmt)
+					reviewDown = true
 				case PromptOmit:
-					// User chose to omit - don't add to statements
-					// (statement is discarded)
+					// User chose to omit - mirror by also omitting DOWN
+					includeDown = false
 				case PromptExit:
 					// User chose to exit - return error to stop migration generation
 					return "", "", fmt.Errorf("migration generation cancelled by user")
@@ -858,10 +862,13 @@ func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema 
 			}
 		}
 
-		// Handle DOWN statement
-		// DOWN statements are always generated without review comments or prompts
-		if downStmt != "" {
-			downStatements = append(downStatements, downStmt)
+		// Handle DOWN statement — mirrors the user's decision for UP.
+		if downStmt != "" && includeDown {
+			if reviewDown {
+				downStatements = append(downStatements, sc.addReviewComment(downStmt))
+			} else {
+				downStatements = append(downStatements, downStmt)
+			}
 		}
 	}
 

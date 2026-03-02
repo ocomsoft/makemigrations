@@ -284,6 +284,48 @@ For example:
 | `[]` | `'[]'` |
 | `{}` | `'{}'` |
 
+## Type Mappings (Optional)
+
+The `type_mappings` section lets you override the SQL type that each abstract
+field type maps to, per database provider. This is useful when the built-in
+mapping doesn't match your requirements — for example, mapping `float` to
+`DECIMAL(9,2)` instead of `REAL`.
+
+### Simple overrides
+
+```yaml
+type_mappings:
+  postgresql:
+    float: "NUMERIC"
+    boolean: "SMALLINT"
+  mysql:
+    float: "DOUBLE"
+```
+
+### Parameterised overrides
+
+For types that use field parameters (length, precision, scale), use Go template
+syntax. The template receives the field definition with these variables:
+- `{{.Length}}` — the field's `length` value (for varchar)
+- `{{.Precision}}` — the field's `precision` value (for decimal)
+- `{{.Scale}}` — the field's `scale` value (for decimal)
+
+```yaml
+type_mappings:
+  sqlserver:
+    varchar: "NVARCHAR({{.Length}})"
+    decimal: "NUMERIC({{.Precision}},{{.Scale}})"
+```
+
+### Supported field types for override
+
+Any type from the `fields.type` enum can be overridden:
+`varchar`, `text`, `integer`, `bigint`, `float`, `decimal`, `boolean`,
+`date`, `time`, `timestamp`, `uuid`, `json`, `jsonb`, `serial`.
+
+Note: `foreign_key` and `many_to_many` types cannot be overridden as their
+SQL types are inferred from the referenced table's primary key.
+
 ## Example YAML Schema
 
 ```yaml

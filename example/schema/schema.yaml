@@ -56,6 +56,14 @@ defaults:
     array: '[]'
     object: '{}'
 
+# Optional: Override SQL types per provider
+# type_mappings:
+#   postgresql:
+#     float: "NUMERIC(9,2)"
+#   mysql:
+#     float: "DOUBLE"
+#     varchar: "NVARCHAR({{.Length}})"
+
 tables:
   # Reference table for foreign key relationships
   - name: users

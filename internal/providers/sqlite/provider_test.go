@@ -79,3 +79,55 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 		t.Errorf("expected empty string for no-change alter, got: %q", got)
 	}
 }
+
+func TestProvider_InferForeignKeyType(t *testing.T) {
+	provider := New()
+
+	result := provider.InferForeignKeyType("users", &types.Schema{})
+	expected := "INTEGER"
+
+	if result != expected {
+		t.Errorf("InferForeignKeyType() = %s; expected %s", result, expected)
+	}
+}
+
+func TestProvider_GenerateIndexes(t *testing.T) {
+	p := New()
+	schema := &types.Schema{
+		Tables: []types.Table{
+			{
+				Name: "orders",
+				Fields: []types.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					{Name: "user_id", Type: "foreign_key"},
+				},
+			},
+		},
+	}
+	got := p.GenerateIndexes(schema)
+	if got == "" {
+		t.Error("expected non-empty indexes output")
+	}
+	if !strings.Contains(got, "idx_orders_user_id") {
+		t.Errorf("expected FK index in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateIndexes_Empty(t *testing.T) {
+	p := New()
+	schema := &types.Schema{
+		Tables: []types.Table{
+			{
+				Name: "simple",
+				Fields: []types.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					{Name: "name", Type: "varchar"},
+				},
+			},
+		},
+	}
+	got := p.GenerateIndexes(schema)
+	if got != "" {
+		t.Errorf("expected empty indexes for schema without FKs, got:\n%s", got)
+	}
+}

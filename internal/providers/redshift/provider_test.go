@@ -344,3 +344,14 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		}
 	}
 }
+
+func TestProvider_InferForeignKeyType(t *testing.T) {
+	provider := New()
+
+	result := provider.InferForeignKeyType("users", &types.Schema{})
+	expected := "BIGINT"
+
+	if result != expected {
+		t.Errorf("InferForeignKeyType() = %s; expected %s", result, expected)
+	}
+}

@@ -21,54 +21,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package starrocks
+package sqlserver
 
 import (
 	"errors"
 	"testing"
-
-	"github.com/ocomsoft/makemigrations/internal/types"
 )
-
-func TestProvider_QuoteName(t *testing.T) {
-	provider := New()
-
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"users", "`users`"},
-		{"user_id", "`user_id`"},
-	}
-
-	for _, test := range tests {
-		result := provider.QuoteName(test.input)
-		if result != test.expected {
-			t.Errorf("QuoteName(%s) = %s; expected %s", test.input, result, test.expected)
-		}
-	}
-}
-
-func TestProvider_ConvertFieldType(t *testing.T) {
-	provider := New()
-
-	tests := []struct {
-		field    types.Field
-		expected string
-	}{
-		{types.Field{Type: "varchar", Length: 255}, "VARCHAR(255)"},
-		{types.Field{Type: "text"}, "STRING"},
-		{types.Field{Type: "integer"}, "INT"},
-		{types.Field{Type: "jsonb"}, "JSON"},
-	}
-
-	for _, test := range tests {
-		result := provider.ConvertFieldType(&test.field)
-		if result != test.expected {
-			t.Errorf("ConvertFieldType(%+v) = %s; expected %s", test.field, result, test.expected)
-		}
-	}
-}
 
 func TestProvider_IsNotFoundError(t *testing.T) {
 	p := New()
@@ -76,13 +34,15 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{errors.New("Error 1051: Unknown table 'users'"), true},
-		{errors.New("Error 1091: Can't DROP 'idx_email'; check that column/key exists"), true},
+		{errors.New("mssql: Cannot drop the table 'users', because it does not exist or you do not have permission."), true},
+		{errors.New(`mssql: Cannot find the object "idx_email" because it does not exist or you do not have permission.`), true},
+		{errors.New("mssql: Invalid object name 'users'."), false},
 		{errors.New("connection refused"), false},
 		{nil, false},
 	}
 	for _, tc := range cases {
-		if got := p.IsNotFoundError(tc.err); got != tc.want {
+		got := p.IsNotFoundError(tc.err)
+		if got != tc.want {
 			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
 		}
 	}

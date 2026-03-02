@@ -24,6 +24,7 @@ SOFTWARE.
 package clickhouse
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -294,5 +295,22 @@ ENGINE = Log();`
 
 	if result != expected {
 		t.Errorf("GenerateCreateTable() = %s; expected %s", result, expected)
+	}
+}
+
+func TestProvider_IsNotFoundError(t *testing.T) {
+	p := New()
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{errors.New("Code: 60. DB::Exception: Table default.users doesn't exist."), true},
+		{errors.New("Code: 36. DB::Exception: Unknown DROP query"), false},
+		{nil, false},
+	}
+	for _, tc := range cases {
+		if got := p.IsNotFoundError(tc.err); got != tc.want {
+			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }

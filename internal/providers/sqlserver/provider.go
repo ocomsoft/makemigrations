@@ -70,6 +70,15 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// IsNotFoundError returns true when err is a SQL Server "does not exist" error
+// (error codes 3701 / 4902).
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "does not exist or you do not have permission")
+}
+
 // ConvertFieldType converts YAML field type to SQL Server-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

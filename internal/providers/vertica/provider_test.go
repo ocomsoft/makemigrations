@@ -24,6 +24,7 @@ SOFTWARE.
 package vertica
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -270,5 +271,22 @@ func TestProvider_InferForeignKeyType(t *testing.T) {
 
 	if result != expected {
 		t.Errorf("InferForeignKeyType() = %s; expected %s", result, expected)
+	}
+}
+
+func TestProvider_IsNotFoundError(t *testing.T) {
+	p := New()
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{errors.New(`ERROR 4566:  Table "public"."users" does not exist`), true},
+		{errors.New("connection refused"), false},
+		{nil, false},
+	}
+	for _, tc := range cases {
+		if got := p.IsNotFoundError(tc.err); got != tc.want {
+			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }

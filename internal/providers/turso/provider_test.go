@@ -24,6 +24,7 @@ SOFTWARE.
 package turso
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -101,5 +102,24 @@ func TestProvider_GenerateCreateTable(t *testing.T) {
 
 	if result != expected {
 		t.Errorf("GenerateCreateTable() = %s; expected %s", result, expected)
+	}
+}
+
+func TestProvider_IsNotFoundError(t *testing.T) {
+	p := New()
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{errors.New("no such table: users"), true},
+		{errors.New("no such column: email"), true},
+		{errors.New("no such index: idx_email"), true},
+		{errors.New("connection refused"), false},
+		{nil, false},
+	}
+	for _, tc := range cases {
+		if got := p.IsNotFoundError(tc.err); got != tc.want {
+			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }

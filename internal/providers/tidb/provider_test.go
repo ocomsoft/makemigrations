@@ -24,6 +24,7 @@ SOFTWARE.
 package tidb
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -232,5 +233,23 @@ func TestProvider_InferForeignKeyType(t *testing.T) {
 
 	if result != expected {
 		t.Errorf("InferForeignKeyType() = %s; expected %s", result, expected)
+	}
+}
+
+func TestProvider_IsNotFoundError(t *testing.T) {
+	p := New()
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{errors.New("Error 1051: Unknown table 'users'"), true},
+		{errors.New("Error 1091: Can't DROP 'idx_email'; check that column/key exists"), true},
+		{errors.New("connection refused"), false},
+		{nil, false},
+	}
+	for _, tc := range cases {
+		if got := p.IsNotFoundError(tc.err); got != tc.want {
+			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
+		}
 	}
 }

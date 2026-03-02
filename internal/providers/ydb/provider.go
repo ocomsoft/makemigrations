@@ -72,6 +72,15 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// IsNotFoundError returns true when err is a YDB "not found" or "does not exist" error.
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "does not exist")
+}
+
 // ConvertFieldType converts YAML field type to YDB-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

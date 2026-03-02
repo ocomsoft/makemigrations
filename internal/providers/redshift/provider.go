@@ -73,6 +73,14 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// IsNotFoundError returns true when err is a Redshift "does not exist" error.
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "does not exist")
+}
+
 // ConvertFieldType converts YAML field type to Redshift-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

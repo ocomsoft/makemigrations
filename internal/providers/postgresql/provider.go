@@ -82,6 +82,14 @@ func (p *Provider) HistoryTableDDL() string {
 )`
 }
 
+// IsNotFoundError returns true when err is a PostgreSQL "does not exist" error.
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "does not exist")
+}
+
 // ConvertFieldType converts YAML field type to PostgreSQL-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

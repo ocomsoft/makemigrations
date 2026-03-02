@@ -70,6 +70,16 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// IsNotFoundError returns true when err is a TiDB "unknown table" or
+// "can't drop key" error (MySQL-compatible codes 1051 and 1091).
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "Error 1051") || strings.Contains(msg, "Error 1091")
+}
+
 // ConvertFieldType converts YAML field type to TiDB-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

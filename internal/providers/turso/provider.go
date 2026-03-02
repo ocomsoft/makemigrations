@@ -72,6 +72,17 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// IsNotFoundError returns true when err is a Turso/SQLite "no such table/column/index" error.
+func (p *Provider) IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.HasPrefix(msg, "no such table:") ||
+		strings.HasPrefix(msg, "no such column:") ||
+		strings.HasPrefix(msg, "no such index:")
+}
+
 // ConvertFieldType converts YAML field type to Turso-specific SQL type (same as SQLite)
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

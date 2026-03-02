@@ -171,7 +171,7 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 		if _, statErr := os.Stat(goModPath); os.IsNotExist(statErr) {
 			moduleName := readModuleName() + "/migrations"
 			version := "v0.3.0"
-			if writeErr := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version)), 0o644); writeErr != nil {
+			if writeErr := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version, findParentGoVersion("."))), 0o644); writeErr != nil {
 				return fmt.Errorf("writing go.mod: %w", writeErr)
 			}
 			fmt.Fprintf(out, "%s Created %s\n", green("✓"), goModPath)

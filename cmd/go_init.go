@@ -75,14 +75,15 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 		fmt.Printf("Created %s\n", mainPath)
 	}
 
-	// Determine module name from go.mod in current directory
+	// Determine module name and Go version from go.mod in current directory.
 	moduleName := readModuleName() + "/migrations"
+	parentGoVersion := findParentGoVersion(".")
 
 	// Generate go.mod only if it doesn't exist
 	goModPath := filepath.Join(migrationsDir, "go.mod")
 	if _, statErr := os.Stat(goModPath); os.IsNotExist(statErr) {
 		version := "v0.3.0"
-		if err := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version)), 0644); err != nil {
+		if err := os.WriteFile(goModPath, []byte(gen.GenerateGoMod(moduleName, version, parentGoVersion)), 0644); err != nil {
 			return fmt.Errorf("writing go.mod: %w", err)
 		}
 		fmt.Printf("Created %s\n", goModPath)

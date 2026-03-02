@@ -452,12 +452,17 @@ func main() {
 }
 
 // GenerateGoMod returns a go.mod file content string for the generated migrations
-// module. moduleName is the module path (e.g. "myproject/migrations") and version
-// is the makemigrations version to require (e.g. "v0.3.0").
-func (g *GoGenerator) GenerateGoMod(moduleName, version string) string {
+// module. moduleName is the module path (e.g. "myproject/migrations"), version
+// is the makemigrations version to require (e.g. "v0.3.0"), and goVersion is
+// the Go version to declare (e.g. "1.25"). Pass an empty string for goVersion
+// to use the default of "1.24".
+func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion string) string {
+	if goVersion == "" {
+		goVersion = "1.24"
+	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("module %s\n\n", moduleName))
-	b.WriteString("go 1.24\n\n")
+	b.WriteString(fmt.Sprintf("go %s\n\n", goVersion))
 	b.WriteString("require (\n")
 	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/makemigrations %s\n", version))
 	b.WriteString(")\n")

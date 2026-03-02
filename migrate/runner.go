@@ -32,6 +32,13 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/providers"
 )
 
+// RunOptions controls optional behaviour for Up and Down.
+type RunOptions struct {
+	// WarnOnMissingDrop causes drop operations that fail because the target
+	// object does not exist to print a warning and continue rather than stop.
+	WarnOnMissingDrop bool
+}
+
 // Runner executes migrations against a database in topological order.
 type Runner struct {
 	graph    *Graph
@@ -52,7 +59,7 @@ func NewRunner(graph *Graph, provider providers.Provider, db *sql.DB, recorder *
 
 // Up applies all pending migrations in topological order.
 // If to is non-empty, stops after applying the named migration.
-func (r *Runner) Up(to string) error {
+func (r *Runner) Up(to string, opts RunOptions) error {
 	plan, err := r.graph.Linearize()
 	if err != nil {
 		return fmt.Errorf("linearizing graph: %w", err)
@@ -80,7 +87,7 @@ func (r *Runner) Up(to string) error {
 			continue
 		}
 		fmt.Printf("Applying %s...", mig.Name)
-		if err := r.applyMigration(mig, state); err != nil {
+		if err := r.applyMigration(mig, state, opts); err != nil {
 			fmt.Println(" FAILED")
 			return fmt.Errorf("applying migration %q: %w", mig.Name, err)
 		}
@@ -94,7 +101,7 @@ func (r *Runner) Up(to string) error {
 
 // Down rolls back migrations. If steps > 0, rolls back that many.
 // If to is set, rolls back until that migration name is reached (exclusive).
-func (r *Runner) Down(steps int, to string) error {
+func (r *Runner) Down(steps int, to string, opts RunOptions) error {
 	plan, err := r.graph.Linearize()
 	if err != nil {
 		return fmt.Errorf("linearizing graph: %w", err)
@@ -133,7 +140,7 @@ func (r *Runner) Down(steps int, to string) error {
 			}
 		}
 		fmt.Printf("Rolling back %s...", mig.Name)
-		if err := r.rollbackMigration(mig, state); err != nil {
+		if err := r.rollbackMigration(mig, state, opts); err != nil {
 			fmt.Println(" FAILED")
 			return fmt.Errorf("rolling back migration %q: %w", mig.Name, err)
 		}
@@ -199,26 +206,40 @@ func (r *Runner) ShowSQL() error {
 }
 
 // applyMigration executes all operations in a migration and records it as applied.
-func (r *Runner) applyMigration(mig *Migration, state *SchemaState) error {
+// When opts.WarnOnMissingDrop is true, drop operations that fail because the object
+// does not exist are skipped with a warning instead of stopping the migration.
+func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
 	for _, op := range mig.Operations {
 		sqlStr, err := op.Up(r.provider, state, nil)
 		if err != nil {
 			return fmt.Errorf("generating SQL for operation %q: %w", op.Describe(), err)
 		}
+		skipped := false
 		if sqlStr != "" {
-			if _, err := r.db.Exec(sqlStr); err != nil {
-				return fmt.Errorf("executing SQL %q: %w", sqlStr, err)
+			if _, execErr := r.db.Exec(sqlStr); execErr != nil {
+				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
+					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
+					skipped = true
+				} else {
+					return fmt.Errorf("executing SQL %q: %w", sqlStr, execErr)
+				}
 			}
 		}
-		if err := op.Mutate(state); err != nil {
-			return fmt.Errorf("mutating state: %w", err)
+		// Skip state mutation when the drop operation was skipped — the object
+		// was never in the schema state either, so Mutate would fail.
+		if !skipped {
+			if err := op.Mutate(state); err != nil {
+				return fmt.Errorf("mutating state: %w", err)
+			}
 		}
 	}
 	return r.recorder.RecordApplied(mig.Name)
 }
 
 // rollbackMigration reverses all operations in a migration and removes it from history.
-func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState) error {
+// When opts.WarnOnMissingDrop is true, drop operations that fail because the object
+// does not exist are skipped with a warning instead of stopping the rollback.
+func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
 	for i := len(mig.Operations) - 1; i >= 0; i-- {
 		op := mig.Operations[i]
 		sqlStr, err := op.Down(r.provider, state, nil)
@@ -226,10 +247,25 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState) error {
 			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
 		}
 		if sqlStr != "" {
-			if _, err := r.db.Exec(sqlStr); err != nil {
-				return fmt.Errorf("executing down SQL %q: %w", sqlStr, err)
+			if _, execErr := r.db.Exec(sqlStr); execErr != nil {
+				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
+					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
+				} else {
+					return fmt.Errorf("executing down SQL %q: %w", sqlStr, execErr)
+				}
 			}
 		}
 	}
 	return r.recorder.RecordRolledBack(mig.Name)
+}
+
+// isDropOp returns true for operations that remove a database object.
+// Only drop operations trigger WarnOnMissingDrop — all other failures stop immediately.
+func isDropOp(op Operation) bool {
+	switch op.TypeName() {
+	case "drop_table", "drop_field", "drop_index":
+		return true
+	default:
+		return false
+	}
 }

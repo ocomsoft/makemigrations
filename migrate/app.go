@@ -240,7 +240,7 @@ func (a *App) runUp(to string) error {
 	if err != nil {
 		return err
 	}
-	return r.Up(to)
+	return r.Up(to, RunOptions{})
 }
 
 func (a *App) runDown(steps int, to string) error {
@@ -248,7 +248,7 @@ func (a *App) runDown(steps int, to string) error {
 	if err != nil {
 		return err
 	}
-	return r.Down(steps, to)
+	return r.Down(steps, to, RunOptions{})
 }
 
 func (a *App) runStatus() error {
@@ -268,6 +268,12 @@ func (a *App) runShowSQL() error {
 }
 
 func (a *App) runFake(name string) error {
+	// Resolve partial name (e.g. "0001") to the full registered name
+	// (e.g. "0001_initial") so the history entry matches what Up() looks for.
+	resolved, err := a.registry.Resolve(name)
+	if err != nil {
+		return err
+	}
 	db, err := a.openDB()
 	if err != nil {
 		return err
@@ -280,9 +286,9 @@ func (a *App) runFake(name string) error {
 	if err := recorder.EnsureTable(); err != nil {
 		return err
 	}
-	if err := recorder.Fake(name); err != nil {
+	if err := recorder.Fake(resolved); err != nil {
 		return err
 	}
-	fmt.Printf("Marked %q as applied (faked).\n", name)
+	fmt.Printf("Marked %q as applied (faked).\n", resolved)
 	return nil
 }

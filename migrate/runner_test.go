@@ -205,7 +205,7 @@ func TestRunner_Up_SingleMigration(t *testing.T) {
 
 	runner, recorder, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
@@ -255,7 +255,7 @@ func TestRunner_Up_MultipleMigrations(t *testing.T) {
 
 	runner, recorder, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
@@ -306,7 +306,7 @@ func TestRunner_Up_ToTarget(t *testing.T) {
 	runner, recorder, _ := buildTestRunner(t, reg)
 
 	// Apply only up to 0001_initial
-	if err := runner.Up("0001_initial"); err != nil {
+	if err := runner.Up("0001_initial", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up to target: %v", err)
 	}
 
@@ -343,10 +343,10 @@ func TestRunner_Up_Idempotent(t *testing.T) {
 	runner, _, _ := buildTestRunner(t, reg)
 
 	// Apply twice -- second call should be a no-op
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("first Up: %v", err)
 	}
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("second Up (idempotent): %v", err)
 	}
 }
@@ -374,11 +374,11 @@ func TestRunner_Down_SingleStep(t *testing.T) {
 
 	runner, recorder, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
-	if err := runner.Down(1, ""); err != nil {
+	if err := runner.Down(1, "", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 
@@ -429,12 +429,12 @@ func TestRunner_Down_MultipleSteps(t *testing.T) {
 
 	runner, recorder, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
 	// Roll back both
-	if err := runner.Down(2, ""); err != nil {
+	if err := runner.Down(2, "", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 
@@ -487,12 +487,12 @@ func TestRunner_Down_ToTarget(t *testing.T) {
 
 	runner, recorder, _ := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
 	// Roll back to 0001_initial (exclusive: stops before rolling back 0001_initial)
-	if err := runner.Down(0, "0001_initial"); err != nil {
+	if err := runner.Down(0, "0001_initial", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Down to target: %v", err)
 	}
 
@@ -595,7 +595,7 @@ func TestRunner_ShowSQL_SkipsApplied(t *testing.T) {
 	runner, _, _ := buildTestRunner(t, reg)
 
 	// Apply first migration
-	if err := runner.Up("0001_initial"); err != nil {
+	if err := runner.Up("0001_initial", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
@@ -625,7 +625,7 @@ func TestRunner_Up_RunSQL(t *testing.T) {
 
 	runner, _, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up with RunSQL: %v", err)
 	}
 
@@ -653,10 +653,10 @@ func TestRunner_Down_RunSQL(t *testing.T) {
 
 	runner, _, db := buildTestRunner(t, reg)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if err := runner.Down(1, ""); err != nil {
+	if err := runner.Down(1, "", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Down with RunSQL: %v", err)
 	}
 
@@ -700,6 +700,49 @@ func TestBuildDSN_MySQL(t *testing.T) {
 	app := migrate.NewAppWithRegistry(cfg, migrate.NewRegistry())
 	if app == nil {
 		t.Fatal("expected non-nil App for MySQL config")
+	}
+}
+
+func TestRunner_Up_WarnOnMissingDrop_SkipsIfNotFound(t *testing.T) {
+	db := openTestDB(t)
+	p := sqlite.New()
+	rec := migrate.NewMigrationRecorder(db, p)
+	if err := rec.EnsureTable(); err != nil {
+		t.Fatalf("EnsureTable: %v", err)
+	}
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_drop_users",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.DropTable{Name: "users"}, // table does not exist in DB
+		},
+	})
+
+	g, err := migrate.BuildGraph(reg)
+	if err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	runner := migrate.NewRunner(g, p, db, rec)
+
+	// Without flag — should fail because table doesn't exist
+	err = runner.Up("", migrate.RunOptions{})
+	if err == nil {
+		t.Fatal("expected error when table does not exist and WarnOnMissingDrop is false")
+	}
+
+	// Reset history so we can attempt again
+	if _, err := db.Exec("DELETE FROM makemigrations_history"); err != nil {
+		t.Fatalf("resetting history: %v", err)
+	}
+
+	// With flag — should warn and succeed
+	restore := suppressStdout(t)
+	defer restore()
+	err = runner.Up("", migrate.RunOptions{WarnOnMissingDrop: true})
+	if err != nil {
+		t.Fatalf("expected no error with WarnOnMissingDrop=true, got: %v", err)
 	}
 }
 

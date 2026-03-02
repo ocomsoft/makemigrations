@@ -114,7 +114,7 @@ func TestFullRoundTrip(t *testing.T) {
 	runner := migrate.NewRunner(g, p, db, recorder)
 
 	// Apply all migrations
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
 
@@ -133,7 +133,7 @@ func TestFullRoundTrip(t *testing.T) {
 	}
 
 	// Roll back both migrations
-	if err := runner.Down(2, ""); err != nil {
+	if err := runner.Down(2, "", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Down: %v", err)
 	}
 
@@ -217,7 +217,7 @@ func TestRoundTrip_WithMerge(t *testing.T) {
 
 	runner := migrate.NewRunner(g, sqlite.New(), db, recorder)
 
-	if err := runner.Up(""); err != nil {
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up with merge migration: %v", err)
 	}
 

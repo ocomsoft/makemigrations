@@ -64,7 +64,7 @@ func writeMinimalSnapshot(t *testing.T, dir string) {
 
 func TestMigrateToGo_NoSQLFiles(t *testing.T) {
 	dir := t.TempDir()
-	err := cmd.ExecuteMigrateToGo(dir, true, true, false, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, true, true, false, false, io.Discard)
 	if err == nil {
 		t.Fatal("expected error when no SQL files present")
 	}
@@ -87,7 +87,7 @@ ALTER TABLE users DROP COLUMN phone;
 `)
 	writeMinimalSnapshot(t, dir)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -110,7 +110,7 @@ DROP TABLE users;
 `)
 	writeMinimalSnapshot(t, dir)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -130,7 +130,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 DROP TABLE users;
 `)
 
-	err := cmd.ExecuteMigrateToGo(dir, true, true, false, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, true, true, false, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo dry-run: %v", err)
 	}
@@ -156,7 +156,7 @@ DROP TABLE users;
 `)
 	writeMinimalSnapshot(t, dir)
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, true, false, io.Discard)
 	if err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
@@ -178,7 +178,7 @@ DROP TABLE users;
 `)
 	writeMinimalSnapshot(t, dir)
 
-	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard); err != nil {
+	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, false, io.Discard); err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
 
@@ -215,7 +215,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 		t.Fatal(err)
 	}
 
-	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
+	err := cmd.ExecuteMigrateToGo(dir, false, true, false, false, io.Discard)
 	if err == nil {
 		t.Fatal("expected error when .go migration files already exist")
 	}
@@ -316,7 +316,7 @@ DROP TABLE users;
 		t.Fatalf("saving snapshot: %v", err)
 	}
 
-	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard); err != nil {
+	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, false, io.Discard); err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
 	}
 

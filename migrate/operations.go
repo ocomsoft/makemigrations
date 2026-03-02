@@ -537,11 +537,16 @@ func (op *DropIndex) Mutate(state *SchemaState) error {
 // RunSQL is a migration operation that executes raw SQL for forward and reverse
 // migrations. ForwardSQL and BackwardSQL field names are used (not Forward/Backward)
 // to avoid conflict with the Up/Down method names on the Operation interface.
+// When SchemaOnly is true the operation is recorded as applied but no SQL is sent
+// to the database — useful when the schema is already in place.
 type RunSQL struct {
 	// ForwardSQL is the raw SQL to execute on Up (forward migration).
 	ForwardSQL string
 	// BackwardSQL is the raw SQL to execute on Down (reverse migration).
 	BackwardSQL string
+	// SchemaOnly marks the operation as applied without executing any SQL.
+	// Use this when the underlying schema already exists in the database.
+	SchemaOnly bool
 }
 
 // TypeName returns the operation type identifier.
@@ -556,13 +561,19 @@ func (op *RunSQL) IsDestructive() bool { return false }
 // Describe returns a human-readable description of this operation.
 func (op *RunSQL) Describe() string { return "Run SQL" }
 
-// Up returns the ForwardSQL string directly; no provider is needed.
+// Up returns the ForwardSQL string, or empty string when SchemaOnly is set.
 func (op *RunSQL) Up(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return op.ForwardSQL, nil
 }
 
-// Down returns the BackwardSQL string directly; no provider is needed.
+// Down returns the BackwardSQL string, or empty string when SchemaOnly is set.
 func (op *RunSQL) Down(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return op.BackwardSQL, nil
 }
 

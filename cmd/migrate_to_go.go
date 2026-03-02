@@ -54,6 +54,7 @@ var (
 	migrateToGoNoHistory bool
 	migrateToGoNoDelete  bool
 	migrateToGoForce     bool
+	migrateToGoSkip      bool
 )
 
 // migrateToGoCmd converts legacy Goose SQL migration files to Go RunSQL migration files.
@@ -73,6 +74,7 @@ Use --no-delete to keep them. Use --dry-run to preview changes without writing.`
 			migrateToGoDryRun,
 			migrateToGoNoHistory,
 			migrateToGoNoDelete,
+			migrateToGoSkip,
 			cmd.OutOrStdout(),
 		)
 	},
@@ -85,12 +87,15 @@ func init() {
 	migrateToGoCmd.Flags().BoolVar(&migrateToGoNoHistory, "no-history", false, "Skip migrating goose_db_version history")
 	migrateToGoCmd.Flags().BoolVar(&migrateToGoNoDelete, "no-delete", false, "Keep original .sql files after conversion")
 	migrateToGoCmd.Flags().BoolVar(&migrateToGoForce, "force", false, "Overwrite existing .go migration files")
+	migrateToGoCmd.Flags().BoolVar(&migrateToGoSkip, "skip", false, "Mark all converted migrations as SchemaOnly (record as applied without executing SQL)")
 }
 
 // ExecuteMigrateToGo is the main entry point for the migrate-to-go conversion.
 // It discovers SQL files in migrationsDir, parses them with gooseparser, generates
 // Go RunSQL migration files, and optionally cleans up the SQL originals.
-func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, out io.Writer) error {
+// When skip is true every generated RunSQL operation has SchemaOnly: true, so the
+// runner records migrations as applied without executing any SQL.
+func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete, skip bool, out io.Writer) error {
 	// Step 1: Discover SQL files.
 	sqlFiles, err := discoverSQLFiles(migrationsDir)
 	if err != nil {
@@ -138,7 +143,7 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 			deps = []string{entries[i-1].goName}
 		}
 
-		src, genErr := generateRunSQLMigration(entry.goName, deps, mig.ForwardSQL, mig.BackwardSQL)
+		src, genErr := generateRunSQLMigration(entry.goName, entry.sqlFile, deps, mig.ForwardSQL, mig.BackwardSQL, skip)
 		if genErr != nil {
 			return fmt.Errorf("generating Go source for %s: %w", entry.sqlFile, genErr)
 		}
@@ -349,11 +354,15 @@ func checkNoExistingGoMigrations(dir string) error {
 
 // generateRunSQLMigration produces a gofmt'd Go source file that registers a RunSQL
 // migration with the given name, dependencies, and SQL content.
-func generateRunSQLMigration(name string, deps []string, forwardSQL, backwardSQL string) (string, error) {
+// sqlFile is the original Goose source file name — included as a comment for traceability.
+// When skip is true the RunSQL operation is emitted with SchemaOnly: true so the runner
+// records the migration as applied without executing any SQL.
+func generateRunSQLMigration(name, sqlFile string, deps []string, forwardSQL, backwardSQL string, skip bool) (string, error) {
 	var b strings.Builder
 
 	b.WriteString("package main\n\n")
 	b.WriteString("import m \"github.com/ocomsoft/makemigrations/migrate\"\n\n")
+	b.WriteString(fmt.Sprintf("// Migrated from Goose file: %s\n", sqlFile))
 	b.WriteString("func init() {\n")
 	b.WriteString("\tm.Register(&m.Migration{\n")
 	b.WriteString(fmt.Sprintf("\t\tName: %q,\n", name))
@@ -374,6 +383,9 @@ func generateRunSQLMigration(name string, deps []string, forwardSQL, backwardSQL
 	b.WriteString("\t\t\t&m.RunSQL{\n")
 	b.WriteString(fmt.Sprintf("\t\t\t\tForwardSQL:  %s,\n", goRawString(forwardSQL)))
 	b.WriteString(fmt.Sprintf("\t\t\t\tBackwardSQL: %s,\n", goRawString(backwardSQL)))
+	if skip {
+		b.WriteString("\t\t\t\tSchemaOnly: true,\n")
+	}
 	b.WriteString("\t\t\t},\n")
 	b.WriteString("\t\t},\n")
 

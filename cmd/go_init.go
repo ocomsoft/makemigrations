@@ -104,7 +104,7 @@ Your database already has these tables applied. Mark this migration as applied w
 
   makemigrations migrate fake %s
 
-`, migrationsDir, initialMigName)
+`, initialMigName)
 	} else {
 		fmt.Printf(`
 Initialization complete. No existing schema found.

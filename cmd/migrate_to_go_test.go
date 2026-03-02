@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/cmd"
+	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver for testing
@@ -259,7 +260,7 @@ ALTER TABLE users DROP COLUMN phone;
 		t.Fatalf("inserting goose history: %v", err)
 	}
 
-	if err := cmd.ExecuteMigrateGooseHistory(db, dir, false, io.Discard); err != nil {
+	if err := cmd.ExecuteMigrateGooseHistory(db, dir, false, io.Discard, sqlite.New()); err != nil {
 		t.Fatalf("ExecuteMigrateGooseHistory: %v", err)
 	}
 

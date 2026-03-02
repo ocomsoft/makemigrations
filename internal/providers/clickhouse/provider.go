@@ -40,6 +40,20 @@ func New() *Provider {
 	return &Provider{}
 }
 
+// Placeholder returns the bind-parameter placeholder for the nth argument (1-indexed).
+func (p *Provider) Placeholder(_ int) string {
+	return "?"
+}
+
+// HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
+// makemigrations_history migration-tracking table, using this provider's SQL dialect.
+func (p *Provider) HistoryTableDDL() string {
+	return `CREATE TABLE IF NOT EXISTS makemigrations_history (
+    name String NOT NULL,
+    applied_at String DEFAULT toString(now())
+) ENGINE = ReplacingMergeTree() ORDER BY name`
+}
+
 // QuoteName quotes database identifiers for ClickHouse (backticks like MySQL)
 func (p *Provider) QuoteName(name string) string {
 	return fmt.Sprintf("`%s`", name)

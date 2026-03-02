@@ -31,10 +31,10 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
-// buildProviderFromType creates a Provider from a database type string.
+// BuildProviderFromType creates a Provider from a database type string.
 // It delegates to providers.NewProvider which supports all registered
 // database types (postgresql, mysql, sqlite, sqlserver, etc.).
-func buildProviderFromType(dbType string) (providers.Provider, error) {
+func BuildProviderFromType(dbType string) (providers.Provider, error) {
 	dt, err := types.ParseDatabaseType(dbType)
 	if err != nil {
 		return nil, fmt.Errorf("parsing database type %q: %w", dbType, err)

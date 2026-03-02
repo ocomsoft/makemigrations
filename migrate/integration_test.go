@@ -105,7 +105,7 @@ func TestFullRoundTrip(t *testing.T) {
 	}
 	defer func() { _ = db.Close() }()
 
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestRoundTrip_WithMerge(t *testing.T) {
 	}
 	defer func() { _ = db.Close() }()
 
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}

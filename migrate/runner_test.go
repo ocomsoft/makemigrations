@@ -51,7 +51,7 @@ func openTestDB(t *testing.T) *sql.DB {
 func buildTestRunner(t *testing.T, reg *migrate.Registry) (*migrate.Runner, *migrate.MigrationRecorder, *sql.DB) {
 	t.Helper()
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -84,7 +84,7 @@ func suppressStdout(t *testing.T) func() {
 
 func TestRecorder_EnsureTable(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestRecorder_EnsureTable(t *testing.T) {
 
 func TestRecorder_GetApplied_Empty(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestRecorder_GetApplied_Empty(t *testing.T) {
 
 func TestRecorder_RecordApplied(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestRecorder_RecordApplied(t *testing.T) {
 
 func TestRecorder_RecordApplied_Duplicate(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestRecorder_RecordApplied_Duplicate(t *testing.T) {
 
 func TestRecorder_RecordRolledBack(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -166,7 +166,7 @@ func TestRecorder_RecordRolledBack(t *testing.T) {
 
 func TestRecorder_Fake(t *testing.T) {
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	if err := recorder.EnsureTable(); err != nil {
 		t.Fatalf("EnsureTable: %v", err)
 	}
@@ -706,7 +706,7 @@ func TestBuildDSN_MySQL(t *testing.T) {
 func TestNewRunner_NilSafe(t *testing.T) {
 	// Verify that NewRunner doesn't panic with valid arguments
 	db := openTestDB(t)
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, sqlite.New())
 	reg := migrate.NewRegistry()
 	g, err := migrate.BuildGraph(reg)
 	if err != nil {

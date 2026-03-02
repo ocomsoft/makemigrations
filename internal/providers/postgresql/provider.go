@@ -67,6 +67,21 @@ func (p *Provider) SupportsOperation(operation string) bool {
 	}
 }
 
+// Placeholder returns the bind-parameter placeholder for the nth argument (1-indexed).
+func (p *Provider) Placeholder(n int) string {
+	return fmt.Sprintf("$%d", n)
+}
+
+// HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
+// makemigrations_history migration-tracking table, using this provider's SQL dialect.
+func (p *Provider) HistoryTableDDL() string {
+	return `CREATE TABLE IF NOT EXISTS makemigrations_history (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+)`
+}
+
 // ConvertFieldType converts YAML field type to PostgreSQL-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	switch field.Type {

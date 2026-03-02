@@ -224,12 +224,12 @@ func (a *App) buildRunner() (*Runner, error) {
 	if err != nil {
 		return nil, err
 	}
-	recorder := NewMigrationRecorder(db)
-	if err := recorder.EnsureTable(); err != nil {
+	p, err := BuildProviderFromType(a.config.DatabaseType)
+	if err != nil {
 		return nil, err
 	}
-	p, err := buildProviderFromType(a.config.DatabaseType)
-	if err != nil {
+	recorder := NewMigrationRecorder(db, p)
+	if err := recorder.EnsureTable(); err != nil {
 		return nil, err
 	}
 	return NewRunner(g, p, db, recorder), nil
@@ -272,7 +272,11 @@ func (a *App) runFake(name string) error {
 	if err != nil {
 		return err
 	}
-	recorder := NewMigrationRecorder(db)
+	p, err := BuildProviderFromType(a.config.DatabaseType)
+	if err != nil {
+		return err
+	}
+	recorder := NewMigrationRecorder(db, p)
 	if err := recorder.EnsureTable(); err != nil {
 		return err
 	}

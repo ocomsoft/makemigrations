@@ -36,6 +36,7 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
 	"github.com/ocomsoft/makemigrations/internal/gooseparser"
+	"github.com/ocomsoft/makemigrations/internal/providers"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 	"github.com/spf13/cobra"
@@ -214,7 +215,11 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete, skip 
 			return fmt.Errorf("connecting to database for history migration: %w (use --no-history to skip)", dbErr)
 		}
 		defer func() { _ = db.Close() }()
-		if histErr := migrateHistoryWithEntries(db, entries, dryRun, out); histErr != nil {
+		p, provErr := migrate.BuildProviderFromType(cfg.Database.Type)
+		if provErr != nil {
+			return fmt.Errorf("building provider for history migration: %w", provErr)
+		}
+		if histErr := migrateHistoryWithEntries(db, entries, dryRun, out, p); histErr != nil {
 			return fmt.Errorf("migrating history: %w", histErr)
 		}
 	}
@@ -427,7 +432,8 @@ func goRawString(s string) string {
 // It discovers SQL files in migrationsDir to build the version-ID-to-go-name mapping,
 // then reads goose_db_version and records each applied migration in makemigrations_history.
 // Exported for use in tests with an injected DB connection.
-func ExecuteMigrateGooseHistory(db *sql.DB, migrationsDir string, dryRun bool, out io.Writer) error {
+// p must be the Provider for the target database (supplies DDL and placeholder style).
+func ExecuteMigrateGooseHistory(db *sql.DB, migrationsDir string, dryRun bool, out io.Writer, p providers.Provider) error {
 	sqlFiles, err := discoverSQLFiles(migrationsDir)
 	if err != nil {
 		return err
@@ -442,12 +448,14 @@ func ExecuteMigrateGooseHistory(db *sql.DB, migrationsDir string, dryRun bool, o
 		}
 		entries = append(entries, migrateEntry{sqlFile: f, goName: goName, versionID: vid})
 	}
-	return migrateHistoryWithEntries(db, entries, dryRun, out)
+	return migrateHistoryWithEntries(db, entries, dryRun, out, p)
 }
 
 // migrateHistoryWithEntries reads goose_db_version and inserts applied migrations
 // into makemigrations_history using the new Go migration names.
-func migrateHistoryWithEntries(db *sql.DB, entries []migrateEntry, dryRun bool, out io.Writer) error {
+// p is the Provider for the target database; it supplies the correct DDL and
+// SQL placeholders for the recorder.
+func migrateHistoryWithEntries(db *sql.DB, entries []migrateEntry, dryRun bool, out io.Writer, p providers.Provider) error {
 	// Read last state per version_id from goose_db_version.
 	// Iterate all rows in insertion order; last write per version_id wins.
 	rows, err := db.Query("SELECT version_id, is_applied FROM goose_db_version ORDER BY id ASC")
@@ -474,7 +482,7 @@ func migrateHistoryWithEntries(db *sql.DB, entries []migrateEntry, dryRun bool, 
 		return fmt.Errorf("iterating goose_db_version: %w", rowErr)
 	}
 
-	recorder := migrate.NewMigrationRecorder(db)
+	recorder := migrate.NewMigrationRecorder(db, p)
 	if !dryRun {
 		if ensureErr := recorder.EnsureTable(); ensureErr != nil {
 			return ensureErr

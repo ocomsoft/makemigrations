@@ -55,6 +55,12 @@ type Provider interface {
 	// Utilities
 	QuoteName(name string) string
 	SupportsOperation(operation string) bool
+	// Placeholder returns the bind-parameter placeholder for the nth argument (1-indexed).
+	// Examples: PostgreSQL uses $1, SQL Server uses @p1, most others use ?.
+	Placeholder(n int) string
+	// HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
+	// makemigrations_history migration-tracking table using this provider's SQL dialect.
+	HistoryTableDDL() string
 
 	// Schema processing
 	GenerateIndexes(schema *types.Schema) string

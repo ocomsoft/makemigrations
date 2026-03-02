@@ -27,30 +27,27 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
-)
 
-// createHistoryTableSQL creates the migration history table.
-// Uses portable SQL that works across SQLite, PostgreSQL, MySQL.
-const createHistoryTableSQL = `CREATE TABLE IF NOT EXISTS makemigrations_history (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    applied_at TEXT DEFAULT CURRENT_TIMESTAMP
-)`
+	"github.com/ocomsoft/makemigrations/internal/providers"
+)
 
 // MigrationRecorder manages the makemigrations_history table.
 // It records which migrations have been applied to the database.
 type MigrationRecorder struct {
-	db *sql.DB
+	db       *sql.DB
+	provider providers.Provider
 }
 
-// NewMigrationRecorder creates a new MigrationRecorder using the given db connection.
-func NewMigrationRecorder(db *sql.DB) *MigrationRecorder {
-	return &MigrationRecorder{db: db}
+// NewMigrationRecorder creates a new MigrationRecorder using the given db connection
+// and provider. The provider supplies the database-specific DDL and placeholder style.
+func NewMigrationRecorder(db *sql.DB, p providers.Provider) *MigrationRecorder {
+	return &MigrationRecorder{db: db, provider: p}
 }
 
 // EnsureTable creates the makemigrations_history table if it does not exist.
+// The DDL is supplied by the provider so it is correct for the target database.
 func (r *MigrationRecorder) EnsureTable() error {
-	_, err := r.db.Exec(createHistoryTableSQL)
+	_, err := r.db.Exec(r.provider.HistoryTableDDL())
 	if err != nil {
 		return fmt.Errorf("creating makemigrations_history table: %w", err)
 	}
@@ -78,7 +75,8 @@ func (r *MigrationRecorder) GetApplied() (map[string]bool, error) {
 
 // RecordApplied inserts a migration name into the history table.
 func (r *MigrationRecorder) RecordApplied(name string) error {
-	_, err := r.db.Exec("INSERT INTO makemigrations_history (name) VALUES (?)", name)
+	query := "INSERT INTO makemigrations_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
+	_, err := r.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as applied: %w", name, err)
 	}
@@ -87,7 +85,8 @@ func (r *MigrationRecorder) RecordApplied(name string) error {
 
 // RecordRolledBack removes a migration name from the history table.
 func (r *MigrationRecorder) RecordRolledBack(name string) error {
-	_, err := r.db.Exec("DELETE FROM makemigrations_history WHERE name = ?", name)
+	query := "DELETE FROM makemigrations_history WHERE name = " + r.provider.Placeholder(1)
+	_, err := r.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as rolled back: %w", name, err)
 	}

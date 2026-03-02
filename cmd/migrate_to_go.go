@@ -345,11 +345,11 @@ func migrateHistoryWithEntries(db *sql.DB, entries []migrateEntry, dryRun bool, 
 	appliedVersions := map[int64]bool{}
 	for rows.Next() {
 		var vid int64
-		var isApplied int64
+		var isApplied bool
 		if scanErr := rows.Scan(&vid, &isApplied); scanErr != nil {
 			return fmt.Errorf("scanning goose_db_version: %w", scanErr)
 		}
-		appliedVersions[vid] = isApplied != 0
+		appliedVersions[vid] = isApplied
 	}
 	if rowErr := rows.Err(); rowErr != nil {
 		return fmt.Errorf("iterating goose_db_version: %w", rowErr)

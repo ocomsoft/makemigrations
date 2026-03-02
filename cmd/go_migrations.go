@@ -281,7 +281,11 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 	// resolve the package through the workspace and fail with "main module does
 	// not contain package". Disabling the workspace lets go use the migrations
 	// module's own go.mod directly.
-	buildCmd.Env = append(os.Environ(), "GOWORK=off")
+	//
+	// GOTOOLCHAIN=local: prevents Go from trying to download the toolchain
+	// version declared in the migrations go.mod. We always want to use the
+	// locally installed toolchain (the same one running makemigrations).
+	buildCmd.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
 		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
 	}

@@ -133,7 +133,7 @@ func TestGoGenerator_GenerateMainGo(t *testing.T) {
 
 func TestGoGenerator_GenerateGoMod(t *testing.T) {
 	g := codegen.NewGoGenerator()
-	src := g.GenerateGoMod("myproject/migrations", "v0.3.0", "1.25")
+	src := g.GenerateGoMod("myproject/migrations", "v0.3.0", "1.25", "")
 	if !strings.Contains(src, "module myproject/migrations") {
 		t.Error("expected module declaration")
 	}

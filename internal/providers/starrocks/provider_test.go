@@ -142,3 +142,26 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 		t.Errorf("expected empty string for no-change alter, got: %q", got)
 	}
 }
+
+func TestProvider_GenerateJunctionTable(t *testing.T) {
+	p := New()
+	got, err := p.GenerateJunctionTable("users", "roles", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(got, "roles_users") {
+		t.Errorf("expected alphabetically sorted junction table name, got:\n%s", got)
+	}
+	if !strings.Contains(got, "roles_id") {
+		t.Errorf("expected roles_id column, got:\n%s", got)
+	}
+	if !strings.Contains(got, "users_id") {
+		t.Errorf("expected users_id column, got:\n%s", got)
+	}
+	if !strings.Contains(got, "PRIMARY KEY") {
+		t.Errorf("expected PRIMARY KEY, got:\n%s", got)
+	}
+	if strings.Contains(got, "FOREIGN KEY") {
+		t.Errorf("expected no FOREIGN KEY for StarRocks, got:\n%s", got)
+	}
+}

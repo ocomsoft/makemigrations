@@ -454,29 +454,17 @@ func main() {
 
 // GenerateGoMod returns a go.mod file content string for the generated migrations
 // module. moduleName is the module path (e.g. "myproject/migrations"), version
-// is the makemigrations version to require (e.g. "v0.3.0"), goVersion is the
-// Go version to declare (e.g. "1.25", defaults to "1.24" when empty), and
-// localReplace is an optional absolute path to a local makemigrations checkout.
-// When localReplace is set, the require uses the standard replace-placeholder
-// version and a replace directive is appended so go mod tidy works without
-// hitting the network.
-func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion, localReplace string) string {
+// is the makemigrations version to require (e.g. "v0.3.0" or "main"), and
+// goVersion is the Go version to declare (e.g. "1.25", defaults to "1.24").
+func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion string) string {
 	if goVersion == "" {
 		goVersion = "1.24"
-	}
-	requireVersion := version
-	if localReplace != "" {
-		// Standard Go placeholder used when a replace directive is present.
-		requireVersion = "v0.0.0-00010101000000-000000000000"
 	}
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("module %s\n\n", moduleName))
 	b.WriteString(fmt.Sprintf("go %s\n\n", goVersion))
 	b.WriteString("require (\n")
-	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/makemigrations %s\n", requireVersion))
+	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/makemigrations %s\n", version))
 	b.WriteString(")\n")
-	if localReplace != "" {
-		b.WriteString(fmt.Sprintf("\nreplace github.com/ocomsoft/makemigrations => %s\n", localReplace))
-	}
 	return b.String()
 }

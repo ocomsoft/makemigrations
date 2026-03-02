@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/modfile"
 
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
@@ -263,6 +264,11 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 // `dag --format json` to retrieve the current migration graph state. The
 // binary is cleaned up automatically when the function returns.
 func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
+	absMigrationsDir, err := filepath.Abs(migrationsDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving migrations dir: %w", err)
+	}
+
 	tmpDir, err := os.MkdirTemp("", "makemigrations-*")
 	if err != nil {
 		return nil, fmt.Errorf("creating temp dir: %w", err)
@@ -271,38 +277,64 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 	tmpBin := filepath.Join(tmpDir, "migrations-bin")
 
 	if verbose {
-		fmt.Printf("Building migration binary from %s...\n", migrationsDir)
+		fmt.Printf("Building migration binary from %s...\n", absMigrationsDir)
 	}
 
-	// goEnv is shared by all sub-commands in this function.
-	// GOWORK=off: the migrations directory has its own go.mod (separate module).
-	// If a go.work workspace file exists in a parent directory, Go would try to
-	// resolve the package through the workspace and fail with "main module does
-	// not contain package". Disabling the workspace lets go use the migrations
-	// module's own go.mod directly.
-	// We do NOT override GOTOOLCHAIN: the caller's environment already has the
-	// right setting (typically "auto"). Since the running binary already satisfies
-	// the go.mod version requirement, "auto" will reuse the current toolchain
-	// without downloading anything.
-	goEnv := append(os.Environ(), "GOWORK=off")
+	// Read the Go version from the nearest parent go.work or go.mod so the
+	// temp workspace uses the same (already-cached) toolchain as the project.
+	parentDir := filepath.Dir(absMigrationsDir)
+	goVersion := findParentGoVersion(parentDir)
+	if goVersion == "" {
+		goVersion = "1.22"
+	}
 
-	// Sync go.sum before building. The migrations go.sum may be stale if
-	// dependencies were updated since the last tidy (e.g. a new subpackage was
-	// added to makemigrations). This is equivalent to running `go mod download`
-	// in the migrations directory and does not modify go.mod.
-	downloadCmd := exec.Command("go", "mod", "download")
-	downloadCmd.Dir = migrationsDir
-	downloadCmd.Env = goEnv
-	if out, dlErr := downloadCmd.CombinedOutput(); dlErr != nil {
-		// Non-fatal: if download fails we still try to build; the build error
-		// will be more descriptive.
+	// Check parent go.mod files for a local replace of makemigrations.
+	// If found, include it in the workspace so the build resolves locally
+	// without any network access or go.sum concerns.
+	localMakemig := findLocalMakemigrations(parentDir)
+
+	// Build a temporary go.work that includes the migrations module (and
+	// optionally a local makemigrations). This solves two problems:
+	//  1. Parent workspace conflict: a go.work in a parent directory may not
+	//     list the migrations sub-module, causing "main module does not contain
+	//     package" errors when GOWORK is inherited.
+	//  2. Toolchain downloads: by declaring the same go version as the parent
+	//     project, Go reuses the already-cached toolchain rather than fetching
+	//     a different one.
+	var work strings.Builder
+	fmt.Fprintf(&work, "go %s\n\nuse %s\n", goVersion, absMigrationsDir)
+	if localMakemig != "" {
+		fmt.Fprintf(&work, "use %s\n", localMakemig)
 		if verbose {
-			fmt.Printf("go mod download warning: %s\n", string(out))
+			fmt.Printf("Using local makemigrations: %s\n", localMakemig)
+		}
+	}
+
+	var goEnv []string
+	tmpWork := filepath.Join(tmpDir, "go.work")
+	if werr := os.WriteFile(tmpWork, []byte(work.String()), 0o644); werr == nil {
+		goEnv = append(os.Environ(), "GOWORK="+tmpWork)
+	} else {
+		// Fallback: disable workspace entirely.
+		goEnv = append(os.Environ(), "GOWORK=off")
+	}
+
+	// When no local makemigrations is available the migrations go.sum may be
+	// stale (e.g. a new subpackage was added to the published module). Run
+	// go mod download to sync go.sum without modifying go.mod.
+	if localMakemig == "" {
+		downloadCmd := exec.Command("go", "mod", "download")
+		downloadCmd.Dir = absMigrationsDir
+		downloadCmd.Env = goEnv
+		if out, dlErr := downloadCmd.CombinedOutput(); dlErr != nil {
+			if verbose {
+				fmt.Printf("go mod download warning: %s\n", string(out))
+			}
 		}
 	}
 
 	buildCmd := exec.Command("go", "build", "-o", tmpBin, ".")
-	buildCmd.Dir = migrationsDir
+	buildCmd.Dir = absMigrationsDir
 	buildCmd.Env = goEnv
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
 		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
@@ -430,4 +462,64 @@ func goGenerateMerge(migrationsDir string, dagOut *migrate.DAGOutput, dryRun, ve
 	fmt.Printf("Created merge migration: %s\n", outPath)
 	fmt.Printf("Dependencies: %s\n", strings.Join(dagOut.Leaves, ", "))
 	return nil
+}
+
+// findParentGoVersion walks up from startDir looking for a go.work or go.mod
+// and returns the Go version declared in it (e.g. "1.25"). go.work is checked
+// first because it represents the workspace-level version. Returns "" if no
+// version is found.
+func findParentGoVersion(startDir string) string {
+	dir := startDir
+	for {
+		workPath := filepath.Join(dir, "go.work")
+		if data, err := os.ReadFile(workPath); err == nil {
+			if f, err := modfile.ParseWork(workPath, data, nil); err == nil && f.Go != nil {
+				return f.Go.Version
+			}
+		}
+		modPath := filepath.Join(dir, "go.mod")
+		if data, err := os.ReadFile(modPath); err == nil {
+			if f, err := modfile.Parse(modPath, data, nil); err == nil && f.Go != nil {
+				return f.Go.Version
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+// findLocalMakemigrations walks up from startDir looking for a go.mod that
+// has a replace directive for github.com/ocomsoft/makemigrations pointing to
+// a local path. Returns the absolute path of the local module, or "" if none
+// is found.
+func findLocalMakemigrations(startDir string) string {
+	const modPkg = "github.com/ocomsoft/makemigrations"
+	dir := startDir
+	for {
+		modPath := filepath.Join(dir, "go.mod")
+		if data, err := os.ReadFile(modPath); err == nil {
+			if f, err := modfile.Parse(modPath, data, nil); err == nil {
+				for _, r := range f.Replace {
+					if r.Old.Path == modPkg && r.New.Path != "" {
+						p := r.New.Path
+						if !filepath.IsAbs(p) {
+							p = filepath.Join(dir, filepath.FromSlash(p))
+						}
+						if abs, err := filepath.Abs(p); err == nil {
+							return abs
+						}
+						return p
+					}
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
 }

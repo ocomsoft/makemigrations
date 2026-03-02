@@ -215,6 +215,11 @@ func (sc *SQLConverter) ConvertSchema(schema *Schema) (string, error) {
 		return "", fmt.Errorf("schema cannot be nil")
 	}
 
+	// Apply user-defined type mappings from schema if present
+	if mappings := schema.TypeMappings.ForProvider(sc.databaseType); mappings != nil {
+		sc.provider.SetTypeMappings(mappings)
+	}
+
 	// Analyze dependencies and get topological order
 	analyzer := NewDependencyAnalyzer(sc.verbose)
 	tableOrder, err := analyzer.TopologicalSort(schema)
@@ -812,6 +817,13 @@ func (sc *SQLConverter) quoteName(name string) string {
 func (sc *SQLConverter) ConvertDiffToSQL(diff *SchemaDiff, oldSchema, newSchema *Schema) (upSQL, downSQL string, err error) {
 	if diff == nil || !diff.HasChanges {
 		return "", "", nil
+	}
+
+	// Apply user-defined type mappings from the target schema if present
+	if newSchema != nil {
+		if mappings := newSchema.TypeMappings.ForProvider(sc.databaseType); mappings != nil {
+			sc.provider.SetTypeMappings(mappings)
+		}
 	}
 
 	var upStatements []string

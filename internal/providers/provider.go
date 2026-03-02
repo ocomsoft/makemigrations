@@ -61,6 +61,10 @@ type Provider interface {
 	// HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
 	// makemigrations_history migration-tracking table using this provider's SQL dialect.
 	HistoryTableDDL() string
+	// IsNotFoundError returns true when err indicates that a DROP operation
+	// targeted an object that does not exist in the database.
+	// Used by the runner to warn-and-continue rather than fail.
+	IsNotFoundError(err error) bool
 
 	// Schema processing
 	GenerateIndexes(schema *types.Schema) string

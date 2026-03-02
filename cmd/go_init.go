@@ -48,13 +48,13 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 		return fmt.Errorf("creating migrations directory: %w", err)
 	}
 
-	// Auto-upgrade: if Goose SQL migrations exist, convert them to Go migrations.
-	sqlFiles, _ := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
-	if len(sqlFiles) > 0 {
-		fmt.Printf("Detected %d Goose SQL migration(s) in %s — running migrate-to-go...\n",
-			len(sqlFiles), migrationsDir)
-		return ExecuteMigrateToGo(migrationsDir, false, true, false, os.Stdout)
-	}
+	//// Auto-upgrade: if Goose SQL migrations exist, convert them to Go migrations.
+	//sqlFiles, _ := filepath.Glob(filepath.Join(migrationsDir, "*.sql"))
+	//if len(sqlFiles) > 0 {
+	//	fmt.Printf("Detected %d Goose SQL migration(s) in %s — running migrate-to-go...\n",
+	//		len(sqlFiles), migrationsDir)
+	//	return ExecuteMigrateToGo(migrationsDir, false, true, false, os.Stdout)
+	//}
 
 	var initialMigName string
 
@@ -102,8 +102,7 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 		fmt.Printf(`
 Your database already has these tables applied. Mark this migration as applied without re-running SQL:
 
-  cd %s && go mod tidy && go build -o migrate .
-  ./migrate fake %s
+  makemigrations migrate fake %s
 
 `, migrationsDir, initialMigName)
 	} else {

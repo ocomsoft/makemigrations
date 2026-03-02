@@ -441,7 +441,8 @@ import (
 
 func main() {
 	app := m.NewApp(m.Config{
-		Registry: m.GlobalRegistry(),
+		DatabaseType: m.EnvOr("DB_TYPE", "postgresql"),
+		DatabaseURL:  m.EnvOr("DATABASE_URL", ""),
 	})
 	if err := app.Run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

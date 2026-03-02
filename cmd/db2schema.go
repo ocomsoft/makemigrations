@@ -137,7 +137,7 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create provider for the database type
-	provider, err := providers.NewProvider(dbType)
+	provider, err := providers.NewProvider(dbType, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create provider: %w", err)
 	}

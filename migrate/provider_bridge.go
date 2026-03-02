@@ -39,7 +39,7 @@ func BuildProviderFromType(dbType string) (providers.Provider, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing database type %q: %w", dbType, err)
 	}
-	p, err := providers.NewProvider(dt)
+	p, err := providers.NewProvider(dt, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating provider for %q: %w", dbType, err)
 	}

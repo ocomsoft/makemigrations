@@ -27,12 +27,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ocomsoft/makemigrations/internal/typemap"
 	"github.com/ocomsoft/makemigrations/internal/types"
 	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for SQLite
-type Provider struct{}
+type Provider struct {
+	typeMappings map[string]string
+}
+
+// SetTypeMappings sets user-defined type mappings for this provider.
+func (p *Provider) SetTypeMappings(mappings map[string]string) {
+	p.typeMappings = mappings
+}
 
 // New creates a new SQLite provider
 func New() *Provider {
@@ -84,6 +92,17 @@ func (p *Provider) IsNotFoundError(err error) bool {
 
 // ConvertFieldType converts YAML field type to SQLite-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
+	// Check user-defined type mappings first
+	if p.typeMappings != nil {
+		if mapping, ok := p.typeMappings[field.Type]; ok {
+			resolved, err := typemap.ResolveType(mapping, field)
+			if err == nil {
+				return resolved
+			}
+			// Fall through to default on error
+		}
+	}
+
 	switch field.Type {
 	case "varchar", "text":
 		return "TEXT"

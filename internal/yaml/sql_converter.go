@@ -124,7 +124,7 @@ type SQLConverter struct {
 
 // NewSQLConverter creates a new SQL converter
 func NewSQLConverter(databaseType DatabaseType, verbose bool) *SQLConverter {
-	provider, err := providers.NewProvider(databaseType)
+	provider, err := providers.NewProvider(databaseType, nil)
 	if err != nil {
 		// For backwards compatibility, fallback to a default provider if creation fails
 		// This shouldn't happen with valid database types, but return nil instead of panic for tests
@@ -149,7 +149,7 @@ func NewSQLConverter(databaseType DatabaseType, verbose bool) *SQLConverter {
 
 // NewSQLConverterWithOptions creates a new SQL converter with configuration options
 func NewSQLConverterWithOptions(databaseType DatabaseType, verbose bool, safeTypeChanges bool) *SQLConverter {
-	provider, err := providers.NewProvider(databaseType)
+	provider, err := providers.NewProvider(databaseType, nil)
 	if err != nil {
 		return nil
 	}
@@ -192,7 +192,7 @@ func NewSQLConverterWithConfig(databaseType DatabaseType, verbose bool, safeType
 		}
 	}
 
-	provider, err := providers.NewProvider(databaseType)
+	provider, err := providers.NewProvider(databaseType, nil)
 	if err != nil {
 		return nil
 	}

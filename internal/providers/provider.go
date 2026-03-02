@@ -72,4 +72,7 @@ type Provider interface {
 
 	// Database reverse engineering
 	GetDatabaseSchema(connectionString string) (*types.Schema, error)
+
+	// Configuration
+	SetTypeMappings(mappings map[string]string)
 }

@@ -41,34 +41,40 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
-// NewProvider creates a new database provider based on the database type
-func NewProvider(dbType types.DatabaseType) (Provider, error) {
+// NewProvider creates a new database provider based on the database type.
+// If typeMappings is non-nil, it is applied to the provider via SetTypeMappings.
+func NewProvider(dbType types.DatabaseType, typeMappings map[string]string) (Provider, error) {
+	var p Provider
 	switch dbType {
 	case types.DatabasePostgreSQL:
-		return postgresql.New(), nil
+		p = postgresql.New()
 	case types.DatabaseMySQL:
-		return mysql.New(), nil
+		p = mysql.New()
 	case types.DatabaseSQLite:
-		return sqlite.New(), nil
+		p = sqlite.New()
 	case types.DatabaseSQLServer:
-		return sqlserver.New(), nil
+		p = sqlserver.New()
 	case types.DatabaseRedshift:
-		return redshift.New(), nil
+		p = redshift.New()
 	case types.DatabaseClickHouse:
-		return clickhouse.New(), nil
+		p = clickhouse.New()
 	case types.DatabaseTiDB:
-		return tidb.New(), nil
+		p = tidb.New()
 	case types.DatabaseVertica:
-		return vertica.New(), nil
+		p = vertica.New()
 	case types.DatabaseYDB:
-		return ydb.New(), nil
+		p = ydb.New()
 	case types.DatabaseTurso:
-		return turso.New(), nil
+		p = turso.New()
 	case types.DatabaseStarRocks:
-		return starrocks.New(), nil
+		p = starrocks.New()
 	case types.DatabaseAuroraDSQL:
-		return auroradsql.New(), nil
+		p = auroradsql.New()
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", dbType)
 	}
+	if typeMappings != nil {
+		p.SetTypeMappings(typeMappings)
+	}
+	return p, nil
 }

@@ -31,6 +31,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -282,10 +283,14 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 	// not contain package". Disabling the workspace lets go use the migrations
 	// module's own go.mod directly.
 	//
-	// GOTOOLCHAIN=local: prevents Go from trying to download the toolchain
-	// version declared in the migrations go.mod. We always want to use the
-	// locally installed toolchain (the same one running makemigrations).
-	buildCmd.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN=local")
+	// GOTOOLCHAIN=<running version>: pin the build to the exact same Go toolchain
+	// that is running makemigrations right now. This avoids two failure modes:
+	//   - GOTOOLCHAIN=local fails when the installed Go is older than the version
+	//     declared in the migrations go.mod (e.g. installed=1.22, go.mod=1.24).
+	//   - No override causes Go to try downloading a different toolchain version,
+	//     which fails in air-gapped or restricted environments.
+	// runtime.Version() returns "go1.X.Y", which is a valid GOTOOLCHAIN value.
+	buildCmd.Env = append(os.Environ(), "GOWORK=off", "GOTOOLCHAIN="+runtime.Version())
 	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
 		return nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
 	}

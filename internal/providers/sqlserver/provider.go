@@ -262,7 +262,42 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 }
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	oldType := p.ConvertFieldType(oldField)
+	newType := p.ConvertFieldType(newField)
+
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+		return "", nil
+	}
+
+	var stmts []string
+	tbl := p.QuoteName(tableName)
+	col := p.QuoteName(newField.Name)
+
+	// Type or nullability change
+	if oldType != newType || oldField.IsNullable() != newField.IsNullable() {
+		nullClause := " NULL"
+		if !newField.IsNullable() {
+			nullClause = " NOT NULL"
+		}
+		stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s %s%s;",
+			tbl, col, newType, nullClause))
+	}
+
+	// Default change — SQL Server uses ADD/DROP CONSTRAINT for defaults
+	if oldField.Default != newField.Default {
+		if oldField.Default != "" {
+			constraintName := fmt.Sprintf("DF_%s_%s", tableName, newField.Name)
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s;",
+				tbl, p.QuoteName(constraintName)))
+		}
+		if newField.Default != "" {
+			constraintName := fmt.Sprintf("DF_%s_%s", tableName, newField.Name)
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s DEFAULT '%s' FOR %s;",
+				tbl, p.QuoteName(constraintName), newField.Default, col))
+		}
+	}
+
+	return strings.Join(stmts, "\n"), nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

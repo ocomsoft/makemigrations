@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/cmd"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver for testing
 )
@@ -40,6 +41,24 @@ func writeSQLFile(t *testing.T, dir, name, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
 		t.Fatalf("writing %s: %v", name, err)
+	}
+}
+
+// writeMinimalSnapshot writes a .schema_snapshot.yaml with a single "users" table
+// so that ExecuteMigrateToGo can generate the schema-state bootstrap migration.
+func writeMinimalSnapshot(t *testing.T, dir string) {
+	t.Helper()
+	schema := &yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name:   "users",
+				Fields: []yamlpkg.Field{{Name: "id", Type: "integer"}},
+			},
+		},
+	}
+	sm := yamlpkg.NewStateManager(false)
+	if err := sm.SaveSchemaSnapshot(schema, dir); err != nil {
+		t.Fatalf("writing snapshot: %v", err)
 	}
 }
 
@@ -66,6 +85,7 @@ ALTER TABLE users ADD COLUMN phone TEXT;
 -- +goose Down
 ALTER TABLE users DROP COLUMN phone;
 `)
+	writeMinimalSnapshot(t, dir)
 
 	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err != nil {
@@ -88,6 +108,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 -- +goose Down
 DROP TABLE users;
 `)
+	writeMinimalSnapshot(t, dir)
 
 	err := cmd.ExecuteMigrateToGo(dir, false, true, false, io.Discard)
 	if err != nil {
@@ -133,6 +154,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 -- +goose Down
 DROP TABLE users;
 `)
+	writeMinimalSnapshot(t, dir)
 
 	err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard)
 	if err != nil {
@@ -154,6 +176,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY);
 -- +goose Down
 DROP TABLE users;
 `)
+	writeMinimalSnapshot(t, dir)
 
 	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard); err != nil {
 		t.Fatalf("ExecuteMigrateToGo: %v", err)
@@ -264,5 +287,54 @@ ALTER TABLE users DROP COLUMN phone;
 	}
 	if names[0] != "0001_initial" {
 		t.Errorf("expected 0001_initial, got %q", names[0])
+	}
+}
+
+func TestMigrateToGo_BootstrapMigration_CreatedFromSnapshot(t *testing.T) {
+	dir := t.TempDir()
+
+	// One SQL file to convert.
+	writeSQLFile(t, dir, "00001_initial.sql", `-- +goose Up
+CREATE TABLE users (id INTEGER PRIMARY KEY);
+-- +goose Down
+DROP TABLE users;
+`)
+
+	// Write a .schema_snapshot.yaml so the bootstrap migration can be generated.
+	schema := &yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "integer"},
+				},
+			},
+		},
+	}
+	sm := yamlpkg.NewStateManager(false)
+	if err := sm.SaveSchemaSnapshot(schema, dir); err != nil {
+		t.Fatalf("saving snapshot: %v", err)
+	}
+
+	if err := cmd.ExecuteMigrateToGo(dir, false, true, true, io.Discard); err != nil {
+		t.Fatalf("ExecuteMigrateToGo: %v", err)
+	}
+
+	// The bootstrap migration should be 0002_schema_state.go (sequential after 0001).
+	bootstrapPath := filepath.Join(dir, "0002_schema_state.go")
+	content, err := os.ReadFile(bootstrapPath)
+	if err != nil {
+		t.Fatalf("expected bootstrap migration %s: %v", bootstrapPath, err)
+	}
+
+	src := string(content)
+	if !strings.Contains(src, "SchemaOnly: true") {
+		t.Errorf("expected SchemaOnly: true in bootstrap migration, got:\n%s", src)
+	}
+	if !strings.Contains(src, `"0001_initial"`) {
+		t.Errorf("expected dependency on 0001_initial in bootstrap migration, got:\n%s", src)
+	}
+	if !strings.Contains(src, "CreateTable") {
+		t.Errorf("expected CreateTable in bootstrap migration, got:\n%s", src)
 	}
 }

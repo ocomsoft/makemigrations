@@ -252,3 +252,84 @@ func TestDropField_SchemaOnly_NoSQL(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateTable_SchemaOnly_NoSQL(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+
+	op := &migrate.CreateTable{
+		Name:       "users",
+		Fields:     []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+		SchemaOnly: true,
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL != "" {
+		t.Errorf("expected empty Up SQL with SchemaOnly, got %q", upSQL)
+	}
+
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if downSQL != "" {
+		t.Errorf("expected empty Down SQL with SchemaOnly, got %q", downSQL)
+	}
+
+	// Mutate must still advance schema state.
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if _, exists := state.Tables["users"]; !exists {
+		t.Error("expected table 'users' to be present in state after Mutate")
+	}
+}
+
+func TestAddField_SchemaOnly_NoSQL(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	op := &migrate.AddField{
+		Table:      "users",
+		Field:      migrate.Field{Name: "email", Type: "varchar"},
+		SchemaOnly: true,
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL != "" {
+		t.Errorf("expected empty Up SQL with SchemaOnly, got %q", upSQL)
+	}
+
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if downSQL != "" {
+		t.Errorf("expected empty Down SQL with SchemaOnly, got %q", downSQL)
+	}
+
+	// Mutate must still advance schema state.
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	ts, exists := state.Tables["users"]
+	if !exists {
+		t.Fatal("expected table 'users' in state")
+	}
+	found := false
+	for _, f := range ts.Fields {
+		if f.Name == "email" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected field 'email' to be present in state after Mutate")
+	}
+}

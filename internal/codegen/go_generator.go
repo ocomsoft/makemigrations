@@ -140,13 +140,13 @@ func (g *GoGenerator) generateOperation(
 ) (string, error) {
 	switch change.Type {
 	case yaml.ChangeTypeTableAdded:
-		return g.generateCreateTable(change)
+		return g.generateCreateTable(change, schemaOnly)
 	case yaml.ChangeTypeTableRemoved:
 		return g.generateDropTable(change, schemaOnly)
 	case yaml.ChangeTypeTableRenamed:
 		return g.generateRenameTable(change)
 	case yaml.ChangeTypeFieldAdded:
-		return g.generateAddField(change)
+		return g.generateAddField(change, schemaOnly)
 	case yaml.ChangeTypeFieldRemoved:
 		return g.generateDropField(change, schemaOnly)
 	case yaml.ChangeTypeFieldModified:
@@ -163,7 +163,9 @@ func (g *GoGenerator) generateOperation(
 }
 
 // generateCreateTable emits a &m.CreateTable{...} literal.
-func (g *GoGenerator) generateCreateTable(change yaml.Change) (string, error) {
+// When schemaOnly is true, SchemaOnly: true is included so the runner updates
+// the schema state without executing CREATE TABLE against the database.
+func (g *GoGenerator) generateCreateTable(change yaml.Change, schemaOnly bool) (string, error) {
 	table, ok := change.NewValue.(yaml.Table)
 	if !ok {
 		return "", fmt.Errorf("expected yaml.Table for NewValue, got %T", change.NewValue)
@@ -194,6 +196,10 @@ func (g *GoGenerator) generateCreateTable(change yaml.Change) (string, error) {
 		b.WriteString("\t\t\t\t},\n")
 	}
 
+	if schemaOnly {
+		b.WriteString("\t\t\t\tSchemaOnly: true,\n")
+	}
+
 	b.WriteString("\t\t\t},\n")
 	return b.String(), nil
 }
@@ -219,7 +225,9 @@ func (g *GoGenerator) generateRenameTable(change yaml.Change) (string, error) {
 }
 
 // generateAddField emits a &m.AddField{...} literal.
-func (g *GoGenerator) generateAddField(change yaml.Change) (string, error) {
+// When schemaOnly is true, SchemaOnly: true is included so the runner updates
+// the schema state without executing ALTER TABLE ADD COLUMN against the database.
+func (g *GoGenerator) generateAddField(change yaml.Change, schemaOnly bool) (string, error) {
 	field, ok := change.NewValue.(yaml.Field)
 	if !ok {
 		return "", fmt.Errorf("expected yaml.Field for NewValue, got %T", change.NewValue)
@@ -228,7 +236,11 @@ func (g *GoGenerator) generateAddField(change yaml.Change) (string, error) {
 	b.WriteString(fmt.Sprintf("\t\t\t&m.AddField{\n\t\t\t\tTable: %q,\n", change.TableName))
 	b.WriteString("\t\t\t\tField: ")
 	b.WriteString(generateFieldLiteral(field))
-	b.WriteString(",\n\t\t\t},\n")
+	b.WriteString(",\n")
+	if schemaOnly {
+		b.WriteString("\t\t\t\tSchemaOnly: true,\n")
+	}
+	b.WriteString("\t\t\t},\n")
 	return b.String(), nil
 }
 

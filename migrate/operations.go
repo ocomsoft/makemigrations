@@ -120,10 +120,14 @@ func joinFields(fields []string) string {
 
 // CreateTable is a migration operation that creates a new database table
 // with the specified fields and indexes.
+// When SchemaOnly is true the operation advances the in-memory schema state
+// (via Mutate) but does not execute any SQL, allowing the schema state to be
+// seeded from an existing database without re-running CREATE TABLE.
 type CreateTable struct {
-	Name    string
-	Fields  []Field
-	Indexes []Index
+	Name       string
+	Fields     []Field
+	Indexes    []Index
+	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
 }
 
 // TypeName returns the operation type identifier.
@@ -140,8 +144,11 @@ func (op *CreateTable) Describe() string {
 	return fmt.Sprintf("Create table %s (%d fields)", op.Name, len(op.Fields))
 }
 
-// Up generates the CREATE TABLE SQL statement.
+// Up generates the CREATE TABLE SQL statement, or returns empty string when SchemaOnly is set.
 func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	schema := stateToSchema(state)
 	table := &types.Table{Name: op.Name}
 	for _, f := range op.Fields {
@@ -154,7 +161,11 @@ func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map
 }
 
 // Down generates the DROP TABLE SQL to reverse the creation.
+// Returns empty string when SchemaOnly is set.
 func (op *CreateTable) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return p.GenerateDropTable(op.Name), nil
 }
 
@@ -256,9 +267,13 @@ func (op *RenameTable) Mutate(state *SchemaState) error {
 // --- AddField ---
 
 // AddField is a migration operation that adds a new column to an existing table.
+// When SchemaOnly is true the operation advances the in-memory schema state
+// (via Mutate) but does not execute any SQL, allowing the schema state to be
+// seeded from an existing database without running ALTER TABLE ADD COLUMN.
 type AddField struct {
-	Table string
-	Field Field
+	Table      string
+	Field      Field
+	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
 }
 
 // TypeName returns the operation type identifier.
@@ -275,13 +290,20 @@ func (op *AddField) Describe() string {
 	return fmt.Sprintf("Add field %s.%s %s", op.Table, op.Field.Name, op.Field.Type)
 }
 
-// Up generates the ADD COLUMN SQL statement.
+// Up generates the ADD COLUMN SQL statement, or returns empty string when SchemaOnly is set.
 func (op *AddField) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return p.GenerateAddColumn(op.Table, toTypesField(op.Field)), nil
 }
 
 // Down generates the DROP COLUMN SQL to reverse the addition.
+// Returns empty string when SchemaOnly is set.
 func (op *AddField) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
+	if op.SchemaOnly {
+		return "", nil
+	}
 	return p.GenerateDropColumn(op.Table, op.Field.Name), nil
 }
 

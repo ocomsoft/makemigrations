@@ -641,3 +641,48 @@ func TestGoGenerator_DropField_NilDecisions_Normal(t *testing.T) {
 		t.Error("expected no REVIEW comment when decisions is nil")
 	}
 }
+
+func TestGoGenerator_CreateTable_PromptOmit_EmitsSchemaOnly(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	table := yaml.Table{
+		Name:   "users",
+		Fields: []yaml.Field{{Name: "id", Type: "integer"}},
+	}
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeTableAdded, TableName: "users", NewValue: table},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptOmit}
+	src, err := g.GenerateMigration("0030_schema_state", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "SchemaOnly: true") {
+		t.Errorf("expected SchemaOnly: true in CreateTable output, got:\n%s", src)
+	}
+}
+
+func TestGoGenerator_AddField_PromptOmit_EmitsSchemaOnly(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:      yaml.ChangeTypeFieldAdded,
+				TableName: "users",
+				FieldName: "email",
+				NewValue:  yaml.Field{Name: "email", Type: "varchar"},
+			},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptOmit}
+	src, err := g.GenerateMigration("0031_schema_state_field", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "SchemaOnly: true") {
+		t.Errorf("expected SchemaOnly: true in AddField output, got:\n%s", src)
+	}
+}

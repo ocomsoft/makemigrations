@@ -36,6 +36,7 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
 	"github.com/ocomsoft/makemigrations/internal/gooseparser"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 	"github.com/spf13/cobra"
 )
@@ -177,7 +178,31 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 		}
 	}
 
-	// Step 6: Migrate goose history.
+	// Step 6: Generate a schema-state bootstrap migration.
+	//
+	// Why this exists:
+	//   RunSQL.Mutate() is a no-op — raw SQL cannot be reliably parsed back into a
+	//   typed schema representation. This means that after migrate-to-go, when
+	//   `makemigrations makemigrations` queries the DAG to reconstruct the previous
+	//   schema state, it gets an empty SchemaState and believes no tables exist yet.
+	//   The next diff would then generate a "create everything" migration, corrupting
+	//   the migration chain.
+	//
+	//   The bootstrap migration is a typed Go migration (CreateTable + AddField ops)
+	//   placed at the end of the chain with SchemaOnly: true on every operation.
+	//   When the runner executes it:
+	//     • Up()/Down() return "" — no SQL is sent to the database (tables already exist)
+	//     • Mutate() runs normally — the SchemaState is populated correctly
+	//   Subsequent calls to `makemigrations makemigrations` then see the correct
+	//   previous schema and produce accurate diffs.
+	if !dryRun {
+		if bootstrapErr := generateSchemaStateBootstrap(migrationsDir, entries, out); bootstrapErr != nil {
+			return bootstrapErr
+		}
+	}
+
+
+	// Step 7 (was 6): Migrate goose history.
 	if !noHistory && !dryRun {
 		cfg := config.LoadOrDefault(configFile)
 		db, dbErr := setupGooseDB(cfg)
@@ -190,7 +215,7 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 		}
 	}
 
-	// Step 7: Delete original SQL files.
+	// Step 8: Delete original SQL files.
 	if !noDelete && !dryRun {
 		for _, entry := range entries {
 			sqlPath := filepath.Join(migrationsDir, entry.sqlFile)
@@ -202,6 +227,89 @@ func ExecuteMigrateToGo(migrationsDir string, dryRun, noHistory, noDelete bool, 
 	}
 
 	return nil
+}
+
+// generateSchemaStateBootstrap generates a schema-state migration at the end of
+// the converted RunSQL chain. It loads the current YAML schema (or snapshot) and
+// produces a typed Go migration where every CreateTable/AddField operation has
+// SchemaOnly: true. See the inline comment in ExecuteMigrateToGo for a full
+// explanation of why this migration is required.
+func generateSchemaStateBootstrap(migrationsDir string, entries []migrateEntry, out io.Writer) error {
+	schema, schemaErr := loadSchemaForBootstrap(migrationsDir)
+	if schemaErr != nil {
+		return fmt.Errorf(
+			"cannot generate schema-state bootstrap migration: %w\n\n"+
+				"Run 'makemigrations db2schema' to extract your database schema into YAML files,\n"+
+				"then re-run migrate-to-go.",
+			schemaErr,
+		)
+	}
+
+	diff := schemaToInitialDiff(schema)
+	if !diff.HasChanges {
+		fmt.Fprintf(out, "⚠  No tables found in schema — skipping schema-state bootstrap migration\n")
+		return nil
+	}
+
+	// All changes are SchemaOnly: don't execute SQL; only populate schema state.
+	decisions := make(map[int]yamlpkg.PromptResponse, len(diff.Changes))
+	for i := range diff.Changes {
+		decisions[i] = yamlpkg.PromptOmit
+	}
+
+	// Sequential number immediately after the last RunSQL migration.
+	bootstrapNum := len(entries) + 1
+	bootstrapName := fmt.Sprintf("%04d_schema_state", bootstrapNum)
+
+	var deps []string
+	if len(entries) > 0 {
+		deps = []string{entries[len(entries)-1].goName}
+	}
+
+	gen := codegen.NewGoGenerator()
+	src, genErr := gen.GenerateMigration(bootstrapName, deps, diff, schema, nil, decisions)
+	if genErr != nil {
+		return fmt.Errorf("generating schema-state bootstrap migration: %w", genErr)
+	}
+
+	goPath := filepath.Join(migrationsDir, bootstrapName+".go")
+	if writeErr := os.WriteFile(goPath, []byte(src), 0o644); writeErr != nil {
+		return fmt.Errorf("writing schema-state bootstrap migration: %w", writeErr)
+	}
+	fmt.Fprintf(out, "%s Created %s (schema-state bootstrap, SchemaOnly)\n", green("✓"), goPath)
+	return nil
+}
+
+// loadSchemaForBootstrap tries to locate the current schema for the bootstrap migration.
+// It first attempts to scan and merge YAML schema files from the project; if none are
+// found it falls back to loading the .schema_snapshot.yaml from migrationsDir.
+// Returns an error if neither source is available.
+func loadSchemaForBootstrap(migrationsDir string) (*yamlpkg.Schema, error) {
+	cfg := config.LoadOrDefault(configFile)
+
+	dbType, err := yamlpkg.ParseDatabaseType(cfg.Database.Type)
+	if err != nil {
+		// Non-fatal: fall through to snapshot
+		dbType = yamlpkg.DatabasePostgreSQL
+	}
+
+	components := InitializeYAMLComponents(dbType, false, true)
+	allSchemas, scanErr := ScanAndParseSchemas(components, false)
+	if scanErr == nil && len(allSchemas) > 0 {
+		merged, mergeErr := MergeAndValidateSchemas(components, allSchemas, dbType, false)
+		if mergeErr == nil && merged != nil && len(merged.Tables) > 0 {
+			return merged, nil
+		}
+	}
+
+	// Fall back to .schema_snapshot.yaml in migrationsDir.
+	sm := yamlpkg.NewStateManager(false)
+	snapshot, snapErr := sm.LoadSchemaSnapshot(migrationsDir)
+	if snapErr == nil && snapshot != nil && len(snapshot.Tables) > 0 {
+		return snapshot, nil
+	}
+
+	return nil, fmt.Errorf("no YAML schema files or .schema_snapshot.yaml found")
 }
 
 // discoverSQLFiles returns the names of all .sql files in dir, sorted alphabetically.

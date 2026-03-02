@@ -25,6 +25,7 @@ package turso
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
@@ -121,5 +122,33 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		if got := p.IsNotFoundError(tc.err); got != tc.want {
 			t.Errorf("IsNotFoundError(%v) = %v, want %v", tc.err, got, tc.want)
 		}
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestProvider_GenerateAlterColumn_ReturnsError(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "score", Type: "integer"}
+	nw := &types.Field{Name: "score", Type: "text"}
+	_, err := p.GenerateAlterColumn("results", old, nw)
+	if err == nil {
+		t.Fatal("expected error for ALTER COLUMN")
+	}
+	if !strings.Contains(err.Error(), "does not support ALTER COLUMN") {
+		t.Errorf("expected unsupported error, got: %v", err)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
+	p := New()
+	old := &types.Field{Name: "name", Type: "varchar", Length: 100}
+	nw := &types.Field{Name: "name", Type: "varchar", Length: 100}
+	got, err := p.GenerateAlterColumn("things", old, nw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty string for no-change alter, got: %q", got)
 	}
 }

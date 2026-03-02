@@ -252,7 +252,14 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 }
 
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
-	return "", fmt.Errorf("not implemented yet")
+	oldType := p.ConvertFieldType(oldField)
+	newType := p.ConvertFieldType(newField)
+
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+		return "", nil
+	}
+
+	return "", fmt.Errorf("SQLite does not support ALTER COLUMN; use a RunSQL migration with table recreation (create new table, copy data, drop old, rename)")
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

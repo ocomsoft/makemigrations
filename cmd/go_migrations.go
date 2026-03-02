@@ -229,7 +229,11 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 			continue
 		}
 
-		fmt.Printf("\n⚠  Destructive operation detected: %s on %q\n", change.Type, change.TableName)
+		if change.FieldName != "" {
+			fmt.Printf("\n⚠  Destructive operation detected: %s on %q (field: %q)\n", change.Type, change.TableName, change.FieldName)
+		} else {
+			fmt.Printf("\n⚠  Destructive operation detected: %s on %q\n", change.Type, change.TableName)
+		}
 		fmt.Println("  1) Generate  — include SQL in migration")
 		fmt.Println("  2) Review    — include with // REVIEW comment")
 		fmt.Println("  3) Omit      — skip SQL; schema state still advances (SchemaOnly)")

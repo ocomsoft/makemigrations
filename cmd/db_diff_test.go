@@ -470,3 +470,27 @@ func TestRunDBDiffWithSchemas_JSONFormat(t *testing.T) {
 		t.Errorf("expected valid JSON output, got unmarshal error: %v\nraw output:\n%s", jsonErr, string(output))
 	}
 }
+
+// TestRunDBDiff_UnsupportedProvider verifies that attempting to run db-diff
+// with a non-PostgreSQL database type returns a clear, actionable error message
+// rather than the raw "not implemented yet" stub error from the provider.
+func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
+	// Save and restore the global databaseType flag value
+	orig := databaseType
+	defer func() { databaseType = orig }()
+
+	databaseType = "mysql"
+
+	// Execute the command via rootCmd so the full Cobra flag/RunE path is exercised.
+	rootCmd.SetArgs([]string{"db-diff", "--db-type=mysql"})
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error for unsupported provider, got nil")
+	}
+	if !strings.Contains(err.Error(), "not yet support") {
+		t.Errorf("expected 'not yet support' in error, got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "mysql") {
+		t.Errorf("expected 'mysql' in error, got: %v", err)
+	}
+}

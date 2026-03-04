@@ -97,6 +97,17 @@ func runDBDiff(cmd *cobra.Command) error {
 		return fmt.Errorf("invalid database type: %w", err)
 	}
 
+	// Only PostgreSQL has a full GetDatabaseSchema implementation. All other
+	// providers return a "not implemented yet" error. Give a clear message
+	// upfront rather than letting the provider return a cryptic stub error.
+	if dbType != yamlpkg.DatabasePostgreSQL {
+		return fmt.Errorf(
+			"db-diff does not yet support %q — only postgresql is fully implemented.\n"+
+				"To add support, implement GetDatabaseSchema in internal/providers/%s/provider.go",
+			dbType, dbType,
+		)
+	}
+
 	// Load DAG schema by checking for Go migration files
 	var dagSchema *yamlpkg.Schema
 

@@ -64,7 +64,8 @@ const (
 	ChangeTypeFieldModified     ChangeType = "field_modified"
 	ChangeTypeIndexAdded        ChangeType = "index_added"
 	ChangeTypeIndexRemoved      ChangeType = "index_removed"
-	ChangeTypeDefaultsModified  ChangeType = "defaults_modified" // non-destructive: updates active schema defaults
+	ChangeTypeDefaultsModified      ChangeType = "defaults_modified"       // non-destructive: updates active schema defaults
+	ChangeTypeTypeMappingsModified  ChangeType = "type_mappings_modified"  // non-destructive: updates active provider type mappings
 )
 
 // SchemaDiff represents the complete difference between two schemas

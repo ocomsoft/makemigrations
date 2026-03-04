@@ -191,7 +191,7 @@ func (r *Runner) ShowSQL() error {
 		}
 		fmt.Printf("-- %s\n", mig.Name)
 		for _, op := range mig.Operations {
-			sqlStr, err := op.Up(r.provider, state, nil)
+			sqlStr, err := op.Up(r.provider, state, state.Defaults)
 			if err != nil {
 				return fmt.Errorf("generating SQL for %q: %w", mig.Name, err)
 			}
@@ -210,7 +210,7 @@ func (r *Runner) ShowSQL() error {
 // does not exist are skipped with a warning instead of stopping the migration.
 func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
 	for _, op := range mig.Operations {
-		sqlStr, err := op.Up(r.provider, state, nil)
+		sqlStr, err := op.Up(r.provider, state, state.Defaults)
 		if err != nil {
 			return fmt.Errorf("generating SQL for operation %q: %w", op.Describe(), err)
 		}
@@ -242,7 +242,7 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
 	for i := len(mig.Operations) - 1; i >= 0; i-- {
 		op := mig.Operations[i]
-		sqlStr, err := op.Down(r.provider, state, nil)
+		sqlStr, err := op.Down(r.provider, state, state.Defaults)
 		if err != nil {
 			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
 		}

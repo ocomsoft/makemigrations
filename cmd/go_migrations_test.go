@@ -109,7 +109,7 @@ func TestBuildMigrationName_SequenceNumbers(t *testing.T) {
 // TestSchemaStateToYAMLSchema_Nil verifies that a nil SchemaState produces a
 // nil yaml.Schema.
 func TestSchemaStateToYAMLSchema_Nil(t *testing.T) {
-	result := schemaStateToYAMLSchema(nil)
+	result := schemaStateToYAMLSchema(nil, "postgresql")
 	if result != nil {
 		t.Fatal("expected nil result for nil state")
 	}
@@ -119,7 +119,7 @@ func TestSchemaStateToYAMLSchema_Nil(t *testing.T) {
 // produces a Schema with no tables.
 func TestSchemaStateToYAMLSchema_EmptyState(t *testing.T) {
 	state := migrate.NewSchemaState()
-	result := schemaStateToYAMLSchema(state)
+	result := schemaStateToYAMLSchema(state, "postgresql")
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -152,7 +152,7 @@ func TestSchemaStateToYAMLSchema_WithTables(t *testing.T) {
 		t.Fatalf("AddTable: %v", err)
 	}
 
-	result := schemaStateToYAMLSchema(state)
+	result := schemaStateToYAMLSchema(state, "postgresql")
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
@@ -242,7 +242,7 @@ func TestSchemaStateToYAMLSchema_FieldAttributes(t *testing.T) {
 		t.Fatalf("AddTable: %v", err)
 	}
 
-	result := schemaStateToYAMLSchema(state)
+	result := schemaStateToYAMLSchema(state, "postgresql")
 	if result == nil || len(result.Tables) != 1 {
 		t.Fatal("expected 1 table")
 	}
@@ -356,5 +356,30 @@ func TestGoGenerateMerge_LongNameTruncation(t *testing.T) {
 	baseName := filepath.Base(files[0])
 	if !strings.Contains(baseName, "merge") {
 		t.Errorf("expected filename to contain 'merge', got %q", baseName)
+	}
+}
+
+// TestSchemaStateToYAMLSchema_WithDefaults verifies that state Defaults are
+// populated into the correct DB-type slot of the returned yaml.Schema.
+func TestSchemaStateToYAMLSchema_WithDefaults(t *testing.T) {
+	state := migrate.NewSchemaState()
+	state.SetDefaults(map[string]string{
+		"uuid": "uuid_generate_v4()",
+		"now":  "CURRENT_TIMESTAMP",
+	})
+
+	result := schemaStateToYAMLSchema(state, "postgresql")
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.Defaults.PostgreSQL["uuid"] != "uuid_generate_v4()" {
+		t.Errorf("expected uuid default in PostgreSQL slot, got %q", result.Defaults.PostgreSQL["uuid"])
+	}
+	if result.Defaults.PostgreSQL["now"] != "CURRENT_TIMESTAMP" {
+		t.Errorf("expected now default in PostgreSQL slot, got %q", result.Defaults.PostgreSQL["now"])
+	}
+	// Other DB types should be empty
+	if len(result.Defaults.MySQL) != 0 {
+		t.Errorf("expected empty MySQL defaults, got %v", result.Defaults.MySQL)
 	}
 }

@@ -30,6 +30,7 @@ package codegen
 import (
 	"fmt"
 	"go/format"
+	"sort"
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/yaml"
@@ -140,13 +141,13 @@ func (g *GoGenerator) generateOperation(
 ) (string, error) {
 	switch change.Type {
 	case yaml.ChangeTypeTableAdded:
-		return g.generateCreateTable(change, schemaOnly)
+		return g.generateCreateTable(change, currentSchema, schemaOnly)
 	case yaml.ChangeTypeTableRemoved:
 		return g.generateDropTable(change, schemaOnly)
 	case yaml.ChangeTypeTableRenamed:
 		return g.generateRenameTable(change)
 	case yaml.ChangeTypeFieldAdded:
-		return g.generateAddField(change, schemaOnly)
+		return g.generateAddField(change, currentSchema, schemaOnly)
 	case yaml.ChangeTypeFieldRemoved:
 		return g.generateDropField(change, schemaOnly)
 	case yaml.ChangeTypeFieldModified:
@@ -157,6 +158,8 @@ func (g *GoGenerator) generateOperation(
 		return g.generateAddIndex(change)
 	case yaml.ChangeTypeIndexRemoved:
 		return g.generateDropIndex(change)
+	case yaml.ChangeTypeDefaultsModified:
+		return g.generateSetDefaults(change)
 	default:
 		return "", fmt.Errorf("unsupported change type: %s", change.Type)
 	}
@@ -165,7 +168,7 @@ func (g *GoGenerator) generateOperation(
 // generateCreateTable emits a &m.CreateTable{...} literal.
 // When schemaOnly is true, SchemaOnly: true is included so the runner updates
 // the schema state without executing CREATE TABLE against the database.
-func (g *GoGenerator) generateCreateTable(change yaml.Change, schemaOnly bool) (string, error) {
+func (g *GoGenerator) generateCreateTable(change yaml.Change, schema *yaml.Schema, schemaOnly bool) (string, error) {
 	table, ok := change.NewValue.(yaml.Table)
 	if !ok {
 		return "", fmt.Errorf("expected yaml.Table for NewValue, got %T", change.NewValue)
@@ -227,7 +230,7 @@ func (g *GoGenerator) generateRenameTable(change yaml.Change) (string, error) {
 // generateAddField emits a &m.AddField{...} literal.
 // When schemaOnly is true, SchemaOnly: true is included so the runner updates
 // the schema state without executing ALTER TABLE ADD COLUMN against the database.
-func (g *GoGenerator) generateAddField(change yaml.Change, schemaOnly bool) (string, error) {
+func (g *GoGenerator) generateAddField(change yaml.Change, schema *yaml.Schema, schemaOnly bool) (string, error) {
 	field, ok := change.NewValue.(yaml.Field)
 	if !ok {
 		return "", fmt.Errorf("expected yaml.Field for NewValue, got %T", change.NewValue)
@@ -353,6 +356,34 @@ func (g *GoGenerator) generateDropIndex(change yaml.Change) (string, error) {
 	}
 	return fmt.Sprintf("\t\t\t&m.DropIndex{Table: %q, Index: %q},\n",
 		change.TableName, change.FieldName), nil
+}
+
+// generateSetDefaults emits a &m.SetDefaults{...} literal.
+// The defaults map must be map[string]string stored in change.NewValue.
+// Keys are sorted for deterministic output.
+func (g *GoGenerator) generateSetDefaults(change yaml.Change) (string, error) {
+	defaults, ok := change.NewValue.(map[string]string)
+	if !ok {
+		return "", fmt.Errorf("expected map[string]string for defaults NewValue, got %T", change.NewValue)
+	}
+	var b strings.Builder
+	b.WriteString("\t\t\t&m.SetDefaults{\n\t\t\t\tDefaults: map[string]string{\n")
+	for _, k := range sortedKeys(defaults) {
+		b.WriteString(fmt.Sprintf("\t\t\t\t\t%q: %q,\n", k, defaults[k]))
+	}
+	b.WriteString("\t\t\t\t},\n\t\t\t},\n")
+	return b.String(), nil
+}
+
+// sortedKeys returns the keys of a map[string]string in sorted order for
+// deterministic code generation output.
+func sortedKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // generateFieldLiteral converts a yaml.Field to a m.Field{...} Go literal string.

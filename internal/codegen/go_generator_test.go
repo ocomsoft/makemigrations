@@ -686,3 +686,45 @@ func TestGoGenerator_AddField_PromptOmit_EmitsSchemaOnly(t *testing.T) {
 		t.Errorf("expected SchemaOnly: true in AddField output, got:\n%s", src)
 	}
 }
+
+// TestGoGenerator_SetDefaults verifies that a ChangeTypeDefaultsModified change
+// generates a valid &m.SetDefaults{...} literal with sorted keys.
+func TestGoGenerator_SetDefaults(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:        yaml.ChangeTypeDefaultsModified,
+				Description: "Set initial schema defaults",
+				NewValue: map[string]string{
+					"uuid": "uuid_generate_v4()",
+					"now":  "CURRENT_TIMESTAMP",
+				},
+			},
+		},
+	}
+	src, err := g.GenerateMigration("0001_set_defaults", []string{}, diff, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if _, err := format.Source([]byte(src)); err != nil {
+		t.Fatalf("output is not valid Go: %v\nSource:\n%s", err, src)
+	}
+	if !strings.Contains(src, "SetDefaults") {
+		t.Error("expected SetDefaults in output")
+	}
+	// gofmt aligns map values with spaces, so check key and value separately
+	if !strings.Contains(src, `"uuid"`) || !strings.Contains(src, `"uuid_generate_v4()"`) {
+		t.Errorf("expected uuid mapping in output, got:\n%s", src)
+	}
+	if !strings.Contains(src, `"now"`) || !strings.Contains(src, `"CURRENT_TIMESTAMP"`) {
+		t.Errorf("expected now mapping in output, got:\n%s", src)
+	}
+	// Keys must be sorted: "now" before "uuid"
+	nowIdx := strings.Index(src, `"now"`)
+	uuidIdx := strings.Index(src, `"uuid"`)
+	if nowIdx > uuidIdx {
+		t.Errorf("expected keys sorted alphabetically ('now' before 'uuid'), got:\n%s", src)
+	}
+}

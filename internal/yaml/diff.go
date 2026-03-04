@@ -55,15 +55,16 @@ type Change struct {
 type ChangeType string
 
 const (
-	ChangeTypeTableAdded    ChangeType = "table_added"
-	ChangeTypeTableRemoved  ChangeType = "table_removed"
-	ChangeTypeTableRenamed  ChangeType = "table_renamed"
-	ChangeTypeFieldAdded    ChangeType = "field_added"
-	ChangeTypeFieldRemoved  ChangeType = "field_removed"
-	ChangeTypeFieldRenamed  ChangeType = "field_renamed"
-	ChangeTypeFieldModified ChangeType = "field_modified"
-	ChangeTypeIndexAdded    ChangeType = "index_added"
-	ChangeTypeIndexRemoved  ChangeType = "index_removed"
+	ChangeTypeTableAdded        ChangeType = "table_added"
+	ChangeTypeTableRemoved      ChangeType = "table_removed"
+	ChangeTypeTableRenamed      ChangeType = "table_renamed"
+	ChangeTypeFieldAdded        ChangeType = "field_added"
+	ChangeTypeFieldRemoved      ChangeType = "field_removed"
+	ChangeTypeFieldRenamed      ChangeType = "field_renamed"
+	ChangeTypeFieldModified     ChangeType = "field_modified"
+	ChangeTypeIndexAdded        ChangeType = "index_added"
+	ChangeTypeIndexRemoved      ChangeType = "index_removed"
+	ChangeTypeDefaultsModified  ChangeType = "defaults_modified" // non-destructive: updates active schema defaults
 )
 
 // SchemaDiff represents the complete difference between two schemas

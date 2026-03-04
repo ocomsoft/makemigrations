@@ -25,6 +25,7 @@ SOFTWARE.
 package migrate_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
@@ -331,5 +332,66 @@ func TestAddField_SchemaOnly_NoSQL(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected field 'email' to be present in state after Mutate")
+	}
+}
+
+// TestSetDefaults_Mutate verifies that SetDefaults.Mutate updates state.Defaults.
+func TestSetDefaults_Mutate(t *testing.T) {
+	state := migrate.NewSchemaState()
+	op := &migrate.SetDefaults{
+		Defaults: map[string]string{
+			"uuid": "uuid_generate_v4()",
+			"now":  "CURRENT_TIMESTAMP",
+		},
+	}
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if state.Defaults["uuid"] != "uuid_generate_v4()" {
+		t.Errorf("expected uuid default, got %q", state.Defaults["uuid"])
+	}
+	if state.Defaults["now"] != "CURRENT_TIMESTAMP" {
+		t.Errorf("expected now default, got %q", state.Defaults["now"])
+	}
+}
+
+// TestSetDefaults_UpDown verifies that SetDefaults.Up and Down return empty SQL.
+func TestSetDefaults_UpDown(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	op := &migrate.SetDefaults{Defaults: map[string]string{"uuid": "uuid_generate_v4()"}}
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil || upSQL != "" {
+		t.Errorf("SetDefaults.Up should return empty SQL, got %q err=%v", upSQL, err)
+	}
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil || downSQL != "" {
+		t.Errorf("SetDefaults.Down should return empty SQL, got %q err=%v", downSQL, err)
+	}
+}
+
+// TestCreateTable_Up_ResolvesDefaults verifies that CreateTable.Up resolves symbolic
+// default references (e.g. "uuid") to SQL expressions using the defaults map.
+func TestCreateTable_Up_ResolvesDefaults(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	defaults := map[string]string{
+		"uuid": "uuid_generate_v4()",
+	}
+	op := &migrate.CreateTable{
+		Name: "items",
+		Fields: []migrate.Field{
+			{Name: "id", Type: "uuid", Default: "uuid", PrimaryKey: true},
+		},
+	}
+	sqlStr, err := op.Up(p, state, defaults)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if !strings.Contains(sqlStr, "uuid_generate_v4()") {
+		t.Errorf("expected resolved default 'uuid_generate_v4()' in SQL, got:\n%s", sqlStr)
+	}
+	if strings.Contains(sqlStr, `'uuid'`) {
+		t.Errorf("raw default 'uuid' should be resolved, got:\n%s", sqlStr)
 	}
 }

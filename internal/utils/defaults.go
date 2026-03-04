@@ -26,6 +26,7 @@ package utils
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/types"
 )
@@ -69,6 +70,12 @@ func ConvertDefaultValue(schema *types.Schema, databaseType string, defaultValue
 
 // HandleFallbackDefault handles cases where no schema mapping exists
 func HandleFallbackDefault(defaultValue string) string {
+	// Check if it's an already-resolved SQL expression/function call (e.g. uuid_generate_v4()).
+	// These are passed through as-is to avoid wrapping a function call in string quotes.
+	if strings.Contains(defaultValue, "(") {
+		return defaultValue
+	}
+
 	// Check if it's a numeric value
 	if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
 		return defaultValue // Return numeric values as-is

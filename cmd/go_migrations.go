@@ -125,7 +125,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("querying migration DAG: %w", err)
 		}
-		prevSchema = schemaStateToYAMLSchema(dagOut.SchemaState)
+		prevSchema = schemaStateToYAMLSchema(dagOut.SchemaState, cfg.Database.Type)
 	}
 
 	// 2. Parse current YAML schema
@@ -150,6 +150,19 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	diff, err := diffEngine.CompareSchemas(prevSchema, currentSchema)
 	if err != nil {
 		return fmt.Errorf("computing schema diff: %w", err)
+	}
+
+	// Prepend a SetDefaults operation when the active DB defaults have changed.
+	prevDefaults := getDefaultsForDB(prevSchema, cfg.Database.Type)
+	currDefaults := getDefaultsForDB(currentSchema, cfg.Database.Type)
+	if !mapsEqual(prevDefaults, currDefaults) && len(currDefaults) > 0 {
+		diff.Changes = append([]yamlpkg.Change{{
+			Type:        yamlpkg.ChangeTypeDefaultsModified,
+			Description: "Update schema defaults",
+			OldValue:    prevDefaults,
+			NewValue:    currDefaults,
+		}}, diff.Changes...)
+		diff.HasChanges = true
 	}
 
 	// 4. Handle merge if requested
@@ -382,7 +395,9 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 // schemaStateToYAMLSchema converts a migrate.SchemaState (reconstructed from
 // the migration DAG) into a yaml.Schema suitable for diffing against the
 // current YAML schema. Tables are sorted by name for deterministic output.
-func schemaStateToYAMLSchema(state *migrate.SchemaState) *yamlpkg.Schema {
+// dbType is used to populate the Defaults section of the schema so that
+// defaults changes are detected on subsequent diff runs.
+func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg.Schema {
 	if state == nil {
 		return nil
 	}
@@ -424,7 +439,54 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState) *yamlpkg.Schema {
 	sort.Slice(schema.Tables, func(i, j int) bool {
 		return schema.Tables[i].Name < schema.Tables[j].Name
 	})
+	// Populate the Defaults section so that defaults changes are detected on
+	// subsequent diff runs (the diff engine compares schema.Defaults).
+	if len(state.Defaults) > 0 {
+		switch dbType {
+		case "postgresql":
+			schema.Defaults.PostgreSQL = state.Defaults
+		case "mysql":
+			schema.Defaults.MySQL = state.Defaults
+		case "sqlserver":
+			schema.Defaults.SQLServer = state.Defaults
+		case "sqlite":
+			schema.Defaults.SQLite = state.Defaults
+		}
+	}
 	return schema
+}
+
+// getDefaultsForDB returns the defaults map for the given database type from a schema.
+// Returns nil when the schema or the relevant DB defaults are empty.
+func getDefaultsForDB(schema *yamlpkg.Schema, dbType string) map[string]string {
+	if schema == nil {
+		return nil
+	}
+	switch dbType {
+	case "postgresql":
+		return schema.Defaults.PostgreSQL
+	case "mysql":
+		return schema.Defaults.MySQL
+	case "sqlserver":
+		return schema.Defaults.SQLServer
+	case "sqlite":
+		return schema.Defaults.SQLite
+	default:
+		return nil
+	}
+}
+
+// mapsEqual reports whether two map[string]string values are identical.
+func mapsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if b[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 // BuildMigrationName builds the migration name from a sequence number and an

@@ -63,7 +63,7 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 	existingSchema, err := sm.LoadSchemaSnapshot(migrationsDir)
 	if err == nil && existingSchema != nil {
 		initialMigName = "0001_initial"
-		diff := schemaToInitialDiff(existingSchema)
+		diff := schemaToInitialDiff(existingSchema, databaseType)
 		src, err := gen.GenerateMigration(initialMigName, []string{}, diff, existingSchema, nil, nil)
 		if err != nil {
 			return fmt.Errorf("generating initial migration: %w", err)
@@ -124,8 +124,20 @@ Then build and run:
 // schemaToInitialDiff converts a yaml.Schema to a SchemaDiff that treats every
 // table as newly added. Used to generate the initial Go migration from an
 // existing .schema_snapshot.yaml.
-func schemaToInitialDiff(schema *yamlpkg.Schema) *yamlpkg.SchemaDiff {
+// If the schema has non-empty defaults for dbType, a SetDefaults change is
+// prepended so the initial migration tracks the defaults in the DAG.
+func schemaToInitialDiff(schema *yamlpkg.Schema, dbType string) *yamlpkg.SchemaDiff {
 	diff := &yamlpkg.SchemaDiff{HasChanges: true}
+
+	// Prepend SetDefaults if the schema has defaults for this DB type
+	if defaults := getDefaultsForDB(schema, dbType); len(defaults) > 0 {
+		diff.Changes = append(diff.Changes, yamlpkg.Change{
+			Type:        yamlpkg.ChangeTypeDefaultsModified,
+			Description: "Set initial schema defaults",
+			NewValue:    defaults,
+		})
+	}
+
 	for _, t := range schema.Tables {
 		diff.Changes = append(diff.Changes, yamlpkg.Change{
 			Type:      yamlpkg.ChangeTypeTableAdded,

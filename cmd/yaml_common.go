@@ -259,7 +259,7 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 		if err != nil {
 			return fmt.Errorf("querying migration DAG: %w", err)
 		}
-		prevSchema = schemaStateToYAMLSchema(dagOut.SchemaState)
+		prevSchema = schemaStateToYAMLSchema(dagOut.SchemaState, string(dbType))
 	} else {
 		if verbose {
 			fmt.Fprintf(cmd.ErrOrStderr(), "\n3. No existing migrations found, treating previous state as empty...\n")

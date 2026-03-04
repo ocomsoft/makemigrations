@@ -59,6 +59,17 @@ type Operation interface {
 // boolPtr converts a bool value to a *bool pointer for use with types.Field.Nullable.
 func boolPtr(b bool) *bool { return &b }
 
+// resolveFieldDefault resolves a symbolic default key (e.g. "uuid") to its
+// SQL expression (e.g. "uuid_generate_v4()") using the active defaults map.
+// The field is modified in place; if no mapping exists the value is unchanged.
+func resolveFieldDefault(f *types.Field, defaults map[string]string) {
+	if f.Default != "" && len(defaults) > 0 {
+		if resolved, ok := defaults[f.Default]; ok {
+			f.Default = resolved
+		}
+	}
+}
+
 // toTypesField converts a migrate.Field (with bool Nullable) to a *types.Field
 // (with *bool Nullable) as required by the providers.Provider interface.
 func toTypesField(f Field) *types.Field {
@@ -145,6 +156,7 @@ func (op *CreateTable) Describe() string {
 }
 
 // Up generates the CREATE TABLE SQL statement, or returns empty string when SchemaOnly is set.
+// Field defaults are resolved against the active defaults map before being passed to the provider.
 func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	if op.SchemaOnly {
 		return "", nil
@@ -152,7 +164,9 @@ func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map
 	schema := stateToSchema(state)
 	table := &types.Table{Name: op.Name}
 	for _, f := range op.Fields {
-		table.Fields = append(table.Fields, *toTypesField(f))
+		tf := toTypesField(f)
+		resolveFieldDefault(tf, defaults)
+		table.Fields = append(table.Fields, *tf)
 	}
 	for _, idx := range op.Indexes {
 		table.Indexes = append(table.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})
@@ -291,11 +305,14 @@ func (op *AddField) Describe() string {
 }
 
 // Up generates the ADD COLUMN SQL statement, or returns empty string when SchemaOnly is set.
+// The field default is resolved against the active defaults map before being passed to the provider.
 func (op *AddField) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	if op.SchemaOnly {
 		return "", nil
 	}
-	return p.GenerateAddColumn(op.Table, toTypesField(op.Field)), nil
+	tf := toTypesField(op.Field)
+	resolveFieldDefault(tf, defaults)
+	return p.GenerateAddColumn(op.Table, tf), nil
 }
 
 // Down generates the DROP COLUMN SQL to reverse the addition.
@@ -349,6 +366,7 @@ func (op *DropField) Up(p providers.Provider, state *SchemaState, defaults map[s
 
 // Down reconstructs the ADD COLUMN SQL by reading the field's pre-drop state.
 // Returns empty string when SchemaOnly is set.
+// The field default is resolved against the active defaults map before being passed to the provider.
 func (op *DropField) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	if op.SchemaOnly {
 		return "", nil
@@ -359,7 +377,9 @@ func (op *DropField) Down(p providers.Provider, state *SchemaState, defaults map
 	}
 	for _, f := range ts.Fields {
 		if f.Name == op.Field {
-			return p.GenerateAddColumn(op.Table, toTypesField(f)), nil
+			tf := toTypesField(f)
+			resolveFieldDefault(tf, defaults)
+			return p.GenerateAddColumn(op.Table, tf), nil
 		}
 	}
 	return "", fmt.Errorf("field %q not found in table %q state", op.Field, op.Table)
@@ -395,13 +415,23 @@ func (op *AlterField) Describe() string {
 }
 
 // Up generates the ALTER COLUMN SQL to apply the new field definition.
+// Field defaults are resolved against the active defaults map before being passed to the provider.
 func (op *AlterField) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
-	return p.GenerateAlterColumn(op.Table, toTypesField(op.OldField), toTypesField(op.NewField))
+	oldF := toTypesField(op.OldField)
+	newF := toTypesField(op.NewField)
+	resolveFieldDefault(oldF, defaults)
+	resolveFieldDefault(newF, defaults)
+	return p.GenerateAlterColumn(op.Table, oldF, newF)
 }
 
 // Down generates the ALTER COLUMN SQL to restore the original field definition.
+// Field defaults are resolved against the active defaults map before being passed to the provider.
 func (op *AlterField) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
-	return p.GenerateAlterColumn(op.Table, toTypesField(op.NewField), toTypesField(op.OldField))
+	oldF := toTypesField(op.OldField)
+	newF := toTypesField(op.NewField)
+	resolveFieldDefault(oldF, defaults)
+	resolveFieldDefault(newF, defaults)
+	return p.GenerateAlterColumn(op.Table, newF, oldF)
 }
 
 // Mutate replaces the field in the table's entry in SchemaState.
@@ -579,3 +609,41 @@ func (op *RunSQL) Down(_ providers.Provider, _ *SchemaState, _ map[string]string
 
 // Mutate is a no-op for RunSQL — raw SQL does not alter the SchemaState.
 func (op *RunSQL) Mutate(_ *SchemaState) error { return nil }
+
+// --- SetDefaults ---
+
+// SetDefaults is a migration operation that records the active schema defaults
+// (e.g. {"uuid": "uuid_generate_v4()"}) into the SchemaState so that subsequent
+// operations can resolve symbolic default references at runtime.
+// It emits no SQL — its sole purpose is to update the in-memory state.
+type SetDefaults struct {
+	Defaults map[string]string
+}
+
+// TypeName returns the operation type identifier.
+func (op *SetDefaults) TypeName() string { return "set_defaults" }
+
+// TableName returns "" — SetDefaults does not target a specific table.
+func (op *SetDefaults) TableName() string { return "" }
+
+// IsDestructive returns false — setting defaults is not destructive.
+func (op *SetDefaults) IsDestructive() bool { return false }
+
+// Describe returns a human-readable description of this operation.
+func (op *SetDefaults) Describe() string { return "Set schema defaults" }
+
+// Up returns empty string — SetDefaults emits no SQL.
+func (op *SetDefaults) Up(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return "", nil
+}
+
+// Down returns empty string — SetDefaults emits no SQL.
+func (op *SetDefaults) Down(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return "", nil
+}
+
+// Mutate updates the active schema defaults on the SchemaState.
+func (op *SetDefaults) Mutate(state *SchemaState) error {
+	state.SetDefaults(op.Defaults)
+	return nil
+}

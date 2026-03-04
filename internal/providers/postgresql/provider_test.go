@@ -254,6 +254,35 @@ func TestConvertSQLTypeToYAML_UnknownPassthrough(t *testing.T) {
 	}
 }
 
+// TestConvertFieldType_UnknownPassthrough verifies that unrecognized YAML
+// field types are passed through as uppercase SQL types rather than
+// defaulting to "TEXT".
+func TestConvertFieldType_UnknownPassthrough(t *testing.T) {
+	p := &Provider{}
+
+	cases := []struct {
+		yamlType string
+		expected string
+	}{
+		{"citext", "CITEXT"},
+		{"inet", "INET"},
+		{"bytea", "BYTEA"},
+		{"money", "MONEY"},
+		{"hstore", "HSTORE"},
+		{"tsvector", "TSVECTOR"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.yamlType, func(t *testing.T) {
+			field := &types.Field{Name: "test", Type: tc.yamlType}
+			result := p.ConvertFieldType(field)
+			if result != tc.expected {
+				t.Errorf("ConvertFieldType(%q) = %q, want %q", tc.yamlType, result, tc.expected)
+			}
+		})
+	}
+}
+
 func TestProvider_GenerateJunctionTable(t *testing.T) {
 	p := New()
 	got, err := p.GenerateJunctionTable("users", "roles", nil)

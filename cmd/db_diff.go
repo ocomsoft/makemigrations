@@ -67,6 +67,10 @@ files. Differences are reported in five categories:
   5. Foreign Key Differences — foreign key constraints that differ in referenced
      table or ON DELETE action.
 
+When differences are found, pasteable YAML definitions are appended to the text
+output for each difference. These snippets can be copied directly into a schema
+YAML file.
+
 Database Connection:
   Use individual flags (--host, --port, --database, --username, --password,
   --sslmode) or rely on the config file (migrations/makemigrations.config.yaml).

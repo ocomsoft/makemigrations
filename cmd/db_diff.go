@@ -361,6 +361,138 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 		_, _ = fmt.Fprintln(w)
 		_, _ = red.Fprintln(w, "\u26a0 One or more differences are flagged as destructive (data loss risk).")
 	}
+
+	// YAML Snippets section — always appended for text output when changes exist
+	_, _ = fmt.Fprintln(w)
+	_, _ = bold.Fprintln(w, "YAML Snippets")
+	_, _ = bold.Fprintln(w, "=============")
+
+	snippetCount := 0
+
+	// Extra tables — full table YAML for adding to schema
+	for _, ch := range extraTables {
+		table, ok := ch.NewValue.(yamlpkg.Table)
+		if !ok {
+			continue
+		}
+		snippet, err := generateTableSnippet(table)
+		if err != nil {
+			continue
+		}
+		_, _ = fmt.Fprintln(w)
+		_, _ = cyan.Fprintf(w, "# Add table '%s' to your schema:\n", ch.TableName)
+		_, _ = fmt.Fprint(w, snippet)
+		snippetCount++
+	}
+
+	// Missing tables — show the table YAML that exists in DAG for reference
+	for _, ch := range missingTables {
+		table, ok := ch.OldValue.(yamlpkg.Table)
+		if !ok {
+			continue
+		}
+		snippet, err := generateTableSnippet(table)
+		if err != nil {
+			continue
+		}
+		_, _ = fmt.Fprintln(w)
+		_, _ = cyan.Fprintf(w, "# Table '%s' (in DAG, missing from DB — run migrations):\n", ch.TableName)
+		_, _ = fmt.Fprint(w, snippet)
+		snippetCount++
+	}
+
+	// Field changes — show field YAML with table context
+	for _, tableName := range sortedKeys(fieldChanges) {
+		for _, ch := range fieldChanges[tableName] {
+			switch ch.Type {
+			case yamlpkg.ChangeTypeFieldAdded:
+				field, ok := ch.NewValue.(yamlpkg.Field)
+				if !ok {
+					continue
+				}
+				snippet, err := generateFieldSnippet(tableName, field)
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintln(w)
+				_, _ = cyan.Fprintf(w, "# Extra field '%s.%s' (in DB, not in schema):\n", tableName, ch.FieldName)
+				_, _ = fmt.Fprint(w, snippet)
+				snippetCount++
+			case yamlpkg.ChangeTypeFieldRemoved:
+				field, ok := ch.OldValue.(yamlpkg.Field)
+				if !ok {
+					continue
+				}
+				snippet, err := generateFieldSnippet(tableName, field)
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintln(w)
+				_, _ = cyan.Fprintf(w, "# Missing field '%s.%s' (in schema, not in DB):\n", tableName, ch.FieldName)
+				_, _ = fmt.Fprint(w, snippet)
+				snippetCount++
+			}
+		}
+	}
+
+	// Index changes — show index YAML with table context
+	for _, tableName := range sortedKeys(indexChanges) {
+		for _, ch := range indexChanges[tableName] {
+			switch ch.Type {
+			case yamlpkg.ChangeTypeIndexAdded:
+				index, ok := ch.NewValue.(yamlpkg.Index)
+				if !ok {
+					continue
+				}
+				snippet, err := generateIndexSnippet(tableName, index)
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintln(w)
+				_, _ = cyan.Fprintf(w, "# Extra index '%s' on '%s' (in DB, not in schema):\n", ch.FieldName, tableName)
+				_, _ = fmt.Fprint(w, snippet)
+				snippetCount++
+			case yamlpkg.ChangeTypeIndexRemoved:
+				index, ok := ch.OldValue.(yamlpkg.Index)
+				if !ok {
+					continue
+				}
+				snippet, err := generateIndexSnippet(tableName, index)
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintln(w)
+				_, _ = cyan.Fprintf(w, "# Missing index '%s' on '%s' (in schema, not in DB):\n", ch.FieldName, tableName)
+				_, _ = fmt.Fprint(w, snippet)
+				snippetCount++
+			}
+		}
+	}
+
+	// FK changes — show field YAML with FK for context
+	for _, tableName := range sortedKeys(fkChanges) {
+		for _, ch := range fkChanges[tableName] {
+			if oldFK, ok := ch.OldValue.(*yamlpkg.ForeignKey); ok {
+				snippet, err := generateFieldSnippet(tableName, yamlpkg.Field{
+					Name:       ch.FieldName,
+					Type:       "foreign_key",
+					ForeignKey: oldFK,
+				})
+				if err != nil {
+					continue
+				}
+				_, _ = fmt.Fprintln(w)
+				_, _ = cyan.Fprintf(w, "# FK on '%s.%s' (expected by schema):\n", tableName, ch.FieldName)
+				_, _ = fmt.Fprint(w, snippet)
+				snippetCount++
+			}
+		}
+	}
+
+	if snippetCount == 0 {
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w, "  No YAML snippets to generate for these changes.")
+	}
 }
 
 // sortedKeys returns the keys of a map sorted alphabetically.

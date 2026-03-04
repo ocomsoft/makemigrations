@@ -1131,6 +1131,42 @@ func TestRunDBDiffWithSchemas_SnippetsNotInJSON(t *testing.T) {
 	}
 }
 
+// TestFormatDBDiff_SnippetsForeignKey verifies that the text output includes
+// a pasteable YAML snippet for a foreign key change.
+func TestFormatDBDiff_SnippetsForeignKey(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:        yamlpkg.ChangeTypeFieldModified,
+				TableName:   "orders",
+				FieldName:   "user_id",
+				Description: "Change field 'orders.user_id' foreign key from users to none",
+				OldValue:    &yamlpkg.ForeignKey{Table: "users", OnDelete: "CASCADE"},
+				NewValue:    nil,
+				Destructive: true,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected 'YAML Snippets' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "user_id") {
+		t.Errorf("expected 'user_id' in snippet, got:\n%s", output)
+	}
+	if !strings.Contains(output, "table: users") {
+		t.Errorf("expected 'table: users' in FK snippet, got:\n%s", output)
+	}
+	if !strings.Contains(output, "on_delete: CASCADE") {
+		t.Errorf("expected 'on_delete: CASCADE' in FK snippet, got:\n%s", output)
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

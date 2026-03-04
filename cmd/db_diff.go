@@ -127,7 +127,7 @@ func runDBDiff(cmd *cobra.Command) error {
 		if dagErr != nil {
 			return fmt.Errorf("failed to query migration DAG: %w", dagErr)
 		}
-		dagSchema = schemaStateToYAMLSchema(dagOutput.SchemaState)
+		dagSchema = schemaStateToYAMLSchema(dagOutput.SchemaState, string(dbType))
 	} else {
 		dagSchema = &yamlpkg.Schema{}
 	}

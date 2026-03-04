@@ -100,6 +100,7 @@ func runDBDiff(cmd *cobra.Command) error {
 	// Load DAG schema by checking for Go migration files
 	var dagSchema *yamlpkg.Schema
 
+	// filepath.Glob only errors on malformed patterns; "*.go" is always valid.
 	goFiles, _ := filepath.Glob(filepath.Join(migrationsDir, "*.go"))
 
 	// Filter out main.go from the migration file list
@@ -132,9 +133,6 @@ func runDBDiff(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to get database schema: %w", err)
 	}
 
-	// Normalize SQL-native types before comparison
-	normalizeDBSchema(dbSchema)
-
 	return runDBDiffWithSchemas(cmd.OutOrStdout(), dagSchema, dbSchema, dbDiffFormat, verbose)
 }
 
@@ -142,10 +140,12 @@ func runDBDiff(cmd *cobra.Command) error {
 // function is separated from runDBDiff to allow unit testing without a live
 // database connection.
 func runDBDiffWithSchemas(w io.Writer, dagSchema, dbSchema *yamlpkg.Schema, format string, verboseFlag bool) error {
-	// Safe to call twice — normalizeDBSchema is idempotent
 	normalizeDBSchema(dbSchema)
 
 	diffEngine := yamlpkg.NewDiffEngine(verboseFlag)
+	// DAG schema is "old"; live DB schema is "new".
+	// ChangeTypeTableRemoved => table in DAG but missing from DB (unapplied migration).
+	// ChangeTypeTableAdded   => table in DB but not in DAG (manual DDL or external tool).
 	diff, err := diffEngine.CompareSchemas(dagSchema, dbSchema)
 	if err != nil {
 		return fmt.Errorf("failed to compare schemas: %w", err)
@@ -229,6 +229,7 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 	var missingTables []yamlpkg.Change
 	var extraTables []yamlpkg.Change
 	fieldChanges := make(map[string][]yamlpkg.Change)
+	totalFieldChanges := 0
 
 	for _, ch := range diff.Changes {
 		switch ch.Type {
@@ -238,6 +239,7 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 			extraTables = append(extraTables, ch)
 		default:
 			fieldChanges[ch.TableName] = append(fieldChanges[ch.TableName], ch)
+			totalFieldChanges++
 		}
 	}
 
@@ -267,12 +269,6 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 
 	// Field Differences section
 	if len(fieldChanges) > 0 {
-		// Count total field-level changes
-		totalFieldChanges := 0
-		for _, changes := range fieldChanges {
-			totalFieldChanges += len(changes)
-		}
-
 		// Sort table names for deterministic output
 		tableNames := make([]string, 0, len(fieldChanges))
 		for name := range fieldChanges {
@@ -303,10 +299,6 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 	_, _ = fmt.Fprintf(w, "  Missing tables:    %d\n", len(missingTables))
 	_, _ = fmt.Fprintf(w, "  Extra tables:      %d\n", len(extraTables))
 
-	totalFieldChanges := 0
-	for _, changes := range fieldChanges {
-		totalFieldChanges += len(changes)
-	}
 	_, _ = fmt.Fprintf(w, "  Field changes:     %d\n", totalFieldChanges)
 
 	// Destructive warning
@@ -326,7 +318,10 @@ func formatDBDiffJSON(w io.Writer, diff *yamlpkg.SchemaDiff) error {
 func init() {
 	rootCmd.AddCommand(dbDiffCmd)
 
-	// Database connection flags
+	// Connection flags are bound to package-level variables shared with db2schemaCmd
+	// (declared in db2schema.go). This follows the existing project pattern.
+	// Each Cobra command maintains its own flag set, so the variables are populated
+	// independently per invocation.
 	dbDiffCmd.Flags().StringVar(&host, "host", "", "Database host (default: localhost)")
 	dbDiffCmd.Flags().IntVar(&port, "port", 0, "Database port")
 	dbDiffCmd.Flags().StringVar(&database, "database", "", "Database name")

@@ -856,6 +856,83 @@ func TestRunDBDiffWithSchemas_JSONIncludesIndexAndFK(t *testing.T) {
 	}
 }
 
+// TestGenerateTableSnippet verifies that a Table struct is marshalled to a
+// pasteable YAML snippet with proper indentation under a tables: key.
+func TestGenerateTableSnippet(t *testing.T) {
+	table := yamlpkg.Table{
+		Name: "orders",
+		Fields: []yamlpkg.Field{
+			{Name: "id", Type: "uuid", PrimaryKey: true},
+			{Name: "total", Type: "decimal", Precision: 10, Scale: 2},
+		},
+		Indexes: []yamlpkg.Index{
+			{Name: "idx_orders_total", Fields: []string{"total"}},
+		},
+	}
+
+	snippet, err := generateTableSnippet(table)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(snippet, "- name: orders") {
+		t.Errorf("expected '- name: orders' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "type: uuid") {
+		t.Errorf("expected 'type: uuid' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "idx_orders_total") {
+		t.Errorf("expected 'idx_orders_total' in snippet, got:\n%s", snippet)
+	}
+}
+
+// TestGenerateFieldSnippet verifies that a Field struct is marshalled to YAML
+// wrapped in a minimal table context showing which table it belongs to.
+func TestGenerateFieldSnippet(t *testing.T) {
+	field := yamlpkg.Field{
+		Name:   "email",
+		Type:   "varchar",
+		Length: 255,
+	}
+
+	snippet, err := generateFieldSnippet("users", field)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(snippet, "# Table: users") {
+		t.Errorf("expected '# Table: users' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "name: email") {
+		t.Errorf("expected 'name: email' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "length: 255") {
+		t.Errorf("expected 'length: 255' in snippet, got:\n%s", snippet)
+	}
+}
+
+// TestGenerateIndexSnippet verifies that an Index struct is marshalled to YAML
+// wrapped in a minimal table context.
+func TestGenerateIndexSnippet(t *testing.T) {
+	index := yamlpkg.Index{
+		Name:   "idx_users_email",
+		Fields: []string{"email"},
+		Unique: true,
+	}
+
+	snippet, err := generateIndexSnippet("users", index)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(snippet, "# Table: users") {
+		t.Errorf("expected '# Table: users' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "name: idx_users_email") {
+		t.Errorf("expected 'name: idx_users_email' in snippet, got:\n%s", snippet)
+	}
+	if !strings.Contains(snippet, "unique: true") {
+		t.Errorf("expected 'unique: true' in snippet, got:\n%s", snippet)
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

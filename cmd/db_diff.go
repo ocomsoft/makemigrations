@@ -53,14 +53,18 @@ migration DAG (Directed Acyclic Graph).
 
 The command connects to a live database, introspects its schema, and compares it
 against the schema state reconstructed by compiling and querying the Go migration
-files. Differences are reported in three categories:
+files. Differences are reported in five categories:
 
-  1. Missing from DB  — tables/fields defined in migrations but absent from the
+  1. Missing from DB      — tables defined in migrations but absent from the
      live database (may indicate unapplied migrations).
-  2. Extra in DB      — tables/fields present in the database but not tracked by
+  2. Extra in DB          — tables present in the database but not tracked by
      any migration (may indicate manual DDL or external tools).
-  3. Field Differences — columns that exist in both but differ in type, length,
+  3. Field Differences    — columns that exist in both but differ in type, length,
      nullable, default, or other properties.
+  4. Index Differences    — indexes that differ between the migration state and
+     the live database (added, removed, or modified).
+  5. Foreign Key Differences — foreign key constraints that differ in referenced
+     table or ON DELETE action.
 
 Database Connection:
   Use individual flags (--host, --port, --database, --username, --password,

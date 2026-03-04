@@ -607,6 +607,255 @@ func TestFormatDBDiff_SummaryWithIndexAndFK(t *testing.T) {
 // TestRunDBDiff_UnsupportedProvider verifies that attempting to run db-diff
 // with a non-PostgreSQL database type returns a clear, actionable error message
 // rather than the raw "not implemented yet" stub error from the provider.
+// TestRunDBDiffWithSchemas_IndexDiff verifies that index differences between
+// DAG and DB schemas are detected and reported.
+func TestRunDBDiffWithSchemas_IndexDiff(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				Indexes: []yamlpkg.Index{
+					{Name: "idx_users_email", Fields: []string{"email"}, Unique: true},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				// No indexes in live DB
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err == nil {
+		t.Fatal("expected drift error for missing index")
+	}
+	output := buf.String()
+	if !strings.Contains(output, "Index Differences") {
+		t.Errorf("expected 'Index Differences' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "idx_users_email") {
+		t.Errorf("expected 'idx_users_email' in output, got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_IndexMatch verifies that matching indexes produce
+// no drift.
+func TestRunDBDiffWithSchemas_IndexMatch(t *testing.T) {
+	idx := []yamlpkg.Index{
+		{Name: "idx_users_email", Fields: []string{"email"}, Unique: true},
+	}
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				Indexes: idx,
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				Indexes: idx,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err != nil {
+		t.Fatalf("expected no error for matching indexes, got: %v", err)
+	}
+	if !strings.Contains(buf.String(), "No differences") {
+		t.Errorf("expected 'No differences', got:\n%s", buf.String())
+	}
+}
+
+// TestRunDBDiffWithSchemas_ForeignKeyDiff verifies that foreign key differences
+// between DAG and DB schemas are detected and reported.
+func TestRunDBDiffWithSchemas_ForeignKeyDiff(t *testing.T) {
+	nullable := true
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+			{
+				Name: "orders",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{
+						Name: "user_id", Type: "foreign_key",
+						Nullable:   &nullable,
+						ForeignKey: &yamlpkg.ForeignKey{Table: "users", OnDelete: "CASCADE"},
+					},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+			{
+				Name: "orders",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{
+						Name: "user_id", Type: "foreign_key",
+						Nullable:   &nullable,
+						ForeignKey: &yamlpkg.ForeignKey{Table: "users", OnDelete: "SET NULL"},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err == nil {
+		t.Fatal("expected drift error for FK difference")
+	}
+	output := buf.String()
+	if !strings.Contains(output, "Foreign Key Differences") {
+		t.Errorf("expected 'Foreign Key Differences' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "user_id") {
+		t.Errorf("expected 'user_id' in output, got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_ForeignKeyMatch verifies that matching foreign keys
+// produce no drift.
+func TestRunDBDiffWithSchemas_ForeignKeyMatch(t *testing.T) {
+	nullable := false
+	fk := &yamlpkg.ForeignKey{Table: "users", OnDelete: "CASCADE"}
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+			{
+				Name: "orders",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "user_id", Type: "foreign_key", Nullable: &nullable, ForeignKey: fk},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+			{
+				Name: "orders",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "user_id", Type: "foreign_key", Nullable: &nullable, ForeignKey: fk},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err != nil {
+		t.Fatalf("expected no error for matching FKs, got: %v", err)
+	}
+	if !strings.Contains(buf.String(), "No differences") {
+		t.Errorf("expected 'No differences', got:\n%s", buf.String())
+	}
+}
+
+// TestRunDBDiffWithSchemas_JSONIncludesIndexAndFK verifies that JSON output
+// includes index and foreign key changes.
+func TestRunDBDiffWithSchemas_JSONIncludesIndexAndFK(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+				Indexes: []yamlpkg.Index{
+					{Name: "idx_test", Fields: []string{"id"}, Unique: false},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+				// No indexes
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	_ = runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "json", false)
+
+	var result yamlpkg.SchemaDiff
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+	if !result.HasChanges {
+		t.Error("expected has_changes=true")
+	}
+	found := false
+	for _, ch := range result.Changes {
+		if ch.Type == yamlpkg.ChangeTypeIndexRemoved && ch.FieldName == "idx_test" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected index_removed change for idx_test in JSON output")
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

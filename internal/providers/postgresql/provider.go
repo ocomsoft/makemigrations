@@ -148,7 +148,7 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		// The actual type will be determined in convertField based on the referenced table
 		return "UUID"
 	default:
-		return "TEXT"
+		return strings.ToUpper(field.Type)
 	}
 }
 

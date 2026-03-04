@@ -38,8 +38,6 @@ your-project/
     └── go.mod      ← dedicated migrations module
 ```
 
-If `*.sql` Goose files already exist in `migrations/`, they are **automatically converted** to Go migrations. See [Upgrading from Goose](#upgrading-from-goose-sql-migrations).
-
 ### 3. Define your schema
 
 `schema/schema.yaml`:
@@ -213,22 +211,6 @@ makemigrations makemigrations --merge
 ---
 
 ## ⬆️ Upgrading from Goose SQL migrations
-
-Run `makemigrations init` in a directory containing Goose `*.sql` files and they are converted automatically:
-
-```bash
-# migrations/ has 00001_initial.sql, 00002_add_phone.sql ...
-makemigrations init
-
-# Detected 2 Goose SQL migration(s) — running migrate-to-go...
-# ✓ Created migrations/0001_initial.go
-# ✓ Created migrations/0002_add_phone.go
-# ✓ Created migrations/main.go
-# ✓ Created migrations/go.mod
-# ✓ Created migrations/0003_schema_state.go (schema-state bootstrap)
-# ✗ Deleted migrations/00001_initial.sql
-# ✗ Deleted migrations/00002_add_phone.sql
-```
 
 If the schema is already applied to your database, fake the historical migrations:
 

@@ -647,3 +647,41 @@ func (op *SetDefaults) Mutate(state *SchemaState) error {
 	state.SetDefaults(op.Defaults)
 	return nil
 }
+
+// --- SetTypeMappings ---
+
+// SetTypeMappings is a migration operation that records the active schema type mappings
+// for the target database provider. It emits no SQL — its only effect is updating
+// SchemaState.TypeMappings so that subsequent operations and the runner use the correct
+// type overrides when generating SQL via ConvertFieldType.
+type SetTypeMappings struct {
+	TypeMappings map[string]string
+}
+
+// TypeName returns the operation type identifier.
+func (op *SetTypeMappings) TypeName() string { return "set_type_mappings" }
+
+// TableName returns "" — SetTypeMappings does not target a specific table.
+func (op *SetTypeMappings) TableName() string { return "" }
+
+// IsDestructive returns false — SetTypeMappings is always non-destructive.
+func (op *SetTypeMappings) IsDestructive() bool { return false }
+
+// Describe returns a human-readable description.
+func (op *SetTypeMappings) Describe() string { return "Set schema type mappings" }
+
+// Up returns empty string — SetTypeMappings emits no SQL.
+func (op *SetTypeMappings) Up(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return "", nil
+}
+
+// Down returns empty string — SetTypeMappings emits no SQL.
+func (op *SetTypeMappings) Down(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return "", nil
+}
+
+// Mutate applies the type mappings to the schema state.
+func (op *SetTypeMappings) Mutate(state *SchemaState) error {
+	state.SetTypeMappings(op.TypeMappings)
+	return nil
+}

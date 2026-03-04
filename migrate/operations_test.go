@@ -370,6 +370,54 @@ func TestSetDefaults_UpDown(t *testing.T) {
 	}
 }
 
+// TestSetTypeMappings_Mutate verifies that SetTypeMappings.Mutate updates state.TypeMappings.
+func TestSetTypeMappings_Mutate(t *testing.T) {
+	state := migrate.NewSchemaState()
+	op := &migrate.SetTypeMappings{
+		TypeMappings: map[string]string{"float": "DOUBLE PRECISION", "text": "NVARCHAR(MAX)"},
+	}
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate returned error: %v", err)
+	}
+	if state.TypeMappings["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected DOUBLE PRECISION, got %q", state.TypeMappings["float"])
+	}
+	if state.TypeMappings["text"] != "NVARCHAR(MAX)" {
+		t.Errorf("expected NVARCHAR(MAX), got %q", state.TypeMappings["text"])
+	}
+}
+
+// TestSetTypeMappings_UpDown verifies that SetTypeMappings.Up and Down return empty SQL.
+func TestSetTypeMappings_UpDown(t *testing.T) {
+	state := migrate.NewSchemaState()
+	op := &migrate.SetTypeMappings{TypeMappings: map[string]string{"float": "DOUBLE PRECISION"}}
+	upSQL, err := op.Up(nil, state, nil)
+	if err != nil || upSQL != "" {
+		t.Errorf("SetTypeMappings.Up should return empty SQL, got %q err=%v", upSQL, err)
+	}
+	downSQL, err := op.Down(nil, state, nil)
+	if err != nil || downSQL != "" {
+		t.Errorf("SetTypeMappings.Down should return empty SQL, got %q err=%v", downSQL, err)
+	}
+}
+
+// TestSetTypeMappings_Metadata verifies TypeName, TableName, IsDestructive, Describe.
+func TestSetTypeMappings_Metadata(t *testing.T) {
+	op := &migrate.SetTypeMappings{TypeMappings: map[string]string{}}
+	if op.TypeName() != "set_type_mappings" {
+		t.Errorf("TypeName = %q, want set_type_mappings", op.TypeName())
+	}
+	if op.TableName() != "" {
+		t.Errorf("TableName = %q, want empty", op.TableName())
+	}
+	if op.IsDestructive() {
+		t.Error("IsDestructive should be false")
+	}
+	if op.Describe() == "" {
+		t.Error("Describe should be non-empty")
+	}
+}
+
 // TestCreateTable_Up_ResolvesDefaults verifies that CreateTable.Up resolves symbolic
 // default references (e.g. "uuid") to SQL expressions using the defaults map.
 func TestCreateTable_Up_ResolvesDefaults(t *testing.T) {

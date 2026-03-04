@@ -223,6 +223,37 @@ func TestProvider_InferForeignKeyType(t *testing.T) {
 	}
 }
 
+// TestConvertSQLTypeToYAML_UnknownPassthrough verifies that unrecognized
+// PostgreSQL types are passed through as lowercase rather than defaulting
+// to "text".
+func TestConvertSQLTypeToYAML_UnknownPassthrough(t *testing.T) {
+	p := &Provider{}
+
+	cases := []struct {
+		sqlType  string
+		expected string
+	}{
+		{"citext", "citext"},
+		{"inet", "inet"},
+		{"bytea", "bytea"},
+		{"money", "money"},
+		{"interval", "interval"},
+		{"hstore", "hstore"},
+		{"point", "point"},
+		{"tsvector", "tsvector"},
+		{"USER-DEFINED", "user-defined"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.sqlType, func(t *testing.T) {
+			result := p.convertSQLTypeToYAML(tc.sqlType)
+			if result != tc.expected {
+				t.Errorf("convertSQLTypeToYAML(%q) = %q, want %q", tc.sqlType, result, tc.expected)
+			}
+		})
+	}
+}
+
 func TestProvider_GenerateJunctionTable(t *testing.T) {
 	p := New()
 	got, err := p.GenerateJunctionTable("users", "roles", nil)

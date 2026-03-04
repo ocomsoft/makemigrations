@@ -933,6 +933,91 @@ func TestGenerateIndexSnippet(t *testing.T) {
 	}
 }
 
+// TestFormatDBDiff_SnippetsExtraTable verifies that the text output includes
+// a pasteable YAML snippet for an extra table (table in DB but not in DAG).
+func TestFormatDBDiff_SnippetsExtraTable(t *testing.T) {
+	nullable := false
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:      yamlpkg.ChangeTypeTableAdded,
+				TableName: "sessions",
+				NewValue: yamlpkg.Table{
+					Name: "sessions",
+					Fields: []yamlpkg.Field{
+						{Name: "id", Type: "uuid", PrimaryKey: true},
+						{Name: "token", Type: "varchar", Length: 255, Nullable: &nullable},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected 'YAML Snippets' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: sessions") {
+		t.Errorf("expected '- name: sessions' in snippet, got:\n%s", output)
+	}
+	if !strings.Contains(output, "type: uuid") {
+		t.Errorf("expected 'type: uuid' in snippet, got:\n%s", output)
+	}
+}
+
+// TestFormatDBDiff_SnippetsMissingIndex verifies that the text output includes
+// a pasteable YAML snippet for a missing index (index in DAG but not in DB).
+func TestFormatDBDiff_SnippetsMissingIndex(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:      yamlpkg.ChangeTypeIndexRemoved,
+				TableName: "users",
+				FieldName: "idx_users_email",
+				OldValue: yamlpkg.Index{
+					Name:   "idx_users_email",
+					Fields: []string{"email"},
+					Unique: true,
+				},
+				Destructive: true,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected 'YAML Snippets' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "idx_users_email") {
+		t.Errorf("expected 'idx_users_email' in snippet, got:\n%s", output)
+	}
+}
+
+// TestFormatDBDiff_NoSnippetsWhenNoChanges verifies that the YAML Snippets
+// section is NOT shown when there are no differences.
+func TestFormatDBDiff_NoSnippetsWhenNoChanges(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: false,
+		Changes:    []yamlpkg.Change{},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected NO 'YAML Snippets' section when no changes, got:\n%s", output)
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

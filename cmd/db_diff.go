@@ -240,14 +240,24 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 	var missingTables []yamlpkg.Change
 	var extraTables []yamlpkg.Change
 	fieldChanges := make(map[string][]yamlpkg.Change)
+	indexChanges := make(map[string][]yamlpkg.Change)
+	fkChanges := make(map[string][]yamlpkg.Change)
 	totalFieldChanges := 0
+	totalIndexChanges := 0
+	totalFKChanges := 0
 
 	for _, ch := range diff.Changes {
-		switch ch.Type {
-		case yamlpkg.ChangeTypeTableRemoved:
+		switch {
+		case ch.Type == yamlpkg.ChangeTypeTableRemoved:
 			missingTables = append(missingTables, ch)
-		case yamlpkg.ChangeTypeTableAdded:
+		case ch.Type == yamlpkg.ChangeTypeTableAdded:
 			extraTables = append(extraTables, ch)
+		case ch.Type == yamlpkg.ChangeTypeIndexAdded || ch.Type == yamlpkg.ChangeTypeIndexRemoved:
+			indexChanges[ch.TableName] = append(indexChanges[ch.TableName], ch)
+			totalIndexChanges++
+		case isForeignKeyChange(ch):
+			fkChanges[ch.TableName] = append(fkChanges[ch.TableName], ch)
+			totalFKChanges++
 		default:
 			fieldChanges[ch.TableName] = append(fieldChanges[ch.TableName], ch)
 			totalFieldChanges++
@@ -280,13 +290,7 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 
 	// Field Differences section
 	if len(fieldChanges) > 0 {
-		// Sort table names for deterministic output
-		tableNames := make([]string, 0, len(fieldChanges))
-		for name := range fieldChanges {
-			tableNames = append(tableNames, name)
-		}
-		sort.Strings(tableNames)
-
+		tableNames := sortedKeys(fieldChanges)
 		_, _ = bold.Fprintf(w, "Field Differences (%d change(s) across %d table(s)):\n", totalFieldChanges, len(tableNames))
 		for _, tableName := range tableNames {
 			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
@@ -304,19 +308,75 @@ func formatDBDiff(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
 		_, _ = fmt.Fprintln(w)
 	}
 
+	// Index Differences section
+	if len(indexChanges) > 0 {
+		tableNames := sortedKeys(indexChanges)
+		_, _ = bold.Fprintf(w, "Index Differences (%d change(s) across %d table(s)):\n", totalIndexChanges, len(tableNames))
+		for _, tableName := range tableNames {
+			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
+			for _, ch := range indexChanges[tableName] {
+				switch ch.Type {
+				case yamlpkg.ChangeTypeIndexRemoved:
+					_, _ = red.Fprintf(w, "    %s %s\n", "\u2717", ch.FieldName)
+				case yamlpkg.ChangeTypeIndexAdded:
+					_, _ = yellow.Fprintf(w, "    + %s\n", ch.FieldName)
+				}
+				if verboseFlag {
+					_, _ = fmt.Fprintf(w, "      %s\n", ch.Description)
+				}
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// Foreign Key Differences section
+	if len(fkChanges) > 0 {
+		tableNames := sortedKeys(fkChanges)
+		_, _ = bold.Fprintf(w, "Foreign Key Differences (%d change(s) across %d table(s)):\n", totalFKChanges, len(tableNames))
+		for _, tableName := range tableNames {
+			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
+			for _, ch := range fkChanges[tableName] {
+				_, _ = fmt.Fprintf(w, "    ~ %s: %s\n", ch.FieldName, ch.Description)
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
 	// Summary section
 	_, _ = bold.Fprintln(w, "Summary:")
 	_, _ = fmt.Fprintf(w, "  Total differences: %d\n", len(diff.Changes))
 	_, _ = fmt.Fprintf(w, "  Missing tables:    %d\n", len(missingTables))
 	_, _ = fmt.Fprintf(w, "  Extra tables:      %d\n", len(extraTables))
-
 	_, _ = fmt.Fprintf(w, "  Field changes:     %d\n", totalFieldChanges)
+	_, _ = fmt.Fprintf(w, "  Index changes:     %d\n", totalIndexChanges)
+	_, _ = fmt.Fprintf(w, "  FK changes:        %d\n", totalFKChanges)
 
 	// Destructive warning
 	if diff.IsDestructive {
 		_, _ = fmt.Fprintln(w)
 		_, _ = red.Fprintln(w, "\u26a0 One or more differences are flagged as destructive (data loss risk).")
 	}
+}
+
+// sortedKeys returns the keys of a map sorted alphabetically.
+func sortedKeys(m map[string][]yamlpkg.Change) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// isForeignKeyChange returns true if the change involves a foreign key modification.
+func isForeignKeyChange(ch yamlpkg.Change) bool {
+	if _, ok := ch.OldValue.(*yamlpkg.ForeignKey); ok {
+		return true
+	}
+	if _, ok := ch.NewValue.(*yamlpkg.ForeignKey); ok {
+		return true
+	}
+	return false
 }
 
 // formatDBDiffJSON writes the SchemaDiff as pretty-printed JSON to w.

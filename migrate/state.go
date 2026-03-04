@@ -30,8 +30,9 @@ import "fmt"
 // specific point in the migration graph. Operations call Mutate() to update
 // it as they are applied during graph traversal.
 type SchemaState struct {
-	Tables   map[string]*TableState `json:"tables"`
-	Defaults map[string]string      `json:"defaults,omitempty"` // active DB-type defaults from SetDefaults operations
+	Tables       map[string]*TableState `json:"tables"`
+	Defaults     map[string]string      `json:"defaults,omitempty"`      // active DB-type defaults from SetDefaults operations
+	TypeMappings map[string]string      `json:"type_mappings,omitempty"` // active provider's type mappings from SetTypeMappings operations
 }
 
 // TableState holds the state of a single table.
@@ -50,6 +51,12 @@ func NewSchemaState() *SchemaState {
 // Called by SetDefaults operations during migration traversal.
 func (s *SchemaState) SetDefaults(defaults map[string]string) {
 	s.Defaults = defaults
+}
+
+// SetTypeMappings updates the active type mappings on the state.
+// Called by SetTypeMappings operations during migration traversal.
+func (s *SchemaState) SetTypeMappings(m map[string]string) {
+	s.TypeMappings = m
 }
 
 // AddTable adds a new table. Returns error if the table already exists.

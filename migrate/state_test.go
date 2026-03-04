@@ -264,3 +264,21 @@ func TestSchemaState_DropIndex_MissingIndex(t *testing.T) {
 		t.Fatal("expected error when index does not exist")
 	}
 }
+
+// TestSchemaState_SetTypeMappings verifies that SetTypeMappings updates state.TypeMappings.
+func TestSchemaState_SetTypeMappings(t *testing.T) {
+	state := migrate.NewSchemaState()
+	if state.TypeMappings != nil {
+		t.Errorf("expected nil TypeMappings, got %v", state.TypeMappings)
+	}
+	m := map[string]string{"float": "DOUBLE PRECISION"}
+	state.SetTypeMappings(m)
+	if state.TypeMappings["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected DOUBLE PRECISION, got %q", state.TypeMappings["float"])
+	}
+	// Overwrite
+	state.SetTypeMappings(map[string]string{"text": "NVARCHAR(MAX)"})
+	if _, ok := state.TypeMappings["float"]; ok {
+		t.Error("expected float key to be gone after overwrite")
+	}
+}

@@ -34,6 +34,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	yaml "gopkg.in/yaml.v3"
 
 	"github.com/ocomsoft/makemigrations/internal/config"
 	"github.com/ocomsoft/makemigrations/internal/providers"
@@ -381,6 +382,36 @@ func isForeignKeyChange(ch yamlpkg.Change) bool {
 		return true
 	}
 	return false
+}
+
+// generateTableSnippet marshals a Table to a YAML snippet suitable for pasting
+// into a schema file's tables: list.
+func generateTableSnippet(table yamlpkg.Table) (string, error) {
+	data, err := yaml.Marshal([]yamlpkg.Table{table})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal table %s: %w", table.Name, err)
+	}
+	return string(data), nil
+}
+
+// generateFieldSnippet marshals a Field to a YAML snippet with a table-name
+// comment for context.
+func generateFieldSnippet(tableName string, field yamlpkg.Field) (string, error) {
+	data, err := yaml.Marshal([]yamlpkg.Field{field})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal field %s.%s: %w", tableName, field.Name, err)
+	}
+	return fmt.Sprintf("# Table: %s\n%s", tableName, string(data)), nil
+}
+
+// generateIndexSnippet marshals an Index to a YAML snippet with a table-name
+// comment for context.
+func generateIndexSnippet(tableName string, index yamlpkg.Index) (string, error) {
+	data, err := yaml.Marshal([]yamlpkg.Index{index})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal index %s.%s: %w", tableName, index.Name, err)
+	}
+	return fmt.Sprintf("# Table: %s\n%s", tableName, string(data)), nil
 }
 
 // formatDBDiffJSON writes the SchemaDiff as pretty-printed JSON to w.

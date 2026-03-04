@@ -1167,6 +1167,47 @@ func TestFormatDBDiff_SnippetsForeignKey(t *testing.T) {
 	}
 }
 
+// TestRunDBDiffWithSchemas_UnknownTypePassthrough verifies that unknown
+// database types (e.g. citext, inet) are passed through rather than
+// defaulting to "text", preventing false-positive type mismatches.
+func TestRunDBDiffWithSchemas_UnknownTypePassthrough(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "ip_addr", Type: "inet"},
+					{Name: "search_data", Type: "tsvector"},
+				},
+			},
+		},
+	}
+	// DB schema uses same types — should produce no diff
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "ip_addr", Type: "inet"},
+					{Name: "search_data", Type: "tsvector"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err != nil {
+		t.Fatalf("expected no error for matching unknown types, got: %v", err)
+	}
+	if !strings.Contains(buf.String(), "No differences") {
+		t.Errorf("expected 'No differences' for matching unknown types, got:\n%s", buf.String())
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

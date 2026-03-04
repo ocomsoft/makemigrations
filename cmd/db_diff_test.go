@@ -471,6 +471,139 @@ func TestRunDBDiffWithSchemas_JSONFormat(t *testing.T) {
 	}
 }
 
+// TestFormatDBDiff_IndexAdded verifies that an index_added change is reported
+// in an "Index Differences" section rather than "Field Differences".
+func TestFormatDBDiff_IndexAdded(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:        yamlpkg.ChangeTypeIndexAdded,
+				TableName:   "users",
+				FieldName:   "idx_users_email",
+				Description: "Add index 'idx_users_email' on table 'users'",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "Index Differences") {
+		t.Errorf("expected output to contain 'Index Differences', got:\n%s", output)
+	}
+	if !strings.Contains(output, "idx_users_email") {
+		t.Errorf("expected output to contain 'idx_users_email', got:\n%s", output)
+	}
+	if strings.Contains(output, "Field Differences") {
+		t.Errorf("index changes should NOT appear under 'Field Differences', got:\n%s", output)
+	}
+}
+
+// TestFormatDBDiff_IndexRemoved verifies that an index_removed change is
+// reported in the "Index Differences" section.
+func TestFormatDBDiff_IndexRemoved(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges:    true,
+		IsDestructive: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:        yamlpkg.ChangeTypeIndexRemoved,
+				TableName:   "orders",
+				FieldName:   "idx_orders_status",
+				Description: "Remove index 'idx_orders_status' from table 'orders'",
+				Destructive: true,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "Index Differences") {
+		t.Errorf("expected output to contain 'Index Differences', got:\n%s", output)
+	}
+	if !strings.Contains(output, "idx_orders_status") {
+		t.Errorf("expected output to contain 'idx_orders_status', got:\n%s", output)
+	}
+}
+
+// TestFormatDBDiff_ForeignKeyDiff verifies that foreign key changes are
+// reported in a "Foreign Key Differences" section.
+func TestFormatDBDiff_ForeignKeyDiff(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:        yamlpkg.ChangeTypeFieldModified,
+				TableName:   "orders",
+				FieldName:   "user_id",
+				Description: "Change field 'orders.user_id' foreign key from users to none",
+				OldValue:    &yamlpkg.ForeignKey{Table: "users", OnDelete: "CASCADE"},
+				NewValue:    nil,
+				Destructive: true,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "Foreign Key Differences") {
+		t.Errorf("expected output to contain 'Foreign Key Differences', got:\n%s", output)
+	}
+	if !strings.Contains(output, "user_id") {
+		t.Errorf("expected output to contain 'user_id', got:\n%s", output)
+	}
+}
+
+// TestFormatDBDiff_SummaryWithIndexAndFK verifies that the summary section
+// includes separate counts for index and foreign key changes.
+func TestFormatDBDiff_SummaryWithIndexAndFK(t *testing.T) {
+	diff := &yamlpkg.SchemaDiff{
+		HasChanges:    true,
+		IsDestructive: true,
+		Changes: []yamlpkg.Change{
+			{
+				Type:      yamlpkg.ChangeTypeFieldRemoved,
+				TableName: "users", FieldName: "deleted_at",
+				Destructive: true,
+			},
+			{
+				Type:      yamlpkg.ChangeTypeIndexAdded,
+				TableName: "users", FieldName: "idx_users_email",
+			},
+			{
+				Type:      yamlpkg.ChangeTypeIndexRemoved,
+				TableName: "orders", FieldName: "idx_orders_old",
+				Destructive: true,
+			},
+			{
+				Type:      yamlpkg.ChangeTypeFieldModified,
+				TableName: "orders", FieldName: "user_id",
+				Description: "Change field 'orders.user_id' foreign key from users to none",
+				OldValue:    &yamlpkg.ForeignKey{Table: "users", OnDelete: "CASCADE"},
+				NewValue:    nil,
+				Destructive: true,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	formatDBDiff(&buf, diff, false)
+
+	output := buf.String()
+	if !strings.Contains(output, "Index changes") {
+		t.Errorf("expected summary to contain 'Index changes', got:\n%s", output)
+	}
+	if !strings.Contains(output, "FK changes") {
+		t.Errorf("expected summary to contain 'FK changes', got:\n%s", output)
+	}
+}
+
 // TestRunDBDiff_UnsupportedProvider verifies that attempting to run db-diff
 // with a non-PostgreSQL database type returns a clear, actionable error message
 // rather than the raw "not implemented yet" stub error from the provider.

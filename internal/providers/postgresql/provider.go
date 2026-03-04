@@ -820,7 +820,7 @@ func (p *Provider) convertSQLTypeToYAML(sqlType string) string {
 	case sqlType == "json":
 		return "jsonb"
 	default:
-		return "text" // Default fallback
+		return strings.ToLower(sqlType)
 	}
 }
 

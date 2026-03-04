@@ -25,6 +25,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -272,5 +273,200 @@ func TestFormatDBDiff_Summary(t *testing.T) {
 	output := buf.String()
 	if !strings.Contains(output, "3") {
 		t.Errorf("expected output to contain '3' (total change count), got:\n%s", output)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Integration tests for runDBDiffWithSchemas
+// ---------------------------------------------------------------------------
+
+// TestRunDBDiffWithSchemas_NoDiff verifies that two identical schemas produce
+// no drift error and the output reports "No differences".
+func TestRunDBDiffWithSchemas_NoDiff(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err != nil {
+		t.Fatalf("expected no error for identical schemas, got: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "No differences") {
+		t.Errorf("expected output to contain 'No differences', got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_MissingTable verifies that a table present in the
+// DAG schema but absent from the DB schema is reported as missing drift.
+func TestRunDBDiffWithSchemas_MissingTable(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+			{
+				Name: "audit_log",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err == nil {
+		t.Fatal("expected an error indicating drift, got nil")
+	}
+	output := buf.String()
+	if !strings.Contains(output, "audit_log") {
+		t.Errorf("expected output to contain 'audit_log', got:\n%s", output)
+	}
+	if !strings.Contains(output, "Missing") {
+		t.Errorf("expected output to contain 'Missing', got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_ExtraTable verifies that a table present in the DB
+// but absent from the DAG schema is reported as extra drift.
+func TestRunDBDiffWithSchemas_ExtraTable(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+			{
+				Name: "legacy_cache",
+				Fields: []yamlpkg.Field{
+					{Name: "key", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err == nil {
+		t.Fatal("expected an error indicating drift, got nil")
+	}
+	output := buf.String()
+	if !strings.Contains(output, "legacy_cache") {
+		t.Errorf("expected output to contain 'legacy_cache', got:\n%s", output)
+	}
+	if !strings.Contains(output, "Extra") {
+		t.Errorf("expected output to contain 'Extra', got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_TypeNormalization verifies that SQL-native types
+// in the DB schema are normalized to match the canonical DAG types, resulting
+// in no drift when the underlying types are semantically equivalent.
+func TestRunDBDiffWithSchemas_TypeNormalization(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "products",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+					{Name: "name", Type: "varchar", Length: 255},
+					{Name: "price", Type: "decimal"},
+					{Name: "active", Type: "boolean"},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "products",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+					{Name: "name", Type: "character varying", Length: 255},
+					{Name: "price", Type: "numeric"},
+					{Name: "active", Type: "bool"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	if err != nil {
+		t.Fatalf("expected no error after type normalization, got: %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "No differences") {
+		t.Errorf("expected output to contain 'No differences' after normalization, got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_JSONFormat verifies that JSON output mode produces
+// valid JSON that can be unmarshalled into a SchemaDiff.
+func TestRunDBDiffWithSchemas_JSONFormat(t *testing.T) {
+	dagSchema := &yamlpkg.Schema{}
+	dbSchema := &yamlpkg.Schema{}
+
+	var buf bytes.Buffer
+	err := runDBDiffWithSchemas(&buf, dagSchema, dbSchema, "json", false)
+
+	if err != nil {
+		t.Fatalf("expected no error for empty schemas with JSON format, got: %v", err)
+	}
+
+	output := buf.Bytes()
+	var result yamlpkg.SchemaDiff
+	if jsonErr := json.Unmarshal(output, &result); jsonErr != nil {
+		t.Errorf("expected valid JSON output, got unmarshal error: %v\nraw output:\n%s", jsonErr, string(output))
 	}
 }

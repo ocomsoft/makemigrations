@@ -1018,6 +1018,119 @@ func TestFormatDBDiff_NoSnippetsWhenNoChanges(t *testing.T) {
 	}
 }
 
+// TestRunDBDiffWithSchemas_SnippetsExtraTable verifies that text output
+// includes YAML snippets when an extra table is detected via the full
+// comparison path.
+func TestRunDBDiffWithSchemas_SnippetsExtraTable(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+			{
+				Name: "sessions",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "token", Type: "varchar", Length: 255},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	_ = runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	output := buf.String()
+	if !strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected 'YAML Snippets' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "- name: sessions") {
+		t.Errorf("expected '- name: sessions' in snippet, got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_SnippetsIndexDiff verifies that YAML snippets include
+// index definitions when an index mismatch is detected.
+func TestRunDBDiffWithSchemas_SnippetsIndexDiff(t *testing.T) {
+	dagSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				Indexes: []yamlpkg.Index{
+					{Name: "idx_users_email", Fields: []string{"email"}, Unique: true},
+				},
+			},
+		},
+	}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "users",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "email", Type: "varchar", Length: 255},
+				},
+				// No indexes
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	_ = runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "text", false)
+
+	output := buf.String()
+	if !strings.Contains(output, "YAML Snippets") {
+		t.Errorf("expected 'YAML Snippets' section, got:\n%s", output)
+	}
+	if !strings.Contains(output, "idx_users_email") {
+		t.Errorf("expected 'idx_users_email' in snippet, got:\n%s", output)
+	}
+	if !strings.Contains(output, "unique: true") {
+		t.Errorf("expected 'unique: true' in snippet, got:\n%s", output)
+	}
+}
+
+// TestRunDBDiffWithSchemas_SnippetsNotInJSON verifies that YAML snippets
+// do NOT appear in JSON output format.
+func TestRunDBDiffWithSchemas_SnippetsNotInJSON(t *testing.T) {
+	dagSchema := yamlpkg.Schema{}
+	dbSchema := yamlpkg.Schema{
+		Tables: []yamlpkg.Table{
+			{
+				Name: "extra",
+				Fields: []yamlpkg.Field{
+					{Name: "id", Type: "uuid"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	_ = runDBDiffWithSchemas(&buf, &dagSchema, &dbSchema, "json", false)
+
+	var result yamlpkg.SchemaDiff
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("expected valid JSON (snippets should not affect JSON output): %v", err)
+	}
+}
+
 func TestRunDBDiff_UnsupportedProvider(t *testing.T) {
 	// Save and restore the global databaseType flag value
 	orig := databaseType

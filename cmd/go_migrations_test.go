@@ -33,6 +33,66 @@ import (
 	"github.com/ocomsoft/makemigrations/migrate"
 )
 
+// TestTypeMappingsSurvivedMergeAndDiffDetection is a regression test for the
+// bug where TypeMappings in a schema.yaml were silently dropped by MergeSchemas,
+// causing makemigrations to report "No changes detected" even when type_mappings
+// were present (e.g. float → DOUBLE PRECISION in air_radiators).
+//
+// The test verifies the full pipeline:
+//  1. MergeSchemas preserves TypeMappings from component schemas.
+//  2. getTypeMappingsForDB returns the correct values from the merged schema.
+//  3. schemaStateToYAMLSchema of a prior DAG state (no SetTypeMappings op) yields empty TypeMappings.
+//  4. The diff between prev and current is non-empty, i.e. a SetTypeMappings migration would be generated.
+func TestTypeMappingsSurvivedMergeAndDiffDetection(t *testing.T) {
+	// schema1 has TypeMappings — mirrors the corecalc/schema/schema.yaml case
+	schema1 := &yamlpkg.Schema{
+		Database: yamlpkg.Database{Name: "corecalc", Version: "1.0.0"},
+		TypeMappings: yamlpkg.TypeMappings{
+			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+		},
+		Tables: []yamlpkg.Table{
+			{Name: "core_data_file", Fields: []yamlpkg.Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
+		},
+	}
+
+	// schema2 has no TypeMappings — mirrors a sub-schema (data/ or eng/)
+	schema2 := &yamlpkg.Schema{
+		Database: yamlpkg.Database{Name: "corecalc", Version: "1.0.0"},
+		Tables: []yamlpkg.Table{
+			{Name: "unit_type", Fields: []yamlpkg.Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
+		},
+	}
+
+	// Step 1: Merge — TypeMappings must survive
+	merger := yamlpkg.NewMerger(false)
+	merged, err := merger.MergeSchemas([]*yamlpkg.Schema{schema1, schema2})
+	if err != nil {
+		t.Fatalf("MergeSchemas: %v", err)
+	}
+
+	// Step 2: Extract current TypeMappings for PostgreSQL
+	currMappings := getTypeMappingsForDB(merged, "postgresql")
+	if len(currMappings) == 0 {
+		t.Fatal("TypeMappings lost during MergeSchemas — regression: getTypeMappingsForDB returned empty after merge")
+	}
+	if currMappings["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected float→DOUBLE PRECISION, got %q", currMappings["float"])
+	}
+
+	// Step 3: Simulate prior DAG state with no SetTypeMappings op (prevSchema has empty TypeMappings)
+	prevState := migrate.NewSchemaState() // no SetTypeMappings applied
+	prevSchema := schemaStateToYAMLSchema(prevState, "postgresql")
+	prevMappings := getTypeMappingsForDB(prevSchema, "postgresql")
+
+	// Step 4: Diff detection — should see a change
+	if mapsEqual(prevMappings, currMappings) {
+		t.Error("expected diff to detect TypeMappings change, but mapsEqual returned true")
+	}
+	if len(currMappings) == 0 {
+		t.Error("current TypeMappings must be non-empty to trigger SetTypeMappings generation")
+	}
+}
+
 // TestBuildMigrationName_WithCustomName verifies that a custom name is
 // normalized (lowered, spaces to underscores) and prepended with the
 // correct zero-padded sequence number.

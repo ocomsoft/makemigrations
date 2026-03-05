@@ -85,3 +85,19 @@ type Provider interface {
 	// Configuration
 	SetTypeMappings(mappings map[string]string)
 }
+
+// TableRecreationProvider is an optional interface implemented by providers
+// (such as SQLite) that require the full current table definition to perform
+// column alterations. SQLite does not support ALTER COLUMN natively, so it
+// must recreate the table: create a temp table with the new definition, copy
+// all rows, drop the old table, and rename the temp table.
+//
+// When a provider implements this interface, AlterField.Up/Down uses it
+// instead of GenerateAlterColumn, passing the complete current table so the
+// provider has all column definitions and indexes needed for recreation.
+//
+// fromField is the column's current definition in the database.
+// toField is the desired target definition after the operation.
+type TableRecreationProvider interface {
+	GenerateAlterColumnWithTable(currentTable *types.Table, fromField, toField *types.Field) (string, error)
+}

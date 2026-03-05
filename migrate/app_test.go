@@ -434,6 +434,40 @@ func TestApp_Run_Fake_ByPrefix_ThenUpIsNoop(t *testing.T) {
 	}
 }
 
+func TestApp_Run_Fake_AlreadyApplied_IsNoop(t *testing.T) {
+	// Fake called twice on the same migration must not fail.
+	dbPath := filepath.Join(t.TempDir(), "test_fake_idempotent.db")
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "users",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	if err := app.Run([]string{"fake", "0001_initial"}); err != nil {
+		t.Fatalf("first fake failed: %v", err)
+	}
+	// Second fake on the same migration must succeed (idempotent).
+	if err := app.Run([]string{"fake", "0001_initial"}); err != nil {
+		t.Fatalf("second fake (already applied) failed: %v", err)
+	}
+}
+
 func TestApp_Run_Fake_MissingArg(t *testing.T) {
 	app := migrate.NewAppWithRegistry(migrate.Config{}, migrate.NewRegistry())
 	err := app.Run([]string{"fake"})

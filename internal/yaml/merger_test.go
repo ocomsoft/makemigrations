@@ -208,6 +208,55 @@ func TestForeignKeyConflictResolution(t *testing.T) {
 	}
 }
 
+func TestMergeTypeMappings(t *testing.T) {
+	merger := NewMerger(false)
+
+	schema1 := &Schema{
+		Database: Database{Name: "app", Version: "1.0.0"},
+		TypeMappings: TypeMappings{
+			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+		},
+		Tables: []Table{
+			{Name: "users", Fields: []Field{{Name: "id", Type: "serial", PrimaryKey: true}}},
+		},
+	}
+
+	schema2 := &Schema{
+		Database: Database{Name: "app", Version: "1.0.0"},
+		TypeMappings: TypeMappings{
+			PostgreSQL: map[string]string{"text": "CITEXT"},
+			MySQL:      map[string]string{"float": "DOUBLE"},
+		},
+		Tables: []Table{
+			{Name: "posts", Fields: []Field{{Name: "id", Type: "serial", PrimaryKey: true}}},
+		},
+	}
+
+	merged, err := merger.MergeSchemas([]*Schema{schema1, schema2})
+	if err != nil {
+		t.Fatalf("Failed to merge schemas: %v", err)
+	}
+
+	// PostgreSQL should have both mappings merged
+	if len(merged.TypeMappings.PostgreSQL) != 2 {
+		t.Errorf("Expected 2 PostgreSQL type mappings, got %d", len(merged.TypeMappings.PostgreSQL))
+	}
+	if merged.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
+		t.Errorf("Expected PostgreSQL float mapping 'DOUBLE PRECISION', got %q", merged.TypeMappings.PostgreSQL["float"])
+	}
+	if merged.TypeMappings.PostgreSQL["text"] != "CITEXT" {
+		t.Errorf("Expected PostgreSQL text mapping 'CITEXT', got %q", merged.TypeMappings.PostgreSQL["text"])
+	}
+
+	// MySQL should have its mapping
+	if len(merged.TypeMappings.MySQL) != 1 {
+		t.Errorf("Expected 1 MySQL type mapping, got %d", len(merged.TypeMappings.MySQL))
+	}
+	if merged.TypeMappings.MySQL["float"] != "DOUBLE" {
+		t.Errorf("Expected MySQL float mapping 'DOUBLE', got %q", merged.TypeMappings.MySQL["float"])
+	}
+}
+
 func TestValidateMergedSchema(t *testing.T) {
 	merger := NewMerger(false)
 

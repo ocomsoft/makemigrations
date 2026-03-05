@@ -32,6 +32,7 @@ type Include = types.Include
 type Schema = types.Schema
 type Database = types.Database
 type Defaults = types.Defaults
+type TypeMappings = types.TypeMappings
 type Table = types.Table
 type Field = types.Field
 type ForeignKey = types.ForeignKey

@@ -67,12 +67,14 @@ func (p *Provider) QuoteName(name string) string {
 	return fmt.Sprintf(`"%s"`, name)
 }
 
-// SupportsOperation checks if SQLite supports a specific operation
+// SupportsOperation checks if SQLite supports a specific operation.
+// DROP_COLUMN requires SQLite 3.35.0+ (2021); RENAME_COLUMN requires 3.25.0+ (2018).
+// ALTER_COLUMN is never supported natively — use GenerateAlterColumnWithTable instead.
 func (p *Provider) SupportsOperation(operation string) bool {
 	switch operation {
-	case "DROP_COLUMN", "RENAME_COLUMN", "ALTER_COLUMN":
-		return false // SQLite has limited ALTER TABLE support
-	case "RENAME_TABLE":
+	case "ALTER_COLUMN":
+		return false
+	case "DROP_COLUMN", "RENAME_COLUMN", "RENAME_TABLE":
 		return true
 	default:
 		return false
@@ -186,10 +188,10 @@ func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) strin
 	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
 }
 
-// GenerateDropColumn generates comment for unsupported operation in SQLite
+// GenerateDropColumn generates ALTER TABLE DROP COLUMN statement for SQLite.
+// Requires SQLite 3.35.0+ (released 2021-03-12).
 func (p *Provider) GenerateDropColumn(tableName, columnName string) string {
-	return fmt.Sprintf("-- SQLite doesn't support DROP COLUMN. Manual table recreation required for %s.%s",
-		tableName, columnName)
+	return fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s;", p.QuoteName(tableName), p.QuoteName(columnName))
 }
 
 // GenerateRenameTable generates ALTER TABLE RENAME statement
@@ -197,10 +199,11 @@ func (p *Provider) GenerateRenameTable(oldName, newName string) string {
 	return fmt.Sprintf("ALTER TABLE %s RENAME TO %s;", p.QuoteName(oldName), p.QuoteName(newName))
 }
 
-// GenerateRenameColumn generates comment for unsupported operation in SQLite
+// GenerateRenameColumn generates ALTER TABLE RENAME COLUMN statement for SQLite.
+// Requires SQLite 3.25.0+ (released 2018-09-15).
 func (p *Provider) GenerateRenameColumn(tableName, oldName, newName string) string {
-	return fmt.Sprintf("-- SQLite doesn't support RENAME COLUMN. Manual table recreation required for %s.%s -> %s",
-		tableName, oldName, newName)
+	return fmt.Sprintf("ALTER TABLE %s RENAME COLUMN %s TO %s;",
+		p.QuoteName(tableName), p.QuoteName(oldName), p.QuoteName(newName))
 }
 
 // Placeholder implementations for remaining interface methods
@@ -390,6 +393,62 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 		return ""
 	}
 	return strings.Join(constraints, "\n")
+}
+
+// GenerateAlterColumnWithTable implements providers.TableRecreationProvider.
+// SQLite does not support ALTER COLUMN natively, so this method recreates the
+// table with the new column definition: creates a temp table, copies all rows,
+// drops the original, renames the temp table, and recreates any indexes.
+func (p *Provider) GenerateAlterColumnWithTable(currentTable *types.Table, fromField, toField *types.Field) (string, error) {
+	// No-op if the effective column definition has not changed.
+	if p.ConvertFieldType(fromField) == p.ConvertFieldType(toField) &&
+		fromField.IsNullable() == toField.IsNullable() &&
+		fromField.Default == toField.Default {
+		return "", nil
+	}
+
+	tempName := currentTable.Name + "__migration"
+
+	// Build the new table definition, replacing the altered column.
+	newTable := &types.Table{Name: tempName}
+	for _, f := range currentTable.Fields {
+		if f.Name == fromField.Name {
+			cf := *toField
+			cf.Name = fromField.Name
+			newTable.Fields = append(newTable.Fields, cf)
+		} else {
+			newTable.Fields = append(newTable.Fields, f)
+		}
+	}
+
+	createSQL, err := p.GenerateCreateTable(nil, newTable)
+	if err != nil {
+		return "", fmt.Errorf("generating temp table for alter column: %w", err)
+	}
+
+	// Collect column names for the INSERT INTO … SELECT statement.
+	var cols []string
+	for _, f := range currentTable.Fields {
+		if f.Type != "many_to_many" {
+			cols = append(cols, p.QuoteName(f.Name))
+		}
+	}
+	colList := strings.Join(cols, ", ")
+
+	var parts []string
+	parts = append(parts, createSQL)
+	parts = append(parts, fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s;",
+		p.QuoteName(tempName), colList, colList, p.QuoteName(currentTable.Name)))
+	parts = append(parts, p.GenerateDropTable(currentTable.Name))
+	parts = append(parts, fmt.Sprintf("ALTER TABLE %s RENAME TO %s;",
+		p.QuoteName(tempName), p.QuoteName(currentTable.Name)))
+
+	// Recreate indexes on the restored table.
+	for _, idx := range currentTable.Indexes {
+		parts = append(parts, p.GenerateCreateIndex(&idx, currentTable.Name))
+	}
+
+	return strings.Join(parts, "\n"), nil
 }
 
 // GetDatabaseSchema extracts schema information from a SQLite database

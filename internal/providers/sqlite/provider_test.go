@@ -52,9 +52,80 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 	}
 }
 
+func TestProvider_GenerateDropColumn(t *testing.T) {
+	p := New()
+	got := p.GenerateDropColumn("orders", "notes")
+	want := `ALTER TABLE "orders" DROP COLUMN "notes";`
+	if got != want {
+		t.Errorf("GenerateDropColumn() = %q, want %q", got, want)
+	}
+}
+
+func TestProvider_GenerateRenameColumn(t *testing.T) {
+	p := New()
+	got := p.GenerateRenameColumn("users", "phone_number", "phone")
+	want := `ALTER TABLE "users" RENAME COLUMN "phone_number" TO "phone";`
+	if got != want {
+		t.Errorf("GenerateRenameColumn() = %q, want %q", got, want)
+	}
+}
+
+func TestProvider_GenerateAlterColumnWithTable_TableRecreation(t *testing.T) {
+	p := New()
+	f := boolPtr(false)
+	currentTable := &types.Table{
+		Name: "users",
+		Fields: []types.Field{
+			{Name: "id", Type: "integer", PrimaryKey: true},
+			{Name: "email", Type: "varchar"},
+			{Name: "phone", Type: "varchar", Nullable: nil}, // currently nullable (nil = nullable)
+		},
+	}
+	from := &types.Field{Name: "phone", Type: "varchar", Nullable: nil} // nullable
+	to := &types.Field{Name: "phone", Type: "varchar", Nullable: f}     // NOT NULL
+
+	got, err := p.GenerateAlterColumnWithTable(currentTable, from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty SQL for table recreation, got empty string")
+	}
+	if !strings.Contains(got, "users__migration") {
+		t.Errorf("expected temp table 'users__migration' in SQL:\n%s", got)
+	}
+	if !strings.Contains(got, "INSERT INTO") {
+		t.Errorf("expected INSERT INTO in SQL:\n%s", got)
+	}
+	if !strings.Contains(got, `DROP TABLE "users"`) {
+		t.Errorf("expected DROP TABLE \"users\" in SQL:\n%s", got)
+	}
+	if !strings.Contains(got, `RENAME TO "users"`) {
+		t.Errorf("expected RENAME TO \"users\" in SQL:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumnWithTable_NoChange(t *testing.T) {
+	p := New()
+	currentTable := &types.Table{
+		Name:   "users",
+		Fields: []types.Field{{Name: "score", Type: "integer"}},
+	}
+	from := &types.Field{Name: "score", Type: "integer"}
+	to := &types.Field{Name: "score", Type: "integer"}
+	got, err := p.GenerateAlterColumnWithTable(currentTable, from, to)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty SQL for no-change alter, got: %q", got)
+	}
+}
+
+// boolPtr converts a bool to a *bool for use with types.Field.Nullable.
+func boolPtr(b bool) *bool { return &b }
+
 // TestProvider_GenerateAlterColumn_NoOp verifies that GenerateAlterColumn returns
-// empty SQL (no error) for unsupported changes, allowing the schema state to
-// advance via Mutate without attempting unsupported DDL.
 func TestProvider_GenerateAlterColumn_NoOp(t *testing.T) {
 	p := New()
 	old := &types.Field{Name: "score", Type: "integer"}

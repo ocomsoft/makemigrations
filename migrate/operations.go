@@ -419,23 +419,60 @@ func (op *AlterField) Describe() string {
 	return fmt.Sprintf("Alter field %s.%s", op.Table, op.NewField.Name)
 }
 
+// tableStateToTypesTable converts a table entry from SchemaState to *types.Table
+// so that providers implementing TableRecreationProvider can access the full
+// current table definition when performing column alterations that require
+// recreating the table (e.g. SQLite).
+func tableStateToTypesTable(state *SchemaState, tableName string, defaults map[string]string) *types.Table {
+	t := &types.Table{Name: tableName}
+	if state == nil {
+		return t
+	}
+	ts, ok := state.Tables[tableName]
+	if !ok {
+		return t
+	}
+	for _, f := range ts.Fields {
+		tf := toTypesField(f)
+		resolveFieldDefault(tf, defaults)
+		t.Fields = append(t.Fields, *tf)
+	}
+	for _, idx := range ts.Indexes {
+		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})
+	}
+	return t
+}
+
 // Up generates the ALTER COLUMN SQL to apply the new field definition.
-// Field defaults are resolved against the active defaults map before being passed to the provider.
+// If the provider implements TableRecreationProvider (e.g. SQLite), the full
+// current table definition is passed so the provider can recreate the table.
+// Field defaults are resolved against the active defaults map before use.
 func (op *AlterField) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	oldF := toTypesField(op.OldField)
 	newF := toTypesField(op.NewField)
 	resolveFieldDefault(oldF, defaults)
 	resolveFieldDefault(newF, defaults)
+	if trp, ok := p.(providers.TableRecreationProvider); ok {
+		t := tableStateToTypesTable(state, op.Table, defaults)
+		return trp.GenerateAlterColumnWithTable(t, oldF, newF)
+	}
 	return p.GenerateAlterColumn(op.Table, oldF, newF)
 }
 
 // Down generates the ALTER COLUMN SQL to restore the original field definition.
-// Field defaults are resolved against the active defaults map before being passed to the provider.
+// If the provider implements TableRecreationProvider (e.g. SQLite), the full
+// current table definition is passed so the provider can recreate the table.
+// Field defaults are resolved against the active defaults map before use.
 func (op *AlterField) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	oldF := toTypesField(op.OldField)
 	newF := toTypesField(op.NewField)
 	resolveFieldDefault(oldF, defaults)
 	resolveFieldDefault(newF, defaults)
+	if trp, ok := p.(providers.TableRecreationProvider); ok {
+		// For Down, state reflects the post-Up schema; pass newF→oldF to recreate to original.
+		t := tableStateToTypesTable(state, op.Table, defaults)
+		return trp.GenerateAlterColumnWithTable(t, newF, oldF)
+	}
 	return p.GenerateAlterColumn(op.Table, newF, oldF)
 }
 

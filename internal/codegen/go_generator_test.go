@@ -687,6 +687,47 @@ func TestGoGenerator_AddField_PromptOmit_EmitsSchemaOnly(t *testing.T) {
 	}
 }
 
+// TestGoGenerator_SetTypeMappings verifies that a ChangeTypeTypeMappingsModified change
+// generates a valid &m.SetTypeMappings{...} literal with sorted keys.
+func TestGoGenerator_SetTypeMappings(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{
+				Type:        yaml.ChangeTypeTypeMappingsModified,
+				Description: "Update schema type mappings",
+				NewValue: map[string]string{
+					"float": "DOUBLE PRECISION",
+					"text":  "NVARCHAR(MAX)",
+				},
+			},
+		},
+	}
+	src, err := g.GenerateMigration("0001_set_type_mappings", []string{}, diff, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if _, err := format.Source([]byte(src)); err != nil {
+		t.Fatalf("output is not valid Go: %v\nSource:\n%s", err, src)
+	}
+	if !strings.Contains(src, "SetTypeMappings") {
+		t.Error("expected SetTypeMappings in output")
+	}
+	if !strings.Contains(src, `"float"`) || !strings.Contains(src, `"DOUBLE PRECISION"`) {
+		t.Errorf("expected float mapping in output, got:\n%s", src)
+	}
+	if !strings.Contains(src, `"text"`) || !strings.Contains(src, `"NVARCHAR(MAX)"`) {
+		t.Errorf("expected text mapping in output, got:\n%s", src)
+	}
+	// Keys must be sorted: "float" before "text"
+	floatIdx := strings.Index(src, `"float"`)
+	textIdx := strings.Index(src, `"text"`)
+	if floatIdx > textIdx {
+		t.Errorf("expected keys sorted alphabetically ('float' before 'text'), got:\n%s", src)
+	}
+}
+
 // TestGoGenerator_SetDefaults verifies that a ChangeTypeDefaultsModified change
 // generates a valid &m.SetDefaults{...} literal with sorted keys.
 func TestGoGenerator_SetDefaults(t *testing.T) {

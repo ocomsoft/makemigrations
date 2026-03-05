@@ -160,6 +160,8 @@ func (g *GoGenerator) generateOperation(
 		return g.generateDropIndex(change)
 	case yaml.ChangeTypeDefaultsModified:
 		return g.generateSetDefaults(change)
+	case yaml.ChangeTypeTypeMappingsModified:
+		return g.generateSetTypeMappings(change)
 	default:
 		return "", fmt.Errorf("unsupported change type: %s", change.Type)
 	}
@@ -370,6 +372,23 @@ func (g *GoGenerator) generateSetDefaults(change yaml.Change) (string, error) {
 	b.WriteString("\t\t\t&m.SetDefaults{\n\t\t\t\tDefaults: map[string]string{\n")
 	for _, k := range sortedKeys(defaults) {
 		b.WriteString(fmt.Sprintf("\t\t\t\t\t%q: %q,\n", k, defaults[k]))
+	}
+	b.WriteString("\t\t\t\t},\n\t\t\t},\n")
+	return b.String(), nil
+}
+
+// generateSetTypeMappings emits a &m.SetTypeMappings{...} literal.
+// The type mappings map must be map[string]string stored in change.NewValue.
+// Keys are sorted for deterministic output.
+func (g *GoGenerator) generateSetTypeMappings(change yaml.Change) (string, error) {
+	mappings, ok := change.NewValue.(map[string]string)
+	if !ok {
+		return "", fmt.Errorf("expected map[string]string for type mappings NewValue, got %T", change.NewValue)
+	}
+	var b strings.Builder
+	b.WriteString("\t\t\t&m.SetTypeMappings{\n\t\t\t\tTypeMappings: map[string]string{\n")
+	for _, k := range sortedKeys(mappings) {
+		fmt.Fprintf(&b, "\t\t\t\t\t%q: %q,\n", k, mappings[k])
 	}
 	b.WriteString("\t\t\t\t},\n\t\t\t},\n")
 	return b.String(), nil

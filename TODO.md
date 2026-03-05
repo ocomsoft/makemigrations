@@ -7,3 +7,5 @@ Remove subcommands init_sql, sql_migrations, migrate_to_go, goose
 
 - [ ] db2schema and db-diff use provider
 - [ ] README.md getting started Example missing defaults
+- [ ] Database Configuration in Migrate command doc is wrong
+- [ ] 

@@ -163,6 +163,88 @@ tables:
 
 4. **Test Include Resolution**: Ensure all team members can resolve included modules
 
+## Type Mappings Section
+
+The `type_mappings` section lets you override the SQL type that makemigrations generates for a
+given schema field type on a per-database basis. This is useful when the built-in type mapping
+is not suitable for your target database.
+
+```yaml
+type_mappings:
+  postgresql:
+    float: "DOUBLE PRECISION"   # override float → DOUBLE PRECISION instead of REAL
+    text: "CITEXT"              # use case-insensitive text extension
+  sqlserver:
+    text: "NVARCHAR(MAX)"       # use unicode text for SQL Server
+  mysql:
+    uuid: "CHAR(36)"            # explicit char length for UUIDs
+```
+
+### Supported Providers
+
+Type mappings can be defined for any supported database:
+
+| Key | Database |
+|-----|----------|
+| `postgresql` | PostgreSQL |
+| `mysql` | MySQL |
+| `sqlserver` | SQL Server |
+| `sqlite` | SQLite |
+| `redshift` | Amazon Redshift |
+| `clickhouse` | ClickHouse |
+| `tidb` | TiDB |
+| `vertica` | Vertica |
+| `ydb` | YDB |
+| `turso` | Turso |
+| `starrocks` | StarRocks |
+| `auroradsql` | Aurora DSQL |
+
+### Parameterised Types
+
+For types that take parameters (length, precision, scale), use Go template syntax:
+
+```yaml
+type_mappings:
+  postgresql:
+    decimal: "NUMERIC({{.Precision}},{{.Scale}})"
+    varchar: "CHARACTER VARYING({{.Length}})"
+```
+
+The available template variables are: `.Length`, `.Precision`, `.Scale`.
+
+### DAG Integration
+
+When `type_mappings` change between runs, makemigrations automatically generates a
+`SetTypeMappings` operation in the migration file. This operation has no SQL effect — it
+records the type mapping configuration in the migration DAG so that:
+
+- Subsequent migrations use the correct type overrides
+- `db-diff` compares the live database against the correct expected types
+- The migration history accurately reflects when type mappings changed
+
+Example generated migration operation:
+
+```go
+&m.SetTypeMappings{
+    TypeMappings: map[string]string{
+        "float": "DOUBLE PRECISION",
+    },
+},
+```
+
+### Built-in Type Mappings
+
+The following table shows the default SQL types used when no `type_mappings` override is set.
+Use `type_mappings` to override any of these:
+
+| Schema Type | PostgreSQL | MySQL | SQLite | SQL Server |
+|-------------|------------|-------|--------|------------|
+| `float` | `REAL` | `FLOAT` | `REAL` | `FLOAT` |
+| `text` | `TEXT` | `TEXT` | `TEXT` | `NVARCHAR(MAX)` |
+| `boolean` | `BOOLEAN` | `TINYINT(1)` | `INTEGER` | `BIT` |
+| `uuid` | `UUID` | `CHAR(36)` | `TEXT` | `UNIQUEIDENTIFIER` |
+| `jsonb` | `JSONB` | `JSON` | `TEXT` | `NVARCHAR(MAX)` |
+
 ## Defaults Section
 
 Defines database-specific default values that can be referenced in field definitions:

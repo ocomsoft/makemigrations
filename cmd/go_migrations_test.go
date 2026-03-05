@@ -29,6 +29,7 @@ import (
 	"strings"
 	"testing"
 
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 )
 
@@ -356,6 +357,54 @@ func TestGoGenerateMerge_LongNameTruncation(t *testing.T) {
 	baseName := filepath.Base(files[0])
 	if !strings.Contains(baseName, "merge") {
 		t.Errorf("expected filename to contain 'merge', got %q", baseName)
+	}
+}
+
+// TestSchemaStateToYAMLSchema_TypeMappings verifies that TypeMappings are repopulated
+// from state into the correct provider field of the returned schema.
+func TestSchemaStateToYAMLSchema_TypeMappings(t *testing.T) {
+	state := migrate.NewSchemaState()
+	state.SetTypeMappings(map[string]string{"float": "DOUBLE PRECISION"})
+
+	result := schemaStateToYAMLSchema(state, "postgresql")
+	if result == nil {
+		t.Fatal("expected non-nil schema")
+	}
+	if result.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected DOUBLE PRECISION in PostgreSQL TypeMappings, got %q",
+			result.TypeMappings.PostgreSQL["float"])
+	}
+	if len(result.TypeMappings.MySQL) > 0 {
+		t.Error("MySQL TypeMappings should be empty")
+	}
+}
+
+func TestSchemaStateToYAMLSchema_TypeMappings_MySQL(t *testing.T) {
+	state := migrate.NewSchemaState()
+	state.SetTypeMappings(map[string]string{"text": "LONGTEXT"})
+
+	result := schemaStateToYAMLSchema(state, "mysql")
+	if result.TypeMappings.MySQL["text"] != "LONGTEXT" {
+		t.Errorf("expected LONGTEXT in MySQL TypeMappings, got %q", result.TypeMappings.MySQL["text"])
+	}
+}
+
+// TestGetTypeMappingsForDB verifies the helper returns the correct provider map.
+func TestGetTypeMappingsForDB(t *testing.T) {
+	schema := &yamlpkg.Schema{}
+	schema.TypeMappings.PostgreSQL = map[string]string{"float": "DOUBLE PRECISION"}
+	schema.TypeMappings.MySQL = map[string]string{"text": "LONGTEXT"}
+
+	pg := getTypeMappingsForDB(schema, "postgresql")
+	if pg["float"] != "DOUBLE PRECISION" {
+		t.Errorf("pg: expected DOUBLE PRECISION, got %q", pg["float"])
+	}
+	my := getTypeMappingsForDB(schema, "mysql")
+	if my["text"] != "LONGTEXT" {
+		t.Errorf("mysql: expected LONGTEXT, got %q", my["text"])
+	}
+	if got := getTypeMappingsForDB(nil, "postgresql"); got != nil {
+		t.Errorf("nil schema should return nil, got %v", got)
 	}
 }
 

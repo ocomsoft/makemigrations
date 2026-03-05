@@ -138,6 +138,15 @@ func schemaToInitialDiff(schema *yamlpkg.Schema, dbType string) *yamlpkg.SchemaD
 		})
 	}
 
+	// Prepend SetTypeMappings if the schema has type mappings for this DB type
+	if currMappings := getTypeMappingsForDB(schema, dbType); len(currMappings) > 0 {
+		diff.Changes = append(diff.Changes, yamlpkg.Change{
+			Type:        yamlpkg.ChangeTypeTypeMappingsModified,
+			Description: "Set schema type mappings",
+			NewValue:    currMappings,
+		})
+	}
+
 	for _, t := range schema.Tables {
 		diff.Changes = append(diff.Changes, yamlpkg.Change{
 			Type:      yamlpkg.ChangeTypeTableAdded,

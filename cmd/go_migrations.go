@@ -41,6 +41,7 @@ import (
 
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/types"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 )
@@ -161,6 +162,19 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 			Description: "Update schema defaults",
 			OldValue:    prevDefaults,
 			NewValue:    currDefaults,
+		}}, diff.Changes...)
+		diff.HasChanges = true
+	}
+
+	// Prepend a SetTypeMappings operation when the active DB type mappings have changed.
+	prevMappings := getTypeMappingsForDB(prevSchema, cfg.Database.Type)
+	currMappings := getTypeMappingsForDB(currentSchema, cfg.Database.Type)
+	if !mapsEqual(prevMappings, currMappings) && len(currMappings) > 0 {
+		diff.Changes = append([]yamlpkg.Change{{
+			Type:        yamlpkg.ChangeTypeTypeMappingsModified,
+			Description: "Update schema type mappings",
+			OldValue:    prevMappings,
+			NewValue:    currMappings,
 		}}, diff.Changes...)
 		diff.HasChanges = true
 	}
@@ -453,6 +467,35 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 			schema.Defaults.SQLite = state.Defaults
 		}
 	}
+	// Populate TypeMappings so that type mapping changes are detected on subsequent diff runs.
+	if len(state.TypeMappings) > 0 {
+		switch dbType {
+		case "postgresql":
+			schema.TypeMappings.PostgreSQL = state.TypeMappings
+		case "mysql":
+			schema.TypeMappings.MySQL = state.TypeMappings
+		case "sqlserver":
+			schema.TypeMappings.SQLServer = state.TypeMappings
+		case "sqlite":
+			schema.TypeMappings.SQLite = state.TypeMappings
+		case "redshift":
+			schema.TypeMappings.Redshift = state.TypeMappings
+		case "clickhouse":
+			schema.TypeMappings.ClickHouse = state.TypeMappings
+		case "tidb":
+			schema.TypeMappings.TiDB = state.TypeMappings
+		case "vertica":
+			schema.TypeMappings.Vertica = state.TypeMappings
+		case "ydb":
+			schema.TypeMappings.YDB = state.TypeMappings
+		case "turso":
+			schema.TypeMappings.Turso = state.TypeMappings
+		case "starrocks":
+			schema.TypeMappings.StarRocks = state.TypeMappings
+		case "auroradsql":
+			schema.TypeMappings.AuroraDSQL = state.TypeMappings
+		}
+	}
 	return schema
 }
 
@@ -474,6 +517,15 @@ func getDefaultsForDB(schema *yamlpkg.Schema, dbType string) map[string]string {
 	default:
 		return nil
 	}
+}
+
+// getTypeMappingsForDB returns the type mappings for the given database type from a schema.
+// Returns nil when the schema or the relevant DB type mappings are empty.
+func getTypeMappingsForDB(schema *yamlpkg.Schema, dbType string) map[string]string {
+	if schema == nil {
+		return nil
+	}
+	return schema.TypeMappings.ForProvider(types.DatabaseType(dbType))
 }
 
 // mapsEqual reports whether two map[string]string values are identical.

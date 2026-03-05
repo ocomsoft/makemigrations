@@ -242,6 +242,15 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 // When opts.WarnOnMissingDrop is true, drop operations that fail because the object
 // does not exist are skipped with a warning instead of stopping the rollback.
 func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
+	// Pre-apply state-only ops (SetDefaults, SetTypeMappings) from this migration so that
+	// Defaults and TypeMappings are populated when generating Down SQL for other ops.
+	for _, op := range mig.Operations {
+		switch op.TypeName() {
+		case "set_defaults", "set_type_mappings":
+			_ = op.Mutate(state)
+		}
+	}
+
 	for i := len(mig.Operations) - 1; i >= 0; i-- {
 		op := mig.Operations[i]
 		r.provider.SetTypeMappings(state.TypeMappings)
@@ -253,6 +262,8 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			if _, execErr := r.db.Exec(sqlStr); execErr != nil {
 				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
 					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
+				} else if isCreateOp(op) && r.provider.IsAlreadyExistsError(execErr) {
+					fmt.Printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
 				} else {
 					return fmt.Errorf("executing down SQL %q: %w", sqlStr, execErr)
 				}
@@ -265,6 +276,17 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 // isDropOp returns true for operations that remove a database object.
 // Only drop operations trigger WarnOnMissingDrop — all other failures stop immediately.
 func isDropOp(op Operation) bool {
+	switch op.TypeName() {
+	case "drop_table", "drop_field", "drop_index":
+		return true
+	default:
+		return false
+	}
+}
+
+// isCreateOp returns true for operations whose Down SQL creates a database object.
+// Used during rollback to skip re-creating objects that already exist.
+func isCreateOp(op Operation) bool {
 	switch op.TypeName() {
 	case "drop_table", "drop_field", "drop_index":
 		return true

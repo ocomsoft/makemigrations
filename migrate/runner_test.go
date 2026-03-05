@@ -746,6 +746,57 @@ func TestRunner_Up_WarnOnMissingDrop_SkipsIfNotFound(t *testing.T) {
 	}
 }
 
+// TestRunner_Down_ResolvesDefaultsViaSetDefaults is a regression test for the bug where
+// rollbackMigration received a pre-migration state (without SetDefaults applied) so
+// DropTable.Down emitted a literal symbolic default (e.g. "now") instead of the SQL
+// expression ("CURRENT_TIMESTAMP"). The fix pre-applies SetDefaults/SetTypeMappings ops
+// from the migration before running the reverse loop.
+func TestRunner_Down_ResolvesDefaultsViaSetDefaults(t *testing.T) {
+	restore := suppressStdout(t)
+	defer restore()
+
+	reg := migrate.NewRegistry()
+	// 0001: just creates a base table (no defaults)
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "base",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
+	// 0002: SetDefaults + CreateTable with symbolic default
+	reg.Register(&migrate.Migration{
+		Name:         "0002_add_logs",
+		Dependencies: []string{"0001_initial"},
+		Operations: []migrate.Operation{
+			&migrate.SetDefaults{Defaults: map[string]string{"now": "CURRENT_TIMESTAMP"}},
+			&migrate.CreateTable{
+				Name: "logs",
+				Fields: []migrate.Field{
+					{Name: "id", Type: "integer", PrimaryKey: true},
+					// Default is a symbolic key that must be resolved via SetDefaults
+					{Name: "created_at", Type: "text", Default: "now", Nullable: true},
+				},
+			},
+		},
+	})
+
+	runner, _, _ := buildTestRunner(t, reg)
+
+	// Apply both migrations
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+
+	// Roll back 0002 — this must resolve "now" → "CURRENT_TIMESTAMP" in DropTable.Down
+	if err := runner.Down(1, "", migrate.RunOptions{}); err != nil {
+		t.Fatalf("Down: %v — rollbackMigration did not resolve symbolic defaults", err)
+	}
+}
+
 func TestNewRunner_NilSafe(t *testing.T) {
 	// Verify that NewRunner doesn't panic with valid arguments
 	db := openTestDB(t)

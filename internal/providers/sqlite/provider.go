@@ -90,6 +90,11 @@ func (p *Provider) IsNotFoundError(err error) bool {
 		strings.HasPrefix(msg, "no such index:")
 }
 
+// IsAlreadyExistsError returns true when err indicates an object already exists in the database.
+func (p *Provider) IsAlreadyExistsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already exists")
+}
+
 // ConvertFieldType converts YAML field type to SQLite-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	// Check user-defined type mappings first
@@ -162,6 +167,12 @@ func (p *Provider) GenerateDropIndex(indexName, tableName string) string {
 // GenerateDropTable generates DROP TABLE statement
 func (p *Provider) GenerateDropTable(tableName string) string {
 	return fmt.Sprintf("DROP TABLE %s;", p.QuoteName(tableName))
+}
+
+// GenerateDropTableCascade generates a DROP TABLE statement for SQLite.
+// SQLite does not support CASCADE on DROP TABLE, so this is an alias for GenerateDropTable.
+func (p *Provider) GenerateDropTableCascade(tableName string) string {
+	return p.GenerateDropTable(tableName)
 }
 
 // GenerateAddColumn generates ALTER TABLE ADD COLUMN statement
@@ -278,7 +289,10 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 		return "", nil
 	}
 
-	return "", fmt.Errorf("SQLite does not support ALTER COLUMN; use a RunSQL migration with table recreation (create new table, copy data, drop old, rename)")
+	// SQLite does not support ALTER COLUMN. Return empty SQL so the schema state
+	// still advances via Mutate without attempting unsupported DDL. For structural
+	// changes (type, nullability) use a RunSQL table-recreation migration instead.
+	return "", nil
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {

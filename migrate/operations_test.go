@@ -418,6 +418,37 @@ func TestSetTypeMappings_Metadata(t *testing.T) {
 	}
 }
 
+// TestDropTable_Down_ResolvesDefaults verifies that DropTable.Down resolves symbolic
+// default references (e.g. "new_uuid") to SQL expressions using the defaults map when
+// reconstructing the CREATE TABLE SQL. Regression test for the bug where DropTable.Down
+// passed fields directly without calling resolveFieldDefault, causing literal default
+// values like "new_uuid" to be emitted instead of SQL expressions like "gen_random_uuid()".
+func TestDropTable_Down_ResolvesDefaults(t *testing.T) {
+	p := sqlite.New()
+	state := migrate.NewSchemaState()
+	defaults := map[string]string{
+		"new_uuid": "gen_random_uuid()",
+	}
+	// Pre-populate state with the table that was dropped (as it would exist before the drop)
+	err := state.AddTable("items", []migrate.Field{
+		{Name: "id", Type: "uuid", Default: "new_uuid", PrimaryKey: true},
+	}, nil)
+	if err != nil {
+		t.Fatalf("AddTable: %v", err)
+	}
+	op := &migrate.DropTable{Name: "items"}
+	sqlStr, err := op.Down(p, state, defaults)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if strings.Contains(sqlStr, `'new_uuid'`) || strings.Contains(sqlStr, `new_uuid`) {
+		t.Errorf("raw symbolic default 'new_uuid' should be resolved in SQL, got:\n%s", sqlStr)
+	}
+	if !strings.Contains(sqlStr, "gen_random_uuid()") {
+		t.Errorf("expected resolved default 'gen_random_uuid()' in SQL, got:\n%s", sqlStr)
+	}
+}
+
 // TestCreateTable_Up_ResolvesDefaults verifies that CreateTable.Up resolves symbolic
 // default references (e.g. "uuid") to SQL expressions using the defaults map.
 func TestCreateTable_Up_ResolvesDefaults(t *testing.T) {

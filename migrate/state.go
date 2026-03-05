@@ -60,6 +60,8 @@ func (s *SchemaState) SetTypeMappings(m map[string]string) {
 }
 
 // AddTable adds a new table. Returns error if the table already exists.
+// The fields and indexes slices are copied so that subsequent mutations to the
+// state (e.g. DropField) do not corrupt the caller's original slice.
 func (s *SchemaState) AddTable(name string, fields []Field, indexes []Index) error {
 	if _, exists := s.Tables[name]; exists {
 		return fmt.Errorf("table %q already exists in schema state", name)
@@ -70,7 +72,11 @@ func (s *SchemaState) AddTable(name string, fields []Field, indexes []Index) err
 	if indexes == nil {
 		indexes = []Index{}
 	}
-	s.Tables[name] = &TableState{Name: name, Fields: fields, Indexes: indexes}
+	fieldsCopy := make([]Field, len(fields))
+	copy(fieldsCopy, fields)
+	indexesCopy := make([]Index, len(indexes))
+	copy(indexesCopy, indexes)
+	s.Tables[name] = &TableState{Name: name, Fields: fieldsCopy, Indexes: indexesCopy}
 	return nil
 }
 

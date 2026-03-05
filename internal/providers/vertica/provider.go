@@ -88,6 +88,11 @@ func (p *Provider) IsNotFoundError(err error) bool {
 	return strings.Contains(err.Error(), "does not exist")
 }
 
+// IsAlreadyExistsError returns true when err indicates an object already exists in the database.
+func (p *Provider) IsAlreadyExistsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already exists")
+}
+
 // ConvertFieldType converts YAML field type to Vertica-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	// Check user-defined type mappings first
@@ -175,6 +180,12 @@ func (p *Provider) GenerateDropIndex(indexName, tableName string) string {
 // GenerateDropTable generates DROP TABLE statement
 func (p *Provider) GenerateDropTable(tableName string) string {
 	return fmt.Sprintf("DROP TABLE %s CASCADE;", p.QuoteName(tableName))
+}
+
+// GenerateDropTableCascade generates a DROP TABLE CASCADE statement for Vertica.
+// Vertica includes CASCADE in its standard DROP TABLE, so this is an alias for GenerateDropTable.
+func (p *Provider) GenerateDropTableCascade(tableName string) string {
+	return p.GenerateDropTable(tableName)
 }
 
 // GenerateAddColumn generates ALTER TABLE ADD COLUMN statement

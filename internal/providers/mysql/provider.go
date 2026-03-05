@@ -89,6 +89,11 @@ func (p *Provider) IsNotFoundError(err error) bool {
 	return strings.Contains(msg, "Error 1051") || strings.Contains(msg, "Error 1091")
 }
 
+// IsAlreadyExistsError returns true when err indicates an object already exists in the database.
+func (p *Provider) IsAlreadyExistsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already exists")
+}
+
 // ConvertFieldType converts YAML field type to MySQL-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	// Check user-defined type mappings first
@@ -179,6 +184,14 @@ func (p *Provider) GenerateDropIndex(indexName, tableName string) string {
 // GenerateDropTable generates DROP TABLE statement
 func (p *Provider) GenerateDropTable(tableName string) string {
 	return fmt.Sprintf("DROP TABLE %s;", p.QuoteName(tableName))
+}
+
+// GenerateDropTableCascade generates DROP TABLE IF EXISTS statement for MySQL.
+// MySQL does not support CASCADE on DROP TABLE; foreign key constraints must be dropped
+// separately before dropping the table. IF EXISTS is used to prevent errors if the table
+// does not exist, matching the behaviour callers expect for rollback scenarios.
+func (p *Provider) GenerateDropTableCascade(tableName string) string {
+	return fmt.Sprintf("DROP TABLE IF EXISTS %s;", p.QuoteName(tableName))
 }
 
 // GenerateAddColumn generates ALTER TABLE ADD COLUMN statement

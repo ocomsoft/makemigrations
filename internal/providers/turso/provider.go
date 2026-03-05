@@ -91,6 +91,11 @@ func (p *Provider) IsNotFoundError(err error) bool {
 		strings.HasPrefix(msg, "no such index:")
 }
 
+// IsAlreadyExistsError returns true when err indicates an object already exists in the database.
+func (p *Provider) IsAlreadyExistsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already exists")
+}
+
 // ConvertFieldType converts YAML field type to Turso-specific SQL type (same as SQLite)
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	// Check user-defined type mappings first
@@ -171,6 +176,12 @@ func (p *Provider) GenerateDropIndex(indexName, tableName string) string {
 // GenerateDropTable generates DROP TABLE statement
 func (p *Provider) GenerateDropTable(tableName string) string {
 	return fmt.Sprintf("DROP TABLE %s;", p.QuoteName(tableName))
+}
+
+// GenerateDropTableCascade generates a DROP TABLE statement for Turso (libSQL/SQLite-compatible).
+// Turso does not support CASCADE on DROP TABLE, so this is an alias for GenerateDropTable.
+func (p *Provider) GenerateDropTableCascade(tableName string) string {
+	return p.GenerateDropTable(tableName)
 }
 
 // GenerateAddColumn generates ALTER TABLE ADD COLUMN statement

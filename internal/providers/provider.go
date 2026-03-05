@@ -32,6 +32,10 @@ type Provider interface {
 	// DDL Generation
 	GenerateCreateTable(schema *types.Schema, table *types.Table) (string, error)
 	GenerateDropTable(tableName string) string
+	// GenerateDropTableCascade drops a table and any dependent objects (e.g. FK constraints).
+	// Used during rollback so that FK ordering in the migration does not cause failures.
+	// Providers that do not support CASCADE should return the same as GenerateDropTable.
+	GenerateDropTableCascade(tableName string) string
 	GenerateAddColumn(tableName string, field *types.Field) string
 	GenerateDropColumn(tableName, columnName string) string
 	GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error)
@@ -65,6 +69,11 @@ type Provider interface {
 	// targeted an object that does not exist in the database.
 	// Used by the runner to warn-and-continue rather than fail.
 	IsNotFoundError(err error) bool
+	// IsAlreadyExistsError returns true when err indicates that a CREATE operation
+	// targeted an object that already exists in the database.
+	// Used by the runner during rollback to skip re-creating objects that are already present
+	// (e.g. after a partial rollback left the database in an intermediate state).
+	IsAlreadyExistsError(err error) bool
 
 	// Schema processing
 	GenerateIndexes(schema *types.Schema) string

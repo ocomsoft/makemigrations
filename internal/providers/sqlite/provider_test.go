@@ -52,18 +52,19 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
-func TestProvider_GenerateAlterColumn_ReturnsError(t *testing.T) {
+// TestProvider_GenerateAlterColumn_NoOp verifies that GenerateAlterColumn returns
+// empty SQL (no error) for unsupported changes, allowing the schema state to
+// advance via Mutate without attempting unsupported DDL.
+func TestProvider_GenerateAlterColumn_NoOp(t *testing.T) {
 	p := New()
 	old := &types.Field{Name: "score", Type: "integer"}
 	nw := &types.Field{Name: "score", Type: "text"}
-	_, err := p.GenerateAlterColumn("results", old, nw)
-	if err == nil {
-		t.Fatal("expected error for ALTER COLUMN")
+	sql, err := p.GenerateAlterColumn("results", old, nw)
+	if err != nil {
+		t.Fatalf("expected no error for ALTER COLUMN on SQLite, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "does not support ALTER COLUMN") {
-		t.Errorf("expected unsupported error, got: %v", err)
+	if sql != "" {
+		t.Errorf("expected empty SQL for unsupported ALTER COLUMN, got: %q", sql)
 	}
 }
 

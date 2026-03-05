@@ -97,6 +97,11 @@ func (p *Provider) IsNotFoundError(err error) bool {
 	return strings.Contains(err.Error(), "does not exist")
 }
 
+// IsAlreadyExistsError returns true when err indicates an object already exists in the database.
+func (p *Provider) IsAlreadyExistsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "already exists")
+}
+
 // ConvertFieldType converts YAML field type to PostgreSQL-specific SQL type
 func (p *Provider) ConvertFieldType(field *types.Field) string {
 	// Check user-defined type mappings first
@@ -205,6 +210,13 @@ func (p *Provider) GenerateDropTable(tableName string) string {
 	return fmt.Sprintf("DROP TABLE %s;", p.QuoteName(tableName))
 }
 
+// GenerateDropTableCascade generates DROP TABLE IF EXISTS ... CASCADE statement for PostgreSQL.
+// The CASCADE clause automatically drops any dependent objects (such as foreign key constraints
+// from other tables referencing this one), preventing ordering failures during rollback.
+func (p *Provider) GenerateDropTableCascade(tableName string) string {
+	return fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE;", p.QuoteName(tableName))
+}
+
 // GenerateAddColumn generates ALTER TABLE ADD COLUMN statement
 func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) string {
 	fieldDef := fmt.Sprintf("%s %s", p.QuoteName(field.Name), p.ConvertFieldType(field))
@@ -311,39 +323,76 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), constraint, nil
 }
 
-// convertDefaultValue converts YAML default value to PostgreSQL-specific SQL
+// isSQLExpression returns true when the value is already a valid SQL expression
+// that should be emitted verbatim rather than wrapped in single quotes.
+// This covers values produced by resolveFieldDefault (symbolic key → SQL expression):
+//   - Single-quoted string literals already in SQL form: 'value', '[]'::jsonb
+//   - SQL function calls: gen_random_uuid(), uuid_generate_v4()
+//   - Type cast expressions: '{}'::jsonb
+//   - SQL keywords (all-uppercase, letters and underscores): CURRENT_TIMESTAMP
+//   - NULL/null, TRUE/true, FALSE/false literals
+func isSQLExpression(value string) bool {
+	if value == "" {
+		return false
+	}
+	// Already-quoted SQL string literal
+	if strings.HasPrefix(value, "'") {
+		return true
+	}
+	// SQL function call or expression containing parentheses
+	if strings.Contains(value, "(") {
+		return true
+	}
+	// Type cast expression (e.g. '[]'::jsonb)
+	if strings.Contains(value, "::") {
+		return true
+	}
+	// SQL null / boolean literals
+	lower := strings.ToLower(value)
+	if lower == "null" || lower == "true" || lower == "false" {
+		return true
+	}
+	// SQL keyword: all uppercase ASCII letters and underscores (e.g. CURRENT_TIMESTAMP)
+	if len(value) > 1 {
+		allUpper := true
+		for _, ch := range value {
+			if !((ch >= 'A' && ch <= 'Z') || ch == '_') {
+				allUpper = false
+				break
+			}
+		}
+		if allUpper {
+			return true
+		}
+	}
+	return false
+}
+
+// convertDefaultValue converts a default value to PostgreSQL-specific SQL.
+// Resolution order:
+//  1. Look up symbolic key in schema.Defaults.PostgreSQL (if mapping is present).
+//  2. If the value is already a SQL expression (function call, keyword, etc.), use it as-is.
+//  3. If the value is numeric, use it as-is.
+//  4. Otherwise, wrap it in single quotes as a string literal.
 func (p *Provider) convertDefaultValue(schema *types.Schema, defaultValue string) string {
-	if schema == nil || schema.Defaults.PostgreSQL == nil {
-		// If no schema or defaults mapping, try to handle common cases
-		// Check if it's a numeric value
-		if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
-			return defaultValue // Return numeric values as-is
-		}
-		// Check for boolean values
-		if defaultValue == "true" || defaultValue == "false" {
-			return defaultValue // PostgreSQL accepts true/false
-		}
-		// Otherwise treat as string literal
-		return fmt.Sprintf("'%s'", defaultValue)
-	}
-
 	// Look up the default value in the PostgreSQL defaults mapping
-	if sqlDefault, exists := schema.Defaults.PostgreSQL[defaultValue]; exists {
-		return sqlDefault
+	if schema != nil && schema.Defaults.PostgreSQL != nil {
+		if sqlDefault, exists := schema.Defaults.PostgreSQL[defaultValue]; exists {
+			return sqlDefault
+		}
 	}
 
-	// If not found in mapping, determine if it needs quotes
-	// Check if it's a numeric value
+	// Check if the value is already a SQL expression (e.g. resolved by resolveFieldDefault)
+	if isSQLExpression(defaultValue) {
+		return defaultValue
+	}
+
+	// Numeric value
 	if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
-		return defaultValue // Return numeric values as-is
+		return defaultValue
 	}
 
-	// Check for boolean values
-	if defaultValue == "true" || defaultValue == "false" {
-		return defaultValue // PostgreSQL accepts true/false
-	}
-
-	// Otherwise treat as string literal
+	// Otherwise treat as a plain string literal
 	return fmt.Sprintf("'%s'", defaultValue)
 }
 

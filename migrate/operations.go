@@ -174,13 +174,16 @@ func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map
 	return p.GenerateCreateTable(schema, table)
 }
 
-// Down generates the DROP TABLE SQL to reverse the creation.
+// Down generates the DROP TABLE CASCADE SQL to reverse the creation.
+// Uses GenerateDropTableCascade so that any dependent objects (e.g. foreign key
+// constraints from other tables) are automatically removed, preventing ordering
+// failures when multiple CreateTable operations are rolled back together.
 // Returns empty string when SchemaOnly is set.
 func (op *CreateTable) Down(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
 	if op.SchemaOnly {
 		return "", nil
 	}
-	return p.GenerateDropTable(op.Name), nil
+	return p.GenerateDropTableCascade(op.Name), nil
 }
 
 // Mutate adds the new table to the SchemaState.
@@ -233,7 +236,9 @@ func (op *DropTable) Down(p providers.Provider, state *SchemaState, defaults map
 	schema := stateToSchema(state)
 	t := &types.Table{Name: ts.Name}
 	for _, f := range ts.Fields {
-		t.Fields = append(t.Fields, *toTypesField(f))
+		tf := toTypesField(f)
+		resolveFieldDefault(tf, defaults)
+		t.Fields = append(t.Fields, *tf)
 	}
 	for _, idx := range ts.Indexes {
 		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})

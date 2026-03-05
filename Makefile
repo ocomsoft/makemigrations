@@ -18,7 +18,7 @@ GOMOD=$(GOCMD) mod
 # Platforms for cross-compilation
 PLATFORMS=linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
 
-.PHONY: all build clean test deps fmt lint vet security release-build help
+.PHONY: all build clean test deps fmt lint vet security release-build help publish-patch publish-minor publish-major
 
 all: test build
 
@@ -154,6 +154,19 @@ bump-major-dry:
 	@echo "Preview major version bump..."
 	@./scripts/bump-version.sh major --dry-run --allow-dirty
 
+# Publish targets: bump version then push main with tags
+publish-patch: bump-patch
+	@echo "Pushing main with tags..."
+	git push origin main --tags
+
+publish-minor: bump-minor
+	@echo "Pushing main with tags..."
+	git push origin main --tags
+
+publish-major: bump-major
+	@echo "Pushing main with tags..."
+	git push origin main --tags
+
 # Help
 help:
 	@echo "Available targets:"
@@ -178,6 +191,9 @@ help:
 	@echo "  bump-minor    - Bump minor version"
 	@echo "  bump-major    - Bump major version"
 	@echo "  bump-*-dry    - Preview version bumps"
+	@echo "  publish-patch - Bump patch version and push main with tags"
+	@echo "  publish-minor - Bump minor version and push main with tags"
+	@echo "  publish-major - Bump major version and push main with tags"
 	@echo "  help          - Show this help"
 
 # Default target

@@ -257,6 +257,52 @@ func TestMergeTypeMappings(t *testing.T) {
 	}
 }
 
+// TestIncludeProcessor_MergeSchemas_PreservesTypeMappings is a regression test
+// for the bug where IncludeProcessor.mergeSchemas dropped TypeMappings from the
+// main (root) schema when merging with included schemas (e.g. auth, filesystem).
+// This caused type_mappings in corecalc/schema/schema.yaml to be silently lost
+// before the outer Merger.MergeSchemas was even called.
+func TestIncludeProcessor_MergeSchemas_PreservesTypeMappings(t *testing.T) {
+	ip := NewIncludeProcessor(false)
+
+	// Main schema has TypeMappings (mirrors corecalc/schema/schema.yaml)
+	main := &Schema{
+		Database: Database{Name: "corecalc", Version: "1.0.0"},
+		TypeMappings: TypeMappings{
+			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+		},
+		Tables: []Table{
+			{Name: "core_data_file", Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
+		},
+	}
+
+	// Included schemas have no TypeMappings (mirrors auth/schema.yaml, filesystem/schema.yaml)
+	included1 := &Schema{
+		Database: Database{Name: "auth"},
+		Tables: []Table{
+			{Name: "auth_user", Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
+		},
+	}
+	included2 := &Schema{
+		Database: Database{Name: "filesystem"},
+		Tables: []Table{
+			{Name: "fs_meta_data", Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
+		},
+	}
+
+	merged, err := ip.mergeSchemas([]*Schema{main, included1, included2})
+	if err != nil {
+		t.Fatalf("mergeSchemas: %v", err)
+	}
+
+	if len(merged.TypeMappings.PostgreSQL) == 0 {
+		t.Fatal("TypeMappings lost in IncludeProcessor.mergeSchemas — regression: main schema TypeMappings were dropped")
+	}
+	if merged.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected float→DOUBLE PRECISION, got %q", merged.TypeMappings.PostgreSQL["float"])
+	}
+}
+
 func TestValidateMergedSchema(t *testing.T) {
 	merger := NewMerger(false)
 

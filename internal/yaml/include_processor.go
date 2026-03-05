@@ -202,9 +202,10 @@ func (ip *IncludeProcessor) mergeSchemas(schemas []*Schema) (*Schema, error) {
 
 	// Start with the main schema (first one)
 	result := &Schema{
-		Database: schemas[0].Database, // Main schema database info wins
-		Defaults: schemas[0].Defaults, // Main schema defaults win
-		Tables:   make([]Table, 0),
+		Database:     schemas[0].Database,     // Main schema database info wins
+		Defaults:     schemas[0].Defaults,     // Main schema defaults win
+		TypeMappings: schemas[0].TypeMappings, // Main schema type mappings win
+		Tables:       make([]Table, 0),
 	}
 
 	// Track tables by name to handle conflicts

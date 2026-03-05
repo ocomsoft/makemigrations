@@ -53,7 +53,8 @@ Available commands:
   struct2schema     Convert Go structs to YAML schema
   dump_sql          Dump merged YAML schema as SQL
   schema2diagram    Generate diagram from YAML schema
-  find_includes     Discover schema includes in Go modules`,
+  find_includes     Discover schema includes in Go modules
+  empty             Create a blank migration with no operations`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications

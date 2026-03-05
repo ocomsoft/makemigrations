@@ -290,6 +290,15 @@ func (a *App) runFake(name string) error {
 	if err := recorder.EnsureTable(); err != nil {
 		return err
 	}
+	// Check if already applied so fake is idempotent.
+	applied, err := recorder.GetApplied()
+	if err != nil {
+		return err
+	}
+	if applied[resolved] {
+		fmt.Printf("Migration %q already marked as applied — skipping.\n", resolved)
+		return nil
+	}
 	if err := recorder.Fake(resolved); err != nil {
 		return err
 	}

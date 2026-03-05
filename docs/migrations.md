@@ -455,6 +455,69 @@ Executes raw SQL directly. This is the escape hatch for anything the typed opera
 
 ---
 
+### `UpsertData`
+
+Inserts or updates rows in a table. Designed for seeding reference data (country codes, status enums, configuration rows) as part of a migration. Generates database-appropriate upsert SQL automatically — no need to write raw SQL for each target database.
+
+**Rollback** (`Down`) deletes each row by matching on `ConflictKeys`.
+
+```go
+&m.UpsertData{
+    Table:        "countries",
+    ConflictKeys: []string{"code"},
+    Rows: []map[string]any{
+        {"code": "AU", "name": "Australia"},
+        {"code": "US", "name": "United States"},
+        {"code": "NZ", "name": "New Zealand"},
+    },
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Table` | `string` | Target table name. |
+| `ConflictKeys` | `[]string` | Columns used to detect conflicts (primary key or unique constraint). |
+| `Rows` | `[]map[string]any` | Rows to upsert. All rows must have the same keys. |
+
+**Column ordering:** Columns are sorted alphabetically from the first row's keys, so order of keys within each `map` does not matter — the generated SQL is always deterministic.
+
+**Supported value types:** `nil` (→ `NULL`), `string`, `bool`, `int`/`int64`/etc., `float32`/`float64`, `time.Time`. Other types are formatted using `fmt.Sprintf("%v")` and quoted as strings.
+
+**Default expressions:** Use `m.DefaultRef("key")` to reference a named schema default. The key is resolved through the active defaults map (set by a `SetDefaults` operation earlier in the chain) and emitted as a raw SQL expression — not quoted as a string. If the key is not in the defaults map, the string itself is used as a raw SQL expression (useful for direct function calls such as `m.DefaultRef("NOW()")`).
+
+```go
+// With SetDefaults{"uuid": "uuid_generate_v4()"} active earlier in the chain:
+&m.UpsertData{
+    Table:        "items",
+    ConflictKeys: []string{"code"},
+    Rows: []map[string]any{
+        {"id": m.DefaultRef("uuid"), "code": "AU", "name": "Australia"},
+        {"id": m.DefaultRef("uuid"), "code": "US", "name": "United States"},
+    },
+}
+// Generates: VALUES (uuid_generate_v4(), 'AU', 'Australia'), ...
+//                    ^^^^^^^^^^^^^^^^^^^  — unquoted SQL expression
+
+// Or call a SQL function directly without a named default:
+{"id": m.DefaultRef("gen_random_uuid()"), "code": "NZ", "name": "New Zealand"}
+```
+
+**Generated SQL by provider:**
+
+| Provider | Dialect |
+|----------|---------|
+| PostgreSQL, AuroraDSQL | `INSERT … ON CONFLICT (key) DO UPDATE SET col = EXCLUDED.col` |
+| MySQL, TiDB, StarRocks | `INSERT … ON DUPLICATE KEY UPDATE col = VALUES(col)` |
+| SQLite, Turso | `INSERT … ON CONFLICT(key) DO UPDATE SET col = excluded.col` |
+| SQL Server, Vertica | `MERGE INTO … USING … WHEN MATCHED … WHEN NOT MATCHED …` |
+| Redshift | `DELETE … WHERE key IN (…); INSERT …` |
+| ClickHouse | `INSERT …` (dedup via ReplacingMergeTree engine) |
+| YDB | `UPSERT INTO …` |
+
+> `UpsertData` does **not** update the in-memory schema state (`Mutate` is a no-op). It is a data operation only.
+
+---
+
 ## Writing Custom Migrations
 
 ### Modifying a generated migration

@@ -935,3 +935,83 @@ func (p *Provider) parseIndexFields(indexDef string) []string {
 
 	return fields
 }
+
+// GenerateUpsert generates a multi-row INSERT ... ON CONFLICT DO UPDATE SET statement
+// for PostgreSQL. It accepts pre-formatted SQL value literals that are inserted as-is.
+// If all columns are conflict keys, DO NOTHING is used instead of DO UPDATE SET.
+// Returns an empty string if valueLiterals is empty.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	quotedTable := p.QuoteName(table)
+
+	quotedColumns := make([]string, len(columns))
+	for i, col := range columns {
+		quotedColumns[i] = p.QuoteName(col)
+	}
+
+	quotedConflictKeys := make([]string, len(conflictKeys))
+	for i, key := range conflictKeys {
+		quotedConflictKeys[i] = p.QuoteName(key)
+	}
+
+	// Build value rows
+	rows := make([]string, len(valueLiterals))
+	for i, vals := range valueLiterals {
+		rows[i] = "(" + strings.Join(vals, ", ") + ")"
+	}
+
+	var sb strings.Builder
+	sb.WriteString("INSERT INTO ")
+	sb.WriteString(quotedTable)
+	sb.WriteString(" (")
+	sb.WriteString(strings.Join(quotedColumns, ", "))
+	sb.WriteString(")\nVALUES ")
+	for i, row := range rows {
+		if i == 0 {
+			sb.WriteString(row)
+		} else {
+			sb.WriteString(",\n       ")
+			sb.WriteString(row)
+		}
+	}
+	sb.WriteString("\nON CONFLICT (")
+	sb.WriteString(strings.Join(quotedConflictKeys, ", "))
+	sb.WriteString(") ")
+
+	// Determine non-conflict columns for the UPDATE SET clause
+	conflictSet := make(map[string]struct{}, len(conflictKeys))
+	for _, key := range conflictKeys {
+		conflictSet[key] = struct{}{}
+	}
+
+	var updateCols []string
+	for _, col := range columns {
+		if _, isConflict := conflictSet[col]; !isConflict {
+			updateCols = append(updateCols, col)
+		}
+	}
+
+	if len(updateCols) == 0 {
+		sb.WriteString("DO NOTHING;")
+	} else {
+		sb.WriteString("DO UPDATE SET\n")
+		for i, col := range updateCols {
+			quoted := p.QuoteName(col)
+			sb.WriteString("  ")
+			sb.WriteString(quoted)
+			sb.WriteString(" = EXCLUDED.")
+			sb.WriteString(quoted)
+			if i < len(updateCols)-1 {
+				sb.WriteString(",")
+			} else {
+				sb.WriteString(";")
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}

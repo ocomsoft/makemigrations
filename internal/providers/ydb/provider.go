@@ -346,6 +346,36 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	return "-- YDB doesn't support foreign key constraints;"
 }
 
+// GenerateUpsert generates a UPSERT INTO statement for YDB. YDB supports native UPSERT INTO
+// which inserts new rows or replaces existing rows matching the primary key.
+// The valueLiterals are pre-formatted SQL literals and are not re-quoted.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+
+	// Quoted column names
+	quotedCols := make([]string, len(columns))
+	for i, c := range columns {
+		quotedCols[i] = p.QuoteName(c)
+	}
+
+	sb.WriteString(fmt.Sprintf("UPSERT INTO %s (%s)\n", p.QuoteName(table), strings.Join(quotedCols, ", ")))
+
+	for i, row := range valueLiterals {
+		if i == 0 {
+			sb.WriteString(fmt.Sprintf("VALUES (%s)", strings.Join(row, ", ")))
+		} else {
+			sb.WriteString(fmt.Sprintf(",\n       (%s)", strings.Join(row, ", ")))
+		}
+	}
+	sb.WriteString(";")
+
+	return sb.String()
+}
+
 // GetDatabaseSchema extracts schema information from a YDB database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
 	return nil, fmt.Errorf("YDB schema extraction not implemented yet")

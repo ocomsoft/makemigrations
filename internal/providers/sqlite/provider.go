@@ -451,6 +451,70 @@ func (p *Provider) GenerateAlterColumnWithTable(currentTable *types.Table, fromF
 	return strings.Join(parts, "\n"), nil
 }
 
+// GenerateUpsert generates an INSERT ... ON CONFLICT DO UPDATE SET statement for SQLite.
+// If all columns are conflict keys, it uses DO NOTHING instead.
+// The valueLiterals are pre-formatted SQL literals and are not re-quoted.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+
+	// Quoted column names
+	quotedCols := make([]string, len(columns))
+	for i, c := range columns {
+		quotedCols[i] = p.QuoteName(c)
+	}
+
+	// INSERT INTO "table" ("col1", "col2")
+	sb.WriteString(fmt.Sprintf("INSERT INTO %s (%s)\n", p.QuoteName(table), strings.Join(quotedCols, ", ")))
+
+	// VALUES rows
+	for i, row := range valueLiterals {
+		if i == 0 {
+			sb.WriteString(fmt.Sprintf("VALUES (%s)", strings.Join(row, ", ")))
+		} else {
+			sb.WriteString(fmt.Sprintf(",\n       (%s)", strings.Join(row, ", ")))
+		}
+	}
+
+	// ON CONFLICT clause
+	quotedConflict := make([]string, len(conflictKeys))
+	for i, k := range conflictKeys {
+		quotedConflict[i] = p.QuoteName(k)
+	}
+
+	// Determine non-conflict columns for the UPDATE SET clause
+	conflictSet := make(map[string]bool, len(conflictKeys))
+	for _, k := range conflictKeys {
+		conflictSet[k] = true
+	}
+
+	var updateCols []string
+	for _, c := range columns {
+		if !conflictSet[c] {
+			updateCols = append(updateCols, c)
+		}
+	}
+
+	if len(updateCols) == 0 {
+		// All columns are conflict keys — use DO NOTHING
+		sb.WriteString(fmt.Sprintf("\nON CONFLICT(%s) DO NOTHING;", strings.Join(quotedConflict, ", ")))
+	} else {
+		sb.WriteString(fmt.Sprintf("\nON CONFLICT(%s) DO UPDATE SET\n", strings.Join(quotedConflict, ", ")))
+		for i, c := range updateCols {
+			sb.WriteString(fmt.Sprintf("  %s = excluded.%s", p.QuoteName(c), p.QuoteName(c)))
+			if i < len(updateCols)-1 {
+				sb.WriteString(",\n")
+			}
+		}
+		sb.WriteString(";")
+	}
+
+	return sb.String()
+}
+
 // GetDatabaseSchema extracts schema information from a SQLite database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
 	return nil, fmt.Errorf("SQLite schema extraction not implemented yet")

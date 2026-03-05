@@ -727,3 +727,115 @@ func (op *SetTypeMappings) Mutate(state *SchemaState) error {
 	state.SetTypeMappings(op.TypeMappings)
 	return nil
 }
+
+// --- UpsertData ---
+
+// UpsertData is a migration operation that inserts or updates rows in a table.
+// It is designed for seeding reference data (e.g. country codes, status enums,
+// configuration rows) as part of a migration.
+//
+// The operation generates database-appropriate upsert SQL via the active provider:
+//   - PostgreSQL/AuroraDSQL: INSERT … ON CONFLICT … DO UPDATE SET
+//   - MySQL/TiDB/StarRocks:  INSERT … ON DUPLICATE KEY UPDATE
+//   - SQLite/Turso:          INSERT … ON CONFLICT … DO UPDATE SET
+//   - SQL Server/Vertica:    MERGE INTO … USING … WHEN MATCHED / NOT MATCHED
+//   - Redshift:              DELETE … ; INSERT …
+//   - ClickHouse:            INSERT (dedup via ReplacingMergeTree)
+//   - YDB:                   UPSERT INTO …
+//
+// Column order in the generated SQL is determined by sorting the keys of the
+// first row alphabetically, so all rows must contain the same set of keys.
+//
+// Rollback (Down) deletes each row by matching on ConflictKeys.
+type UpsertData struct {
+	// Table is the target table name.
+	Table string
+	// ConflictKeys lists the column names used to detect conflicts (primary key
+	// or unique constraint columns). Used in ON CONFLICT / MERGE ON / DELETE WHERE.
+	ConflictKeys []string
+	// Rows is the data to upsert. All rows must have the same keys. Values are
+	// formatted as SQL literals via FormatLiteral, supporting nil, string, bool,
+	// integer, float, and time.Time types.
+	Rows []map[string]any
+}
+
+// TypeName returns the operation type identifier.
+func (op *UpsertData) TypeName() string { return "upsert_data" }
+
+// TableName returns the target table name.
+func (op *UpsertData) TableName() string { return op.Table }
+
+// IsDestructive returns false — upserting seed data is not considered destructive.
+func (op *UpsertData) IsDestructive() bool { return false }
+
+// Describe returns a human-readable description of this operation.
+func (op *UpsertData) Describe() string {
+	return fmt.Sprintf("Upsert %d row(s) into %s", len(op.Rows), op.Table)
+}
+
+// Up generates the upsert SQL by delegating to the provider's GenerateUpsert.
+// Returns empty string when Rows is empty.
+//
+// DefaultRef values in rows are resolved through the defaults map: if the key
+// is present, the resolved SQL expression is emitted verbatim (not quoted); if
+// not, the DefaultRef string itself is used as a raw SQL expression.
+func (op *UpsertData) Up(p providers.Provider, _ *SchemaState, defaults map[string]string) (string, error) {
+	if len(op.Rows) == 0 {
+		return "", nil
+	}
+
+	// Determine a stable column order by sorting the keys of the first row.
+	columns := SortedKeys(op.Rows[0])
+
+	// Pre-format every value as a SQL literal string, resolving any DefaultRef
+	// values through the active defaults map.
+	valueLiterals := make([][]string, len(op.Rows))
+	for i, row := range op.Rows {
+		rowLits := make([]string, len(columns))
+		for j, col := range columns {
+			rowLits[j] = formatUpsertValue(row[col], defaults)
+		}
+		valueLiterals[i] = rowLits
+	}
+
+	return p.GenerateUpsert(op.Table, op.ConflictKeys, columns, valueLiterals), nil
+}
+
+// formatUpsertValue formats a single row value for use in a GenerateUpsert call.
+// DefaultRef values are resolved through the defaults map and emitted as raw SQL
+// expressions; all other values are formatted as SQL literals via FormatLiteral.
+func formatUpsertValue(v any, defaults map[string]string) string {
+	if ref, ok := v.(DefaultRef); ok {
+		key := string(ref)
+		if resolved, found := defaults[key]; found {
+			return resolved
+		}
+		// Not in defaults map — treat the ref string itself as a raw SQL expression.
+		return key
+	}
+	return FormatLiteral(v)
+}
+
+// Down generates DELETE statements that remove each upserted row by matching
+// on the ConflictKeys. Returns empty string when Rows or ConflictKeys is empty.
+func (op *UpsertData) Down(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	if len(op.Rows) == 0 || len(op.ConflictKeys) == 0 {
+		return "", nil
+	}
+
+	tbl := p.QuoteName(op.Table)
+	stmts := make([]string, 0, len(op.Rows))
+	for _, row := range op.Rows {
+		conditions := make([]string, 0, len(op.ConflictKeys))
+		for _, key := range op.ConflictKeys {
+			conditions = append(conditions,
+				fmt.Sprintf("%s = %s", p.QuoteName(key), FormatLiteral(row[key])))
+		}
+		stmts = append(stmts,
+			fmt.Sprintf("DELETE FROM %s WHERE %s;", tbl, strings.Join(conditions, " AND ")))
+	}
+	return strings.Join(stmts, "\n"), nil
+}
+
+// Mutate is a no-op — UpsertData does not alter the schema state.
+func (op *UpsertData) Mutate(_ *SchemaState) error { return nil }

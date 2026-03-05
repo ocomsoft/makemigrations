@@ -430,3 +430,35 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
 	return nil, fmt.Errorf("MySQL schema extraction not implemented yet")
 }
+
+// GenerateUpsert generates a MySQL INSERT ... ON DUPLICATE KEY UPDATE statement.
+// MySQL identifies conflicts automatically via unique indexes, so conflictKeys is
+// accepted for interface compatibility but not used in the generated SQL.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	quotedCols := make([]string, len(columns))
+	for i, col := range columns {
+		quotedCols[i] = p.QuoteName(col)
+	}
+
+	var rows []string
+	for _, vals := range valueLiterals {
+		rows = append(rows, "("+strings.Join(vals, ", ")+")")
+	}
+
+	var updates []string
+	for _, col := range columns {
+		qc := p.QuoteName(col)
+		updates = append(updates, fmt.Sprintf("  %s = VALUES(%s)", qc, qc))
+	}
+
+	return fmt.Sprintf("INSERT INTO %s (%s)\nVALUES %s\nON DUPLICATE KEY UPDATE\n%s;",
+		p.QuoteName(table),
+		strings.Join(quotedCols, ", "),
+		strings.Join(rows, ",\n       "),
+		strings.Join(updates, ",\n"),
+	)
+}

@@ -132,6 +132,26 @@ Operations: []m.Operation{
 },
 ```
 
+### Seed reference data with UpsertData
+
+`UpsertData` generates the correct upsert SQL automatically for your target database — no raw SQL needed:
+
+```go
+Operations: []m.Operation{
+    &m.UpsertData{
+        Table:        "countries",
+        ConflictKeys: []string{"code"},
+        Rows: []map[string]any{
+            {"code": "AU", "name": "Australia"},
+            {"code": "US", "name": "United States"},
+            {"code": "NZ", "name": "New Zealand"},
+        },
+    },
+},
+```
+
+Rollback (`down`) automatically generates `DELETE` statements matching the conflict keys.
+
 See the [migrate operations reference](../migrations.md) for the full list of available operation types.
 
 ---

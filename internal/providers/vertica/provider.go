@@ -425,6 +425,92 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	return strings.Join(constraints, "\n")
 }
 
+// GenerateUpsert generates a MERGE INTO statement for Vertica using UNION ALL select list.
+// If all columns are conflict keys, the WHEN MATCHED clause is omitted.
+// The valueLiterals are pre-formatted SQL literals and are not re-quoted.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+
+	quotedTable := p.QuoteName(table)
+
+	// Quoted column names
+	quotedCols := make([]string, len(columns))
+	for i, c := range columns {
+		quotedCols[i] = p.QuoteName(c)
+	}
+
+	// MERGE INTO "table"
+	sb.WriteString(fmt.Sprintf("MERGE INTO %s\n", quotedTable))
+
+	// USING (SELECT ... UNION ALL SELECT ...) AS source
+	sb.WriteString("USING (")
+	for i, row := range valueLiterals {
+		if i > 0 {
+			sb.WriteString(" UNION ALL ")
+		}
+		sb.WriteString("SELECT ")
+		for j, val := range row {
+			if j > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(val)
+			// First row gets AS "colname" aliases
+			if i == 0 {
+				sb.WriteString(fmt.Sprintf(" AS %s", quotedCols[j]))
+			}
+		}
+	}
+	sb.WriteString(") AS source\n")
+
+	// ON "table"."k1" = source."k1" AND ...
+	var onClauses []string
+	for _, k := range conflictKeys {
+		qk := p.QuoteName(k)
+		onClauses = append(onClauses, fmt.Sprintf("%s.%s = source.%s", quotedTable, qk, qk))
+	}
+	sb.WriteString(fmt.Sprintf("ON %s\n", strings.Join(onClauses, " AND ")))
+
+	// Determine non-conflict columns
+	conflictSet := make(map[string]bool, len(conflictKeys))
+	for _, k := range conflictKeys {
+		conflictSet[k] = true
+	}
+
+	var updateCols []string
+	for _, c := range columns {
+		if !conflictSet[c] {
+			updateCols = append(updateCols, c)
+		}
+	}
+
+	// WHEN MATCHED THEN UPDATE SET (only if there are non-key columns)
+	if len(updateCols) > 0 {
+		sb.WriteString("WHEN MATCHED THEN UPDATE SET ")
+		for i, c := range updateCols {
+			qc := p.QuoteName(c)
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(fmt.Sprintf("%s = source.%s", qc, qc))
+		}
+		sb.WriteString("\n")
+	}
+
+	// WHEN NOT MATCHED THEN INSERT
+	var sourceCols []string
+	for _, c := range columns {
+		sourceCols = append(sourceCols, fmt.Sprintf("source.%s", p.QuoteName(c)))
+	}
+	sb.WriteString(fmt.Sprintf("WHEN NOT MATCHED THEN INSERT (%s) VALUES (%s);",
+		strings.Join(quotedCols, ", "), strings.Join(sourceCols, ", ")))
+
+	return sb.String()
+}
+
 // GetDatabaseSchema extracts schema information from a Vertica database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
 	return nil, fmt.Errorf("Vertica schema extraction not implemented yet")

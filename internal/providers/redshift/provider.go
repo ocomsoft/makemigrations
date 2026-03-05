@@ -425,6 +425,75 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	return strings.Join(constraints, "\n")
 }
 
+// GenerateUpsert generates a DELETE-then-INSERT pattern for Redshift, since Redshift
+// does not support ON CONFLICT or MERGE. If no conflictKeys are provided, only the
+// INSERT is generated. The valueLiterals are pre-formatted SQL literals and are not re-quoted.
+func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string {
+	if len(valueLiterals) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+
+	quotedTable := p.QuoteName(table)
+
+	// Quoted column names
+	quotedCols := make([]string, len(columns))
+	for i, c := range columns {
+		quotedCols[i] = p.QuoteName(c)
+	}
+
+	// DELETE portion (only if conflictKeys are provided)
+	if len(conflictKeys) > 0 {
+		// Find the column indices for each conflict key
+		colIndex := make(map[string]int, len(columns))
+		for i, c := range columns {
+			colIndex[c] = i
+		}
+
+		if len(conflictKeys) == 1 {
+			// Single key: DELETE FROM "table" WHERE "key" IN (v1, v2, ...)
+			idx := colIndex[conflictKeys[0]]
+			var vals []string
+			for _, row := range valueLiterals {
+				vals = append(vals, row[idx])
+			}
+			sb.WriteString(fmt.Sprintf("DELETE FROM %s WHERE %s IN (%s);\n",
+				quotedTable, p.QuoteName(conflictKeys[0]), strings.Join(vals, ", ")))
+		} else {
+			// Multiple keys: DELETE FROM "table" WHERE ("k1", "k2") IN ((v1a, v2a), (v1b, v2b))
+			quotedConflict := make([]string, len(conflictKeys))
+			for i, k := range conflictKeys {
+				quotedConflict[i] = p.QuoteName(k)
+			}
+
+			var tuples []string
+			for _, row := range valueLiterals {
+				var vals []string
+				for _, k := range conflictKeys {
+					vals = append(vals, row[colIndex[k]])
+				}
+				tuples = append(tuples, fmt.Sprintf("(%s)", strings.Join(vals, ", ")))
+			}
+			sb.WriteString(fmt.Sprintf("DELETE FROM %s WHERE (%s) IN (%s);\n",
+				quotedTable, strings.Join(quotedConflict, ", "), strings.Join(tuples, ", ")))
+		}
+	}
+
+	// INSERT portion
+	sb.WriteString(fmt.Sprintf("INSERT INTO %s (%s)\n", quotedTable, strings.Join(quotedCols, ", ")))
+	for i, row := range valueLiterals {
+		if i == 0 {
+			sb.WriteString(fmt.Sprintf("VALUES (%s)", strings.Join(row, ", ")))
+		} else {
+			sb.WriteString(fmt.Sprintf(",\n       (%s)", strings.Join(row, ", ")))
+		}
+	}
+	sb.WriteString(";")
+
+	return sb.String()
+}
+
 // GetDatabaseSchema extracts schema information from a Redshift database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
 	return nil, fmt.Errorf("Redshift schema extraction not implemented yet")

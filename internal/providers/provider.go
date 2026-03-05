@@ -75,6 +75,22 @@ type Provider interface {
 	// (e.g. after a partial rollback left the database in an intermediate state).
 	IsAlreadyExistsError(err error) bool
 
+	// GenerateUpsert generates a database-appropriate upsert statement for one or more
+	// rows. columns is the ordered list of column names; valueLiterals is a parallel
+	// slice of pre-formatted SQL literal strings (e.g. "'AU'", "42", "NULL") for each
+	// row. conflictKeys identifies which columns to check for conflict or match on.
+	//
+	// Implementations should use the provider's quoting convention (QuoteName) and the
+	// appropriate dialect:
+	//   - PostgreSQL/AuroraDSQL: INSERT … ON CONFLICT (keys) DO UPDATE SET col = EXCLUDED.col
+	//   - MySQL/TiDB/StarRocks:  INSERT … ON DUPLICATE KEY UPDATE col = VALUES(col)
+	//   - SQLite/Turso:          INSERT … ON CONFLICT(keys) DO UPDATE SET col = excluded.col
+	//   - SQL Server/Vertica:    MERGE INTO … USING … ON … WHEN MATCHED … WHEN NOT MATCHED …
+	//   - Redshift:              DELETE … + INSERT (no native ON CONFLICT)
+	//   - ClickHouse:            INSERT (deduplication via ReplacingMergeTree)
+	//   - YDB:                   UPSERT INTO …
+	GenerateUpsert(table string, conflictKeys []string, columns []string, valueLiterals [][]string) string
+
 	// Schema processing
 	GenerateIndexes(schema *types.Schema) string
 	GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string

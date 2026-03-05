@@ -31,7 +31,7 @@ makemigrations --config /path/to/custom-config.yaml makemigrations
 
 ```yaml
 # Makemigrations Configuration File
-# 
+#
 # This file contains configuration for the makemigrations tool.
 # All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
 # For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
@@ -41,53 +41,26 @@ makemigrations --config /path/to/custom-config.yaml makemigrations
 # Database connection and behavior settings
 database:
   type: postgresql                    # postgresql, mysql, sqlserver, sqlite
-  default_schema: public              # Default schema name for databases that support schemas
-  quote_identifiers: true             # Whether to quote table/column names
 
 # Migration generation and execution settings
 migration:
   directory: migrations               # Directory for migration files
-  file_prefix: "20060102150405"       # Go timestamp format for YYYYMMDDHHMMSS
-  snapshot_file: .schema_snapshot.yaml # Name of the schema snapshot file
-  auto_apply: false                   # Whether to auto-apply migrations (dangerous!)
-  include_down_sql: true              # Whether to generate DOWN migrations
-  review_comment_prefix: "-- REVIEW: " # Prefix for review comments on destructive operations
-  rejection_comment_prefix: "-- REJECTED: " # Prefix for rejected destructive operations
-  silent: false                       # Whether to skip prompts for destructive operations
-  destructive_operations:             # List of operation types to mark with review comments
-    - table_removed
-    - field_removed
-    - index_removed
-    - table_renamed
-    - field_renamed
-    - field_modified
-
-# Schema scanning and processing settings
-schema:
-  search_paths: []                    # Additional paths to search for schema files
-  ignore_modules: []                  # Module patterns to ignore
-  schema_file_name: schema.yaml       # Name of schema files to look for
-  validate_strict: false              # Whether to use strict validation
 
 # Output formatting and display settings
 output:
   verbose: false                      # Enable verbose output
   color_enabled: true                 # Enable colored output
-  progress_bar: false                 # Show progress bars
-  timestamp_format: "2006-01-02 15:04:05" # Format for timestamps in output
 ```
 
 ## Configuration Sections
 
 ### Database Section
 
-Controls database connection and SQL generation behavior.
+Controls database SQL generation behavior.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `type` | string | `postgresql` | Target database type |
-| `default_schema` | string | `public` | Default schema name |
-| `quote_identifiers` | bool | `true` | Quote table/column names in SQL |
 
 **Supported Database Types:**
 - `postgresql` - PostgreSQL 9.6+
@@ -95,63 +68,22 @@ Controls database connection and SQL generation behavior.
 - `sqlserver` - SQL Server 2016+
 - `sqlite` - SQLite 3.8+
 
-**Environment Variable Examples:**
+**Environment Variable Example:**
 ```bash
 export MAKEMIGRATIONS_DATABASE_TYPE=mysql
-export MAKEMIGRATIONS_DATABASE_DEFAULT_SCHEMA=myapp
-export MAKEMIGRATIONS_DATABASE_QUOTE_IDENTIFIERS=false
 ```
 
 ### Migration Section
 
-Controls migration generation, storage, and safety features.
+Controls migration file storage.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `directory` | string | `migrations` | Directory for migration files |
-| `file_prefix` | string | `20060102150405` | Timestamp format for file naming |
-| `snapshot_file` | string | `.schema_snapshot.yaml` | Schema snapshot filename |
-| `auto_apply` | bool | `false` | Automatically apply migrations (dangerous) |
-| `include_down_sql` | bool | `true` | Generate DOWN migration statements |
-| `review_comment_prefix` | string | `-- REVIEW: ` | Prefix for review comments |
-| `rejection_comment_prefix` | string | `-- REJECTED: ` | Prefix for rejected operations |
-| `silent` | bool | `false` | Skip interactive prompts |
-| `destructive_operations` | []string | See below | Operations requiring review |
 
-**Default Destructive Operations:**
-```yaml
-destructive_operations:
-  - table_removed      # DROP TABLE statements
-  - field_removed      # DROP COLUMN statements  
-  - index_removed      # DROP INDEX statements
-  - table_renamed      # ALTER TABLE RENAME statements
-  - field_renamed      # ALTER TABLE RENAME COLUMN statements
-  - field_modified     # ALTER TABLE ALTER COLUMN statements
-```
-
-**Environment Variable Examples:**
+**Environment Variable Example:**
 ```bash
 export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
-export MAKEMIGRATIONS_MIGRATION_INCLUDE_DOWN_SQL=false
-export MAKEMIGRATIONS_MIGRATION_SILENT=true
-export MAKEMIGRATIONS_MIGRATION_REVIEW_COMMENT_PREFIX="-- DANGER: "
-```
-
-### Schema Section
-
-Controls YAML schema file discovery and processing.
-
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `search_paths` | []string | `[]` | Additional search paths |
-| `ignore_modules` | []string | `[]` | Module patterns to ignore |
-| `schema_file_name` | string | `schema.yaml` | Schema filename to search for |
-| `validate_strict` | bool | `false` | Enable strict validation |
-
-**Environment Variable Examples:**
-```bash
-export MAKEMIGRATIONS_SCHEMA_SCHEMA_FILE_NAME=database.yaml
-export MAKEMIGRATIONS_SCHEMA_VALIDATE_STRICT=true
 ```
 
 ### Output Section
@@ -162,8 +94,6 @@ Controls display formatting and verbosity.
 |---------|------|---------|-------------|
 | `verbose` | bool | `false` | Enable detailed output |
 | `color_enabled` | bool | `true` | Use colored terminal output |
-| `progress_bar` | bool | `false` | Show progress indicators |
-| `timestamp_format` | string | `2006-01-02 15:04:05` | Timestamp display format |
 
 **Environment Variable Examples:**
 ```bash
@@ -211,16 +141,8 @@ All config file settings can be overridden with environment variables:
 ```bash
 # Format: MAKEMIGRATIONS_SECTION_SETTING
 export MAKEMIGRATIONS_DATABASE_TYPE=mysql
-export MAKEMIGRATIONS_MIGRATION_SILENT=true
+export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
 export MAKEMIGRATIONS_OUTPUT_VERBOSE=true
-```
-
-**Nested Settings:** Use underscores for nested values:
-```bash
-# migration.review_comment_prefix
-export MAKEMIGRATIONS_MIGRATION_REVIEW_COMMENT_PREFIX="-- WARNING: "
-
-# output.color_enabled  
 export MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 ```
 
@@ -243,7 +165,6 @@ Available on migration commands:
 |------|------|-------------|
 | `--verbose` | bool | Enable verbose output |
 | `--dry-run` | bool | Show what would be generated |
-| `--silent` | bool | Skip destructive operation prompts |
 | `--check` | bool | Exit with error if migrations needed |
 | `--name` | string | Override migration name |
 
@@ -261,125 +182,27 @@ Available on migration commands:
 ```yaml
 database:
   type: postgresql
-  
-migration:
-  silent: false                    # Enable interactive prompts
-  review_comment_prefix: "-- REVIEW: "
-  
-output:
-  verbose: true                    # Detailed output
-  color_enabled: true             # Colored output
-```
 
-**Environment variables:**
-```bash
-export MAKEMIGRATIONS_DB_HOST=localhost
-export MAKEMIGRATIONS_DB_USER=dev_user
-export MAKEMIGRATIONS_DB_PASSWORD=dev_pass
-export MAKEMIGRATIONS_DB_NAME=myapp_dev
-```
-
-### Staging Environment
-
-```yaml
-database:
-  type: postgresql
-  
-migration:
-  silent: false                    # Prompt for review
-  review_comment_prefix: "-- STAGING-REVIEW: "
-  
 output:
   verbose: true
   color_enabled: true
 ```
 
-### Production Environment
-
-```yaml
-database:
-  type: postgresql
-  
-migration:
-  silent: true                     # No prompts
-  review_comment_prefix: "-- PROD-DANGER: "
-  rejection_comment_prefix: "-- PROD-REJECTED: "
-  
-output:
-  verbose: false                   # Minimal output
-  color_enabled: false            # No colors for logs
-```
-
-**Environment variables:**
-```bash
-export MAKEMIGRATIONS_DB_HOST=prod-db-cluster
-export MAKEMIGRATIONS_DB_USER=app_user
-export MAKEMIGRATIONS_DB_PASSWORD=$(vault kv get -field=password secret/db)
-export MAKEMIGRATIONS_DB_NAME=myapp_production
-export MAKEMIGRATIONS_MIGRATION_SILENT=true
-```
-
 ### CI/CD Environment
 
 ```yaml
-migration:
-  silent: true                     # No interactive prompts
-  
 output:
-  verbose: false                   # Minimal output
-  color_enabled: false            # No ANSI colors in logs
+  verbose: false
+  color_enabled: false             # No ANSI colors in logs
 ```
 
 **Usage in CI:**
 ```bash
 # Check if migrations are needed (exits with code 1 if true)
-makemigrations makemigrations --check --silent
+makemigrations makemigrations --check
 
 # Generate migrations in CI
-makemigrations makemigrations --silent --name "automated_$(date +%Y%m%d)"
-```
-
-## Advanced Configuration
-
-### Custom Migration Prefixes
-
-```yaml
-migration:
-  review_comment_prefix: "-- 🚨 MANUAL-REVIEW-REQUIRED: "
-  rejection_comment_prefix: "-- ❌ USER-REJECTED: "
-```
-
-### Multi-Environment Schema Paths
-
-```yaml
-schema:
-  search_paths:
-    - "schemas/core"
-    - "schemas/modules"
-    - "vendor/shared-schemas"
-  ignore_modules:
-    - "github.com/test/*"
-    - "*/internal/*"
-```
-
-### Database-Specific Settings
-
-```yaml
-# PostgreSQL with custom schema
-database:
-  type: postgresql
-  default_schema: myapp_schema
-  quote_identifiers: true
-
-# MySQL with specific requirements  
-database:
-  type: mysql
-  quote_identifiers: false          # MySQL often doesn't need quotes
-
-# SQLite for local development
-database:
-  type: sqlite
-  quote_identifiers: false
+makemigrations makemigrations --name "automated_$(date +%Y%m%d)"
 ```
 
 ## Validation and Debugging
@@ -470,8 +293,6 @@ export MAKEMIGRATIONS_DB_PASSWORD=$(cat /run/secrets/db_password)
 ```yaml
 output:
   verbose: true                     # Log all operations
-migration:
-  review_comment_prefix: "-- AUDIT: " # Clear audit trail in SQL
 ```
 
 ## Migration to Environment Variables
@@ -483,8 +304,7 @@ migration:
 database:
   type: mysql
 migration:
-  silent: true
-  review_comment_prefix: "-- REVIEW: "
+  directory: db/migrations
 output:
   verbose: false
 ```
@@ -492,8 +312,7 @@ output:
 **To environment variables:**
 ```bash
 export MAKEMIGRATIONS_DATABASE_TYPE=mysql
-export MAKEMIGRATIONS_MIGRATION_SILENT=true
-export MAKEMIGRATIONS_MIGRATION_REVIEW_COMMENT_PREFIX="-- REVIEW: "
+export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
 export MAKEMIGRATIONS_OUTPUT_VERBOSE=false
 ```
 

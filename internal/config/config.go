@@ -41,86 +41,38 @@ type Config struct {
 	// Migration settings
 	Migration MigrationConfig `yaml:"migration" mapstructure:"migration"`
 
-	// Schema settings
-	Schema SchemaConfig `yaml:"schema" mapstructure:"schema"`
-
 	// Output settings
 	Output OutputConfig `yaml:"output" mapstructure:"output"`
 }
 
 // DatabaseConfig contains database-related settings
 type DatabaseConfig struct {
-	Type             string `yaml:"type" mapstructure:"type"`                           // postgresql, mysql, sqlserver, sqlite
-	DefaultSchema    string `yaml:"default_schema" mapstructure:"default_schema"`       // Default schema name for databases that support schemas
-	QuoteIdentifiers bool   `yaml:"quote_identifiers" mapstructure:"quote_identifiers"` // Whether to quote table/column names
+	Type string `yaml:"type" mapstructure:"type"` // postgresql, mysql, sqlserver, sqlite
 }
 
 // MigrationConfig contains migration-related settings
 type MigrationConfig struct {
-	Directory              string   `yaml:"directory" mapstructure:"directory"`                               // Directory for migration files
-	FilePrefix             string   `yaml:"file_prefix" mapstructure:"file_prefix"`                           // Prefix for migration files (e.g., timestamp format)
-	SnapshotFile           string   `yaml:"snapshot_file" mapstructure:"snapshot_file"`                       // Name of the schema snapshot file
-	AutoApply              bool     `yaml:"auto_apply" mapstructure:"auto_apply"`                             // Whether to auto-apply migrations (dangerous!)
-	IncludeDownSQL         bool     `yaml:"include_down_sql" mapstructure:"include_down_sql"`                 // Whether to generate DOWN migrations
-	ReviewCommentPrefix    string   `yaml:"review_comment_prefix" mapstructure:"review_comment_prefix"`       // Prefix for review comments on destructive operations
-	DestructiveOperations  []string `yaml:"destructive_operations" mapstructure:"destructive_operations"`     // List of operation types to mark with review comments
-	Silent                 bool     `yaml:"silent" mapstructure:"silent"`                                     // Whether to skip prompts for destructive operations
-	RejectionCommentPrefix string   `yaml:"rejection_comment_prefix" mapstructure:"rejection_comment_prefix"` // Prefix for rejected destructive operations
-}
-
-// SchemaConfig contains schema scanning and processing settings
-type SchemaConfig struct {
-	SearchPaths    []string `yaml:"search_paths" mapstructure:"search_paths"`         // Additional paths to search for schema files
-	IgnoreModules  []string `yaml:"ignore_modules" mapstructure:"ignore_modules"`     // Module patterns to ignore
-	SchemaFileName string   `yaml:"schema_file_name" mapstructure:"schema_file_name"` // Name of schema files to look for
-	ValidateStrict bool     `yaml:"validate_strict" mapstructure:"validate_strict"`   // Whether to use strict validation
+	Directory string `yaml:"directory" mapstructure:"directory"` // Directory for migration files
 }
 
 // OutputConfig contains output formatting settings
 type OutputConfig struct {
-	Verbose         bool   `yaml:"verbose" mapstructure:"verbose"`                   // Enable verbose output
-	ColorEnabled    bool   `yaml:"color_enabled" mapstructure:"color_enabled"`       // Enable colored output
-	ProgressBar     bool   `yaml:"progress_bar" mapstructure:"progress_bar"`         // Show progress bars
-	TimestampFormat string `yaml:"timestamp_format" mapstructure:"timestamp_format"` // Format for timestamps in output
+	Verbose      bool `yaml:"verbose" mapstructure:"verbose"`           // Enable verbose output
+	ColorEnabled bool `yaml:"color_enabled" mapstructure:"color_enabled"` // Enable colored output
 }
 
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		Database: DatabaseConfig{
-			Type:             "postgresql",
-			DefaultSchema:    "public",
-			QuoteIdentifiers: true,
+			Type: "postgresql",
 		},
 		Migration: MigrationConfig{
-			Directory:           "migrations",
-			FilePrefix:          "20060102150405", // Go timestamp format for YYYYMMDDHHMMSS
-			SnapshotFile:        ".schema_snapshot.yaml",
-			AutoApply:           false,
-			IncludeDownSQL:      true,
-			ReviewCommentPrefix: "-- REVIEW: ",
-			DestructiveOperations: []string{
-				"table_removed",
-				"field_removed",
-				"index_removed",
-				"table_renamed",
-				"field_renamed",
-				"field_modified",
-			},
-			Silent:                 false,
-			RejectionCommentPrefix: "-- REJECTED: ",
-		},
-		Schema: SchemaConfig{
-			SearchPaths:    []string{},
-			IgnoreModules:  []string{},
-			SchemaFileName: "schema.yaml",
-			ValidateStrict: false,
+			Directory: "migrations",
 		},
 		Output: OutputConfig{
-			Verbose:         false,
-			ColorEnabled:    true,
-			ProgressBar:     false,
-			TimestampFormat: "2006-01-02 15:04:05",
+			Verbose:      false,
+			ColorEnabled: true,
 		},
 	}
 }
@@ -190,20 +142,12 @@ func (c *Config) Save(path string) error {
 
 	// Add header comment
 	header := `# Makemigrations Configuration File
-# 
+#
 # This file contains configuration for the makemigrations tool.
 # All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
 # For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
 #
 # For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
-#
-# Available destructive operation types for review comments:
-#   - table_removed: Dropping an entire table
-#   - field_removed: Removing a column from a table
-#   - index_removed: Removing an index
-#   - table_renamed: Renaming a table (data preserved but references may break)
-#   - field_renamed: Renaming a column (data preserved but references may break)
-#   - field_modified: Changing a column's data type (may cause data loss)
 #
 
 `
@@ -219,33 +163,10 @@ func (c *Config) Save(path string) error {
 
 // setDefaults sets default values in viper
 func setDefaults(v *viper.Viper, cfg *Config) {
-	// Database defaults
 	v.SetDefault("database.type", cfg.Database.Type)
-	v.SetDefault("database.default_schema", cfg.Database.DefaultSchema)
-	v.SetDefault("database.quote_identifiers", cfg.Database.QuoteIdentifiers)
-
-	// Migration defaults
 	v.SetDefault("migration.directory", cfg.Migration.Directory)
-	v.SetDefault("migration.file_prefix", cfg.Migration.FilePrefix)
-	v.SetDefault("migration.snapshot_file", cfg.Migration.SnapshotFile)
-	v.SetDefault("migration.auto_apply", cfg.Migration.AutoApply)
-	v.SetDefault("migration.include_down_sql", cfg.Migration.IncludeDownSQL)
-	v.SetDefault("migration.review_comment_prefix", cfg.Migration.ReviewCommentPrefix)
-	v.SetDefault("migration.destructive_operations", cfg.Migration.DestructiveOperations)
-	v.SetDefault("migration.silent", cfg.Migration.Silent)
-	v.SetDefault("migration.rejection_comment_prefix", cfg.Migration.RejectionCommentPrefix)
-
-	// Schema defaults
-	v.SetDefault("schema.search_paths", cfg.Schema.SearchPaths)
-	v.SetDefault("schema.ignore_modules", cfg.Schema.IgnoreModules)
-	v.SetDefault("schema.schema_file_name", cfg.Schema.SchemaFileName)
-	v.SetDefault("schema.validate_strict", cfg.Schema.ValidateStrict)
-
-	// Output defaults
 	v.SetDefault("output.verbose", cfg.Output.Verbose)
 	v.SetDefault("output.color_enabled", cfg.Output.ColorEnabled)
-	v.SetDefault("output.progress_bar", cfg.Output.ProgressBar)
-	v.SetDefault("output.timestamp_format", cfg.Output.TimestampFormat)
 }
 
 // GetConfigPath returns the default config file path
@@ -253,8 +174,3 @@ func GetConfigPath() string {
 	return filepath.Join("migrations", "makemigrations.config.yaml")
 }
 
-// ConfigExists checks if a config file exists
-func ConfigExists() bool {
-	_, err := os.Stat(GetConfigPath())
-	return err == nil
-}

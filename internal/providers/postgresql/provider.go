@@ -356,7 +356,7 @@ func isSQLExpression(value string) bool {
 	if len(value) > 1 {
 		allUpper := true
 		for _, ch := range value {
-			if !((ch >= 'A' && ch <= 'Z') || ch == '_') {
+			if (ch < 'A' || ch > 'Z') && ch != '_' {
 				allUpper = false
 				break
 			}
@@ -549,7 +549,7 @@ func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -614,7 +614,7 @@ func (p *Provider) extractTables(db *sql.DB) ([]types.Table, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query tables: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tables []types.Table
 	for rows.Next() {
@@ -668,7 +668,7 @@ func (p *Provider) extractFields(db *sql.DB, tableName string) ([]types.Field, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to query fields for table %s: %w", tableName, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var fields []types.Field
 	for rows.Next() {
@@ -767,7 +767,7 @@ func (p *Provider) extractForeignKeys(db *sql.DB, tableName string) (map[string]
 	if err != nil {
 		return nil, fmt.Errorf("failed to query foreign keys: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	fkMap := make(map[string]struct {
 		ReferencedTable string
@@ -811,7 +811,7 @@ func (p *Provider) extractIndexes(db *sql.DB, tableName string) ([]types.Index, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query indexes: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var indexes []types.Index
 	for rows.Next() {

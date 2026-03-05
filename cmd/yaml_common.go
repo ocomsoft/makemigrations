@@ -277,7 +277,7 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 	}
 
 	if !diff.HasChanges {
-		fmt.Fprintln(cmd.ErrOrStderr(), "No pending changes.")
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "No pending changes.")
 		return nil
 	}
 
@@ -303,12 +303,12 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 }
 
 // ExecuteFindIncludes handles the complete find includes process
-func ExecuteFindIncludes(cmd *cobra.Command, configFile, schemaPath string, interactive, includeWorkspace, verbose, schemaProvided bool) error {
+func ExecuteFindIncludes(cmd *cobra.Command, configFile, schemaPath string, interactive, includeWorkspace bool) error {
 	// Load configuration
 	cfg := config.LoadOrDefault(configFile)
 
 	// Apply config settings
-	verbose = cfg.Output.Verbose
+	verbose := cfg.Output.Verbose
 	if !cfg.Output.ColorEnabled {
 		color.NoColor = true
 	}
@@ -319,7 +319,7 @@ func ExecuteFindIncludes(cmd *cobra.Command, configFile, schemaPath string, inte
 	}
 
 	// Check if schema flag was provided
-	schemaProvided = cmd.Flags().Changed("schema")
+	schemaProvided := cmd.Flags().Changed("schema")
 
 	// If schema not provided, search for schema.yaml files
 	if !schemaProvided {

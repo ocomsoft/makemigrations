@@ -152,10 +152,6 @@ func (s *Scanner) ScanModulesWithType(schemaType SchemaType) ([]SchemaFile, erro
 	return schemas, nil
 }
 
-func (s *Scanner) findSchemaInPath(basePath, modulePath string) (*SchemaFile, error) {
-	return s.findSchemaInPathWithType(basePath, modulePath, SchemaTypeSQL)
-}
-
 func (s *Scanner) findSchemaInPathWithType(basePath, modulePath string, schemaType SchemaType) (*SchemaFile, error) {
 	schemas, err := s.findAllSchemasInPathWithType(basePath, modulePath, schemaType)
 	if err != nil {
@@ -217,7 +213,7 @@ func (s *Scanner) findAllSchemasInPathWithType(basePath, modulePath string, sche
 			if err != nil {
 				return nil // Continue walking
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			content, hasMarker, err := s.readSchemaFileWithType(file, schemaType)
 			if err != nil {

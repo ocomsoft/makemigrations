@@ -105,8 +105,8 @@ directly with other makemigrations commands.`,
 // runDB2Schema executes the db2schema command
 func runDB2Schema(cmd *cobra.Command, args []string) error {
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Extracting database schema to YAML\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "==================================\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Extracting database schema to YAML\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "==================================\n")
 	}
 
 	// Parse database type from config or default to PostgreSQL
@@ -132,8 +132,8 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	connectionString = buildConnectionString(dbType)
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
-		fmt.Fprintf(cmd.ErrOrStderr(), "Output file: %s\n", output)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Output file: %s\n", output)
 	}
 
 	// Create provider for the database type

@@ -84,7 +84,7 @@ Examples:
 
 // runFindIncludes executes the find_includes command
 func runFindIncludes(cmd *cobra.Command, args []string) error {
-	return ExecuteFindIncludes(cmd, configFile, schemaPath, interactive, includeWorkspace, verbose, schemaProvided)
+	return ExecuteFindIncludes(cmd, configFile, schemaPath, interactive, includeWorkspace)
 }
 
 // discoverSchemas finds all YAML schemas in Go modules and workspace

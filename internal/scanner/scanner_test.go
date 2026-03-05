@@ -38,12 +38,14 @@ func TestScanner_ScanModules_ValidModule(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(oldWd) }()
+	if err = os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create go.mod
 	goModContent := `module test/module
@@ -61,7 +63,9 @@ require (
 
 	// Create schema.sql
 	sqlDir := filepath.Join("sql")
-	os.MkdirAll(sqlDir, 0755)
+	if err = os.MkdirAll(sqlDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	schemaContent := `-- MIGRATION_SCHEMA
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -103,11 +107,11 @@ func TestScanner_ScanModules_NoGoMod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 	os.Chdir(tmpDir)
 
 	scanner := New(false)
@@ -128,11 +132,11 @@ func TestScanner_ScanModules_EmptyGoMod(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	defer func() { _ = os.Chdir(oldWd) }()
 	os.Chdir(tmpDir)
 
 	// Create empty go.mod

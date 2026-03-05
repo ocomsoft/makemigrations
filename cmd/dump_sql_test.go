@@ -104,7 +104,7 @@ tables:
 	testCmd, _ := newTestCmd()
 	err := cmd.ExecuteDumpSQL(testCmd, "postgresql", false, false)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	if err != nil {
@@ -112,7 +112,7 @@ tables:
 	}
 
 	var out bytes.Buffer
-	out.ReadFrom(r)
+	_, _ = out.ReadFrom(r)
 	output := out.String()
 
 	if len(output) == 0 {

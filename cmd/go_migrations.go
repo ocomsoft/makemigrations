@@ -396,6 +396,10 @@ func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
 	dagCmd := exec.Command(binPath, "dag", "--format", "json")
 	dagOutput, err := dagCmd.Output()
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			fmt.Fprintf(os.Stderr, "DAG command stderr: %s\n", string(exitErr.Stderr))
+		}
+
 		return nil, fmt.Errorf("running dag command: %w", err)
 	}
 

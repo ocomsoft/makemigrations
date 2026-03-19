@@ -241,3 +241,25 @@ func TestProvider_GenerateIndexes_Empty(t *testing.T) {
 		t.Errorf("expected empty indexes for schema without FKs, got:\n%s", got)
 	}
 }
+
+func TestProvider_GenerateAddColumn_NoDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "score", Type: "integer"}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "score" INTEGER NOT NULL;`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}
+
+func TestProvider_GenerateAddColumn_WithDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "display_order", Type: "integer", Default: "0"}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "display_order" INTEGER NOT NULL DEFAULT 0;`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}

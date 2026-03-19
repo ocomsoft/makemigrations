@@ -308,3 +308,47 @@ func TestProvider_GenerateJunctionTable(t *testing.T) {
 		t.Errorf("expected REFERENCES, got:\n%s", got)
 	}
 }
+
+func TestProvider_GenerateAddColumn_NoDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "score", Type: "integer"}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "score" INTEGER NOT NULL;`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}
+
+func TestProvider_GenerateAddColumn_WithDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "display_order", Type: "integer", Default: "0"}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "display_order" INTEGER NOT NULL DEFAULT 0;`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}
+
+func TestProvider_GenerateAddColumn_WithFunctionDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "id", Type: "uuid", Default: "gen_random_uuid()"}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "id" UUID NOT NULL DEFAULT gen_random_uuid();`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}
+
+func TestProvider_GenerateAddColumn_NullableWithDefault(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "notes", Type: "text", Default: "''"}
+	field.SetNullable(true)
+	got := p.GenerateAddColumn("items", &field)
+	expected := `ALTER TABLE "items" ADD COLUMN "notes" TEXT DEFAULT '';`
+	if got != expected {
+		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
+	}
+}

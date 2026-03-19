@@ -217,12 +217,20 @@ func (p *Provider) GenerateDropTableCascade(tableName string) string {
 	return fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE;", p.QuoteName(tableName))
 }
 
-// GenerateAddColumn generates ALTER TABLE ADD COLUMN statement
+// GenerateAddColumn generates ALTER TABLE ADD COLUMN statement.
+// The DEFAULT clause is emitted when field.Default is non-empty (already
+// resolved from symbolic keys by resolveFieldDefault before this is called).
 func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) string {
 	fieldDef := fmt.Sprintf("%s %s", p.QuoteName(field.Name), p.ConvertFieldType(field))
 
 	if !field.IsNullable() {
 		fieldDef += " NOT NULL"
+	}
+
+	if field.AutoCreate && field.Type == "timestamp" {
+		fieldDef += " DEFAULT CURRENT_TIMESTAMP"
+	} else if field.Default != "" {
+		fieldDef += " DEFAULT " + p.convertDefaultValue(nil, field.Default)
 	}
 
 	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)

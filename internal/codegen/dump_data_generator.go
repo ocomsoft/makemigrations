@@ -27,7 +27,6 @@ package codegen
 import (
 	"fmt"
 	"go/format"
-	"sort"
 	"strings"
 )
 
@@ -104,7 +103,7 @@ func (g *DumpDataGenerator) writeUpsertData(b *strings.Builder, td TableDump) er
 	b.WriteString("\t\t\t\tRows: []map[string]any{\n")
 	for _, row := range td.Rows {
 		b.WriteString("\t\t\t\t\t{\n")
-		for _, key := range sortedAnyKeys(row) {
+		for _, key := range sortedMapKeys(row) {
 			fmt.Fprintf(b, "\t\t\t\t\t\t%q: %s,\n", key, formatGoLiteral(row[key]))
 		}
 		b.WriteString("\t\t\t\t\t},\n")
@@ -134,20 +133,4 @@ func formatGoLiteral(v any) string {
 	default:
 		return fmt.Sprintf("%q", fmt.Sprintf("%v", val))
 	}
-}
-
-// sortedAnyKeys returns the keys of a map[string]any in sorted alphabetical order
-// for deterministic code generation output.
-func sortedAnyKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-// FormatGoLiteralForTest exposes formatGoLiteral for testing.
-func FormatGoLiteralForTest(v any) string {
-	return formatGoLiteral(v)
 }

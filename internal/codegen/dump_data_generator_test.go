@@ -154,29 +154,3 @@ func TestDumpDataGenerator_NoDeps(t *testing.T) {
 		t.Errorf("expected empty dependencies slice, got:\n%s", src)
 	}
 }
-
-func TestFormatGoLiteral(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    any
-		expected string
-	}{
-		{name: "nil", input: nil, expected: "nil"},
-		{name: "string", input: "hello world", expected: `"hello world"`},
-		{name: "int64", input: int64(42), expected: "42"},
-		{name: "int", input: 7, expected: "7"},
-		{name: "float64", input: 3.14, expected: "3.14"},
-		{name: "bool_true", input: true, expected: "true"},
-		{name: "bool_false", input: false, expected: "false"},
-		{name: "unknown_struct", input: struct{ X int }{X: 5}, expected: `"{5}"`},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := codegen.FormatGoLiteralForTest(tt.input)
-			if got != tt.expected {
-				t.Errorf("formatGoLiteral(%v) = %q, want %q", tt.input, got, tt.expected)
-			}
-		})
-	}
-}

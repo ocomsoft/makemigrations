@@ -370,7 +370,7 @@ func (g *GoGenerator) generateSetDefaults(change yaml.Change) (string, error) {
 	}
 	var b strings.Builder
 	b.WriteString("\t\t\t&m.SetDefaults{\n\t\t\t\tDefaults: map[string]string{\n")
-	for _, k := range sortedKeys(defaults) {
+	for _, k := range sortedMapKeys(defaults) {
 		b.WriteString(fmt.Sprintf("\t\t\t\t\t%q: %q,\n", k, defaults[k]))
 	}
 	b.WriteString("\t\t\t\t},\n\t\t\t},\n")
@@ -387,16 +387,15 @@ func (g *GoGenerator) generateSetTypeMappings(change yaml.Change) (string, error
 	}
 	var b strings.Builder
 	b.WriteString("\t\t\t&m.SetTypeMappings{\n\t\t\t\tTypeMappings: map[string]string{\n")
-	for _, k := range sortedKeys(mappings) {
+	for _, k := range sortedMapKeys(mappings) {
 		fmt.Fprintf(&b, "\t\t\t\t\t%q: %q,\n", k, mappings[k])
 	}
 	b.WriteString("\t\t\t\t},\n\t\t\t},\n")
 	return b.String(), nil
 }
 
-// sortedKeys returns the keys of a map[string]string in sorted order for
-// deterministic code generation output.
-func sortedKeys(m map[string]string) []string {
+// sortedMapKeys returns the keys of any map with string keys in sorted order.
+func sortedMapKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

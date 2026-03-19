@@ -54,7 +54,8 @@ Available commands:
   dump_sql          Dump merged YAML schema as SQL
   schema2diagram    Generate diagram from YAML schema
   find_includes     Discover schema includes in Go modules
-  empty             Create a blank migration with no operations`,
+  empty             Create a blank migration with no operations
+  dump-data         Generate a migration that seeds table data using UpsertData`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications

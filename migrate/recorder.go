@@ -83,10 +83,34 @@ func (r *MigrationRecorder) RecordApplied(name string) error {
 	return nil
 }
 
+// RecordAppliedTx inserts a migration name into the history table within an
+// existing transaction, so the history record is committed or rolled back
+// atomically with the migration SQL.
+func (r *MigrationRecorder) RecordAppliedTx(tx *sql.Tx, name string) error {
+	query := "INSERT INTO makemigrations_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
+	_, err := tx.Exec(query, name)
+	if err != nil {
+		return fmt.Errorf("recording migration %q as applied: %w", name, err)
+	}
+	return nil
+}
+
 // RecordRolledBack removes a migration name from the history table.
 func (r *MigrationRecorder) RecordRolledBack(name string) error {
 	query := "DELETE FROM makemigrations_history WHERE name = " + r.provider.Placeholder(1)
 	_, err := r.db.Exec(query, name)
+	if err != nil {
+		return fmt.Errorf("recording migration %q as rolled back: %w", name, err)
+	}
+	return nil
+}
+
+// RecordRolledBackTx removes a migration name from the history table within an
+// existing transaction, so the history deletion is committed or rolled back
+// atomically with the rollback SQL.
+func (r *MigrationRecorder) RecordRolledBackTx(tx *sql.Tx, name string) error {
+	query := "DELETE FROM makemigrations_history WHERE name = " + r.provider.Placeholder(1)
+	_, err := tx.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as rolled back: %w", name, err)
 	}

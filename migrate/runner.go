@@ -206,10 +206,21 @@ func (r *Runner) ShowSQL() error {
 	return nil
 }
 
-// applyMigration executes all operations in a migration and records it as applied.
+// applyMigration executes all operations in a migration within a transaction
+// and records it as applied atomically. If any operation fails the transaction
+// is rolled back and the database is left unchanged.
 // When opts.WarnOnMissingDrop is true, drop operations that fail because the object
 // does not exist are skipped with a warning instead of stopping the migration.
+//
+// Note: DDL statements in MySQL are auto-committed and cannot be rolled back
+// regardless of the transaction. PostgreSQL supports transactional DDL fully.
 func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }() // no-op if already committed
+
 	for _, op := range mig.Operations {
 		r.provider.SetTypeMappings(state.TypeMappings)
 		sqlStr, err := op.Up(r.provider, state, state.Defaults)
@@ -218,7 +229,7 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 		}
 		skipped := false
 		if sqlStr != "" {
-			if _, execErr := r.db.Exec(sqlStr); execErr != nil {
+			if _, execErr := tx.Exec(sqlStr); execErr != nil {
 				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
 					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
 					skipped = true
@@ -235,13 +246,29 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 			}
 		}
 	}
-	return r.recorder.RecordApplied(mig.Name)
+
+	if err := r.recorder.RecordAppliedTx(tx, mig.Name); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
-// rollbackMigration reverses all operations in a migration and removes it from history.
+// rollbackMigration reverses all operations in a migration within a transaction
+// and removes it from history atomically. If any operation fails the transaction
+// is rolled back and the database is left unchanged.
 // When opts.WarnOnMissingDrop is true, drop operations that fail because the object
 // does not exist are skipped with a warning instead of stopping the rollback.
+//
+// Note: DDL statements in MySQL are auto-committed and cannot be rolled back
+// regardless of the transaction. PostgreSQL supports transactional DDL fully.
 func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunOptions) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }() // no-op if already committed
+
 	// Pre-apply state-only ops (SetDefaults, SetTypeMappings) from this migration so that
 	// Defaults and TypeMappings are populated when generating Down SQL for other ops.
 	for _, op := range mig.Operations {
@@ -259,7 +286,7 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
 		}
 		if sqlStr != "" {
-			if _, execErr := r.db.Exec(sqlStr); execErr != nil {
+			if _, execErr := tx.Exec(sqlStr); execErr != nil {
 				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
 					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
 				} else if isCreateOp(op) && r.provider.IsAlreadyExistsError(execErr) {
@@ -270,7 +297,12 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			}
 		}
 	}
-	return r.recorder.RecordRolledBack(mig.Name)
+
+	if err := r.recorder.RecordRolledBackTx(tx, mig.Name); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // isDropOp returns true for operations that remove a database object.

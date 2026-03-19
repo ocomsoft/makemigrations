@@ -797,6 +797,86 @@ func TestRunner_Down_ResolvesDefaultsViaSetDefaults(t *testing.T) {
 	}
 }
 
+// TestRunner_Up_TransactionRollback verifies that when a migration fails
+// mid-way, neither the partial SQL changes nor the history record are committed.
+func TestRunner_Up_TransactionRollback(t *testing.T) {
+	restore := suppressStdout(t)
+	defer restore()
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			// First op succeeds: creates a table.
+			&migrate.RunSQL{
+				ForwardSQL:  "CREATE TABLE txn_test (id INTEGER PRIMARY KEY);",
+				BackwardSQL: "DROP TABLE txn_test;",
+			},
+			// Second op fails: invalid SQL.
+			&migrate.RunSQL{
+				ForwardSQL:  "THIS IS NOT VALID SQL;",
+				BackwardSQL: "",
+			},
+		},
+	})
+
+	runner, recorder, _ := buildTestRunner(t, reg)
+
+	err := runner.Up("", migrate.RunOptions{})
+	if err == nil {
+		t.Fatal("expected Up to return an error")
+	}
+
+	// Migration must NOT be recorded as applied.
+	applied, recErr := recorder.GetApplied()
+	if recErr != nil {
+		t.Fatalf("GetApplied: %v", recErr)
+	}
+	if applied["0001_initial"] {
+		t.Error("migration was recorded as applied despite failure — transaction not rolled back")
+	}
+}
+
+// TestRunner_Down_TransactionRollback verifies that when a rollback fails
+// mid-way, the history record is not removed.
+func TestRunner_Down_TransactionRollback(t *testing.T) {
+	restore := suppressStdout(t)
+	defer restore()
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.RunSQL{
+				ForwardSQL:  "CREATE TABLE txn_down_test (id INTEGER PRIMARY KEY);",
+				BackwardSQL: "THIS IS NOT VALID SQL;", // down SQL fails
+			},
+		},
+	})
+
+	runner, recorder, _ := buildTestRunner(t, reg)
+
+	if err := runner.Up("", migrate.RunOptions{}); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+
+	err := runner.Down(1, "", migrate.RunOptions{})
+	if err == nil {
+		t.Fatal("expected Down to return an error")
+	}
+
+	// Migration must still be recorded as applied since rollback failed.
+	applied, recErr := recorder.GetApplied()
+	if recErr != nil {
+		t.Fatalf("GetApplied: %v", recErr)
+	}
+	if !applied["0001_initial"] {
+		t.Error("migration was removed from history despite rollback failure — transaction not rolled back")
+	}
+}
+
 func TestNewRunner_NilSafe(t *testing.T) {
 	// Verify that NewRunner doesn't panic with valid arguments
 	db := openTestDB(t)

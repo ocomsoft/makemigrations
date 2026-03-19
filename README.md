@@ -43,6 +43,14 @@ your-project/
 `schema/schema.yaml`:
 
 ```yaml
+defaults:
+  postgresql:
+    new_uuid: gen_random_uuid()
+  mysql:
+    new_uuid: uuid()
+  sqlite:
+    new_uuid: (lower(hex(randomblob(16))))
+
 tables:
   - name: users
     fields:
@@ -74,6 +82,8 @@ tables:
           table: users
           on_delete: CASCADE
 ```
+
+The `defaults` section maps symbolic names (like `new_uuid`) to database-specific SQL expressions. Fields reference them by name — makemigrations resolves the correct expression for each target database at migration time.
 
 ### 4. Generate your first migration
 

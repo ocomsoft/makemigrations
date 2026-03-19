@@ -264,11 +264,16 @@ func pksFromState(state *migrate.SchemaState, table string) []string {
 	return pks
 }
 
-// buildDumpDataDSN builds the DSN from --dsn flag or from individual connection
-// flags. Each DB type uses the appropriate format.
+// buildDumpDataDSN builds the DSN from --dsn flag, the DATABASE_URL environment
+// variable, or from individual connection flags. Each DB type uses the
+// appropriate format.
 func buildDumpDataDSN(dbType string) string {
 	if dumpDataDSN != "" {
 		return dumpDataDSN
+	}
+
+	if url := os.Getenv("DATABASE_URL"); url != "" {
+		return url
 	}
 
 	switch strings.ToLower(dbType) {

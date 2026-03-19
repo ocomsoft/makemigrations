@@ -45,6 +45,13 @@ func resetDumpDataFlags() {
 	dumpDataConflictKey = nil
 	dumpDataDSN = ""
 	configFile = ""
+	// Reset shared DB connection vars (declared in db2schema.go)
+	host = ""
+	port = 0
+	database = ""
+	username = ""
+	password = ""
+	sslmode = ""
 }
 
 // createTestSQLiteDB creates a SQLite database at the given path, executes

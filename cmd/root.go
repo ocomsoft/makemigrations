@@ -52,10 +52,10 @@ Available commands:
   db2schema         Extract database schema to YAML
   struct2schema     Convert Go structs to YAML schema
   dump_sql          Dump merged YAML schema as SQL
+  dump-data         Generate a migration that seeds table data using UpsertData
   schema2diagram    Generate diagram from YAML schema
   find_includes     Discover schema includes in Go modules
-  empty             Create a blank migration with no operations
-  dump-data         Generate a migration that seeds table data using UpsertData`,
+  empty             Create a blank migration with no operations`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications

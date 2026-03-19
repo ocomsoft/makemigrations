@@ -1,0 +1,153 @@
+/*
+MIT License
+
+# Copyright (c) 2025 OcomSoft
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
+package codegen
+
+import (
+	"fmt"
+	"go/format"
+	"sort"
+	"strings"
+)
+
+// TableDump holds the data for a single table to be upserted in a dump-data migration.
+type TableDump struct {
+	Table        string           // target table name
+	ConflictKeys []string         // PK or unique columns for ON CONFLICT
+	Rows         []map[string]any // row data (all rows same keys)
+}
+
+// DumpDataGenerator generates Go migration source containing UpsertData operations.
+type DumpDataGenerator struct{}
+
+// NewDumpDataGenerator creates a new DumpDataGenerator.
+func NewDumpDataGenerator() *DumpDataGenerator {
+	return &DumpDataGenerator{}
+}
+
+// Generate produces a complete .go migration file source containing UpsertData
+// operations for each table dump. name is the migration name (e.g. "0003_dump_countries"),
+// deps is the list of dependency migration names, and tables must contain at least one entry.
+func (g *DumpDataGenerator) Generate(name string, deps []string, tables []TableDump) (string, error) {
+	if len(tables) == 0 {
+		return "", fmt.Errorf("at least one table dump is required")
+	}
+
+	var b strings.Builder
+
+	b.WriteString("package main\n\n")
+	b.WriteString("import m \"github.com/ocomsoft/makemigrations/migrate\"\n\n")
+	b.WriteString("func init() {\n")
+	fmt.Fprintf(&b, "\tm.Register(&m.Migration{\n")
+	fmt.Fprintf(&b, "\t\tName:         %q,\n", name)
+
+	// Dependencies
+	depStrs := make([]string, len(deps))
+	for i, d := range deps {
+		depStrs[i] = fmt.Sprintf("%q", d)
+	}
+	fmt.Fprintf(&b, "\t\tDependencies: []string{%s},\n", strings.Join(depStrs, ", "))
+
+	// Operations
+	b.WriteString("\t\tOperations: []m.Operation{\n")
+	for _, td := range tables {
+		if err := g.writeUpsertData(&b, td); err != nil {
+			return "", fmt.Errorf("writing UpsertData for table %q: %w", td.Table, err)
+		}
+	}
+	b.WriteString("\t\t},\n")
+
+	b.WriteString("\t})\n")
+	b.WriteString("}\n")
+
+	formatted, err := format.Source([]byte(b.String()))
+	if err != nil {
+		return "", fmt.Errorf("formatting dump-data migration: %w\nRaw:\n%s", err, b.String())
+	}
+	return string(formatted), nil
+}
+
+// writeUpsertData writes a single &m.UpsertData{...} literal to the builder.
+func (g *DumpDataGenerator) writeUpsertData(b *strings.Builder, td TableDump) error {
+	fmt.Fprintf(b, "\t\t\t&m.UpsertData{\n")
+	fmt.Fprintf(b, "\t\t\t\tTable: %q,\n", td.Table)
+
+	// ConflictKeys
+	keyStrs := make([]string, len(td.ConflictKeys))
+	for i, k := range td.ConflictKeys {
+		keyStrs[i] = fmt.Sprintf("%q", k)
+	}
+	fmt.Fprintf(b, "\t\t\t\tConflictKeys: []string{%s},\n", strings.Join(keyStrs, ", "))
+
+	// Rows
+	b.WriteString("\t\t\t\tRows: []map[string]any{\n")
+	for _, row := range td.Rows {
+		b.WriteString("\t\t\t\t\t{\n")
+		for _, key := range sortedAnyKeys(row) {
+			fmt.Fprintf(b, "\t\t\t\t\t\t%q: %s,\n", key, formatGoLiteral(row[key]))
+		}
+		b.WriteString("\t\t\t\t\t},\n")
+	}
+	b.WriteString("\t\t\t\t},\n")
+
+	b.WriteString("\t\t\t},\n")
+	return nil
+}
+
+// formatGoLiteral converts a Go value to its Go source literal representation.
+func formatGoLiteral(v any) string {
+	if v == nil {
+		return "nil"
+	}
+	switch val := v.(type) {
+	case string:
+		return fmt.Sprintf("%q", val)
+	case int64:
+		return fmt.Sprintf("%d", val)
+	case int:
+		return fmt.Sprintf("%d", val)
+	case float64:
+		return fmt.Sprintf("%g", val)
+	case bool:
+		return fmt.Sprintf("%t", val)
+	default:
+		return fmt.Sprintf("%q", fmt.Sprintf("%v", val))
+	}
+}
+
+// sortedAnyKeys returns the keys of a map[string]any in sorted alphabetical order
+// for deterministic code generation output.
+func sortedAnyKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// FormatGoLiteralForTest exposes formatGoLiteral for testing.
+func FormatGoLiteralForTest(v any) string {
+	return formatGoLiteral(v)
+}

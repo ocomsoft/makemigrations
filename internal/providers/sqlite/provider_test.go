@@ -263,3 +263,12 @@ func TestProvider_GenerateAddColumn_WithDefault(t *testing.T) {
 		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
 	}
 }
+
+func TestProvider_GenerateCreateIndex_WithWhere(t *testing.T) {
+	p := New()
+	idx := &types.Index{Name: "u_email_idx", Fields: []string{"email"}, Where: "deleted_at IS NULL"}
+	sql := p.GenerateCreateIndex(idx, "users")
+	if !strings.Contains(sql, "WHERE deleted_at IS NULL") {
+		t.Errorf("expected WHERE clause, got: %s", sql)
+	}
+}

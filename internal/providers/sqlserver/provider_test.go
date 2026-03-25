@@ -239,3 +239,12 @@ func TestProvider_GenerateJunctionTable(t *testing.T) {
 		t.Errorf("expected FOREIGN KEY, got:\n%s", got)
 	}
 }
+
+func TestProvider_GenerateCreateIndex_WithWhere(t *testing.T) {
+	p := New()
+	idx := &types.Index{Name: "u_email_idx", Fields: []string{"email"}, Where: "deleted_at IS NULL"}
+	sql := p.GenerateCreateIndex(idx, "users")
+	if !strings.Contains(sql, "WHERE deleted_at IS NULL") {
+		t.Errorf("expected WHERE clause, got: %s", sql)
+	}
+}

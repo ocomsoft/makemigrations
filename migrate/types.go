@@ -73,3 +73,14 @@ type Index struct {
 	// Where is a partial index predicate. Leave empty for a full index. Not supported by MySQL.
 	Where string `json:"where,omitempty"`
 }
+
+// ForeignKeyConstraint represents a FK constraint tracked in SchemaState.
+// Note: this is distinct from migrate.ForeignKey (the field-level FK metadata).
+// ForeignKeyConstraint tracks what constraints exist in the database at runtime.
+type ForeignKeyConstraint struct {
+	Name            string `json:"name"`       // constraint name, e.g. fk_orders_user_id
+	FieldName       string `json:"field_name"` // the column carrying the FK
+	ReferencedTable string `json:"referenced_table"`
+	OnDelete        string `json:"on_delete,omitempty"`
+	OnUpdate        string `json:"on_update,omitempty"`
+}

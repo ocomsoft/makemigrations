@@ -28,6 +28,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ocomsoft/makemigrations/internal/providers/postgresql"
 	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
 	"github.com/ocomsoft/makemigrations/migrate"
 )
@@ -472,5 +473,91 @@ func TestCreateTable_Up_ResolvesDefaults(t *testing.T) {
 	}
 	if strings.Contains(sqlStr, `'uuid'`) {
 		t.Errorf("raw default 'uuid' should be resolved, got:\n%s", sqlStr)
+	}
+}
+
+func TestAddForeignKey_UpDown(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	op := &migrate.AddForeignKey{
+		Table:           "orders",
+		FieldName:       "user_id",
+		ConstraintName:  "fk_orders_user_id",
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL == "" {
+		t.Fatal("expected non-empty Up SQL")
+	}
+	if !strings.Contains(upSQL, "FOREIGN KEY") {
+		t.Errorf("expected FOREIGN KEY in SQL, got: %s", upSQL)
+	}
+
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if len(state.Tables["orders"].ForeignKeys) != 1 {
+		t.Fatal("expected FK in state after Mutate")
+	}
+
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if downSQL == "" {
+		t.Fatal("expected non-empty Down SQL")
+	}
+	if !strings.Contains(downSQL, "DROP CONSTRAINT") {
+		t.Errorf("expected DROP CONSTRAINT in Down SQL, got: %s", downSQL)
+	}
+}
+
+func TestDropForeignKey_UpDown(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	fk := migrate.ForeignKeyConstraint{
+		Name: "fk_orders_user_id", FieldName: "user_id",
+		ReferencedTable: "users", OnDelete: "CASCADE",
+	}
+	_ = state.AddForeignKey("orders", fk)
+
+	op := &migrate.DropForeignKey{
+		Table:          "orders",
+		ConstraintName: "fk_orders_user_id",
+	}
+
+	// Up: DROP CONSTRAINT
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if upSQL == "" {
+		t.Fatal("expected non-empty Up SQL")
+	}
+
+	// Down: reads state to reconstruct ADD CONSTRAINT (state still has FK before Mutate)
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if !strings.Contains(downSQL, "FOREIGN KEY") {
+		t.Errorf("expected FOREIGN KEY in Down SQL, got: %s", downSQL)
+	}
+
+	// Mutate removes FK from state
+	if err := op.Mutate(state); err != nil {
+		t.Fatalf("Mutate: %v", err)
+	}
+	if len(state.Tables["orders"].ForeignKeys) != 0 {
+		t.Fatal("expected 0 FKs after Mutate")
 	}
 }

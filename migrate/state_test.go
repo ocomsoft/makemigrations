@@ -265,6 +265,50 @@ func TestSchemaState_DropIndex_MissingIndex(t *testing.T) {
 	}
 }
 
+func TestSchemaState_AddDropForeignKey(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+
+	fk := migrate.ForeignKeyConstraint{
+		Name:            "fk_orders_user_id",
+		FieldName:       "user_id",
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+	}
+
+	// AddTable should initialise ForeignKeys to empty slice, not nil
+	if state.Tables["orders"].ForeignKeys == nil {
+		t.Fatal("expected ForeignKeys to be initialised as empty slice, got nil")
+	}
+
+	// Add
+	if err := state.AddForeignKey("orders", fk); err != nil {
+		t.Fatalf("AddForeignKey: %v", err)
+	}
+	ts := state.Tables["orders"]
+	if len(ts.ForeignKeys) != 1 {
+		t.Fatalf("expected 1 FK, got %d", len(ts.ForeignKeys))
+	}
+
+	// Duplicate
+	if err := state.AddForeignKey("orders", fk); err == nil {
+		t.Fatal("expected error on duplicate FK")
+	}
+
+	// Drop
+	if err := state.DropForeignKey("orders", fk.Name); err != nil {
+		t.Fatalf("DropForeignKey: %v", err)
+	}
+	if len(state.Tables["orders"].ForeignKeys) != 0 {
+		t.Fatal("expected 0 FKs after drop")
+	}
+
+	// Drop non-existent
+	if err := state.DropForeignKey("orders", fk.Name); err == nil {
+		t.Fatal("expected error dropping non-existent FK")
+	}
+}
+
 // TestSchemaState_SetTypeMappings verifies that SetTypeMappings updates state.TypeMappings.
 func TestSchemaState_SetTypeMappings(t *testing.T) {
 	state := migrate.NewSchemaState()

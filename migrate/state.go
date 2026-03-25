@@ -37,9 +37,10 @@ type SchemaState struct {
 
 // TableState holds the state of a single table.
 type TableState struct {
-	Name    string  `json:"name"`
-	Fields  []Field `json:"fields"`
-	Indexes []Index `json:"indexes"`
+	Name        string                 `json:"name"`
+	Fields      []Field                `json:"fields"`
+	Indexes     []Index                `json:"indexes"`
+	ForeignKeys []ForeignKeyConstraint `json:"foreign_keys,omitempty"`
 }
 
 // NewSchemaState returns an empty SchemaState.
@@ -76,7 +77,12 @@ func (s *SchemaState) AddTable(name string, fields []Field, indexes []Index) err
 	copy(fieldsCopy, fields)
 	indexesCopy := make([]Index, len(indexes))
 	copy(indexesCopy, indexes)
-	s.Tables[name] = &TableState{Name: name, Fields: fieldsCopy, Indexes: indexesCopy}
+	s.Tables[name] = &TableState{
+		Name:        name,
+		Fields:      fieldsCopy,
+		Indexes:     indexesCopy,
+		ForeignKeys: []ForeignKeyConstraint{},
+	}
 	return nil
 }
 
@@ -192,4 +198,35 @@ func (s *SchemaState) DropIndex(tableName, indexName string) error {
 		}
 	}
 	return fmt.Errorf("index %q does not exist in table %q", indexName, tableName)
+}
+
+// AddForeignKey appends a foreign key constraint to an existing table.
+// Returns error if the constraint name already exists.
+func (s *SchemaState) AddForeignKey(tableName string, fk ForeignKeyConstraint) error {
+	t, exists := s.Tables[tableName]
+	if !exists {
+		return fmt.Errorf("table %q does not exist in schema state", tableName)
+	}
+	for _, existing := range t.ForeignKeys {
+		if existing.Name == fk.Name {
+			return fmt.Errorf("foreign key %q already exists in table %q", fk.Name, tableName)
+		}
+	}
+	t.ForeignKeys = append(t.ForeignKeys, fk)
+	return nil
+}
+
+// DropForeignKey removes a named foreign key constraint from an existing table.
+func (s *SchemaState) DropForeignKey(tableName, constraintName string) error {
+	t, exists := s.Tables[tableName]
+	if !exists {
+		return fmt.Errorf("table %q does not exist in schema state", tableName)
+	}
+	for i, fk := range t.ForeignKeys {
+		if fk.Name == constraintName {
+			t.ForeignKeys = append(t.ForeignKeys[:i], t.ForeignKeys[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("foreign key %q does not exist in table %q", constraintName, tableName)
 }

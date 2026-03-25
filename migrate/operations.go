@@ -606,6 +606,105 @@ func (op *DropIndex) Mutate(state *SchemaState) error {
 	return state.DropIndex(op.Table, op.Index)
 }
 
+// --- AddForeignKey ---
+
+// AddForeignKey is a migration operation that adds a foreign key constraint to
+// an existing table using ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY.
+// The FK column must already exist (created by AddField or CreateTable).
+type AddForeignKey struct {
+	Table           string
+	FieldName       string
+	ConstraintName  string
+	ReferencedTable string
+	OnDelete        string
+	OnUpdate        string
+}
+
+// TypeName returns the operation type identifier.
+func (op *AddForeignKey) TypeName() string { return "add_foreign_key" }
+
+// TableName returns the name of the table the constraint is added to.
+func (op *AddForeignKey) TableName() string { return op.Table }
+
+// IsDestructive returns false — adding a FK constraint is not destructive.
+func (op *AddForeignKey) IsDestructive() bool { return false }
+
+// Describe returns a human-readable description of this operation.
+func (op *AddForeignKey) Describe() string {
+	return fmt.Sprintf("Add foreign key %s on %s.%s → %s", op.ConstraintName, op.Table, op.FieldName, op.ReferencedTable)
+}
+
+// Up generates the ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY SQL.
+func (op *AddForeignKey) Up(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return p.GenerateForeignKeyConstraint(op.Table, op.FieldName, op.ReferencedTable, op.OnDelete), nil
+}
+
+// Down generates the ALTER TABLE ... DROP CONSTRAINT SQL to remove the FK.
+func (op *AddForeignKey) Down(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return p.GenerateDropForeignKeyConstraint(op.Table, op.ConstraintName), nil
+}
+
+// Mutate records the foreign key in the SchemaState.
+func (op *AddForeignKey) Mutate(state *SchemaState) error {
+	return state.AddForeignKey(op.Table, ForeignKeyConstraint{
+		Name:            op.ConstraintName,
+		FieldName:       op.FieldName,
+		ReferencedTable: op.ReferencedTable,
+		OnDelete:        op.OnDelete,
+		OnUpdate:        op.OnUpdate,
+	})
+}
+
+// --- DropForeignKey ---
+
+// DropForeignKey is a migration operation that drops a foreign key constraint
+// from an existing table using ALTER TABLE ... DROP CONSTRAINT.
+// The Down method reads the pre-drop FK definition from SchemaState to
+// reconstruct the ADD CONSTRAINT SQL — state must still contain the FK when
+// Down is called (i.e. before Mutate runs, which is the runner's guarantee).
+type DropForeignKey struct {
+	Table          string
+	ConstraintName string
+}
+
+// TypeName returns the operation type identifier.
+func (op *DropForeignKey) TypeName() string { return "drop_foreign_key" }
+
+// TableName returns the name of the table the constraint is removed from.
+func (op *DropForeignKey) TableName() string { return op.Table }
+
+// IsDestructive returns true — removing a FK constraint changes referential integrity.
+func (op *DropForeignKey) IsDestructive() bool { return true }
+
+// Describe returns a human-readable description of this operation.
+func (op *DropForeignKey) Describe() string {
+	return fmt.Sprintf("Drop foreign key %s from %s", op.ConstraintName, op.Table)
+}
+
+// Up generates the ALTER TABLE ... DROP CONSTRAINT SQL.
+func (op *DropForeignKey) Up(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
+	return p.GenerateDropForeignKeyConstraint(op.Table, op.ConstraintName), nil
+}
+
+// Down reconstructs the ADD CONSTRAINT SQL by reading the FK's pre-drop state.
+func (op *DropForeignKey) Down(p providers.Provider, state *SchemaState, _ map[string]string) (string, error) {
+	ts, exists := state.Tables[op.Table]
+	if !exists {
+		return "", fmt.Errorf("table %q not found in state", op.Table)
+	}
+	for _, fk := range ts.ForeignKeys {
+		if fk.Name == op.ConstraintName {
+			return p.GenerateForeignKeyConstraint(op.Table, fk.FieldName, fk.ReferencedTable, fk.OnDelete), nil
+		}
+	}
+	return "", fmt.Errorf("foreign key %q not found in table %q state", op.ConstraintName, op.Table)
+}
+
+// Mutate removes the foreign key from the SchemaState.
+func (op *DropForeignKey) Mutate(state *SchemaState) error {
+	return state.DropForeignKey(op.Table, op.ConstraintName)
+}
+
 // --- RunSQL ---
 
 // RunSQL is a migration operation that executes raw SQL for forward and reverse

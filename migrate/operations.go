@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// operations.go defines the Operation interface and all 10 concrete migration
+// operations.go defines the Operation interface and all concrete migration
 // operation types used by the makemigrations Go migration framework.
 package migrate
 

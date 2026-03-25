@@ -606,6 +606,23 @@ func (op *DropIndex) Mutate(state *SchemaState) error {
 	return state.DropIndex(op.Table, op.Index)
 }
 
+// normalizeOnDelete converts Django-style on_delete values to their SQL
+// equivalents. SQL keywords are returned unchanged.
+func normalizeOnDelete(v string) string {
+	switch strings.ToUpper(v) {
+	case "PROTECT":
+		return "RESTRICT"
+	case "SET_NULL":
+		return "SET NULL"
+	case "SET_DEFAULT":
+		return "SET DEFAULT"
+	case "DO_NOTHING":
+		return "NO ACTION"
+	default:
+		return v
+	}
+}
+
 // --- AddForeignKey ---
 
 // AddForeignKey is a migration operation that adds a foreign key constraint to
@@ -635,8 +652,14 @@ func (op *AddForeignKey) Describe() string {
 }
 
 // Up generates the ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY SQL.
+// Django-style on_delete values are normalised to their SQL equivalents:
+//   - PROTECT     → RESTRICT  (Django raises ProtectedError; SQL enforces at DB level)
+//   - SET_NULL    → SET NULL
+//   - SET_DEFAULT → SET DEFAULT
+//   - DO_NOTHING  → NO ACTION
 func (op *AddForeignKey) Up(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
-	return p.GenerateForeignKeyConstraint(op.Table, op.FieldName, op.ReferencedTable, op.OnDelete), nil
+	onDelete := normalizeOnDelete(op.OnDelete)
+	return p.GenerateForeignKeyConstraint(op.Table, op.FieldName, op.ReferencedTable, onDelete), nil
 }
 
 // Down generates the ALTER TABLE ... DROP CONSTRAINT SQL to remove the FK.

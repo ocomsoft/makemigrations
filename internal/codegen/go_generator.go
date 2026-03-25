@@ -158,6 +158,10 @@ func (g *GoGenerator) generateOperation(
 		return g.generateAddIndex(change)
 	case yaml.ChangeTypeIndexRemoved:
 		return g.generateDropIndex(change)
+	case yaml.ChangeTypeForeignKeyAdded:
+		return g.generateAddForeignKey(change)
+	case yaml.ChangeTypeForeignKeyRemoved:
+		return g.generateDropForeignKey(change)
 	case yaml.ChangeTypeDefaultsModified:
 		return g.generateSetDefaults(change)
 	case yaml.ChangeTypeTypeMappingsModified:
@@ -358,6 +362,38 @@ func (g *GoGenerator) generateDropIndex(change yaml.Change) (string, error) {
 	}
 	return fmt.Sprintf("\t\t\t&m.DropIndex{Table: %q, Index: %q},\n",
 		change.TableName, change.FieldName), nil
+}
+
+// generateAddForeignKey emits a &m.AddForeignKey{...} literal.
+func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) {
+	field, ok := change.NewValue.(yaml.Field)
+	if !ok {
+		return "", fmt.Errorf("expected yaml.Field for NewValue in FK added, got %T", change.NewValue)
+	}
+	if field.ForeignKey == nil {
+		return "", fmt.Errorf("FK added change for %s.%s has nil ForeignKey", change.TableName, change.FieldName)
+	}
+	constraintName := fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName)
+	onDelete := field.ForeignKey.OnDelete
+	if onDelete == "" {
+		onDelete = "PROTECT"
+	}
+	var b strings.Builder
+	b.WriteString("\t\t\t&m.AddForeignKey{\n")
+	b.WriteString(fmt.Sprintf("\t\t\t\tTable: %q,\n", change.TableName))
+	b.WriteString(fmt.Sprintf("\t\t\t\tFieldName: %q,\n", change.FieldName))
+	b.WriteString(fmt.Sprintf("\t\t\t\tConstraintName: %q,\n", constraintName))
+	b.WriteString(fmt.Sprintf("\t\t\t\tReferencedTable: %q,\n", field.ForeignKey.Table))
+	b.WriteString(fmt.Sprintf("\t\t\t\tOnDelete: %q,\n", onDelete))
+	b.WriteString("\t\t\t},\n")
+	return b.String(), nil
+}
+
+// generateDropForeignKey emits a &m.DropForeignKey{...} literal.
+func (g *GoGenerator) generateDropForeignKey(change yaml.Change) (string, error) {
+	constraintName := fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName)
+	return fmt.Sprintf("\t\t\t&m.DropForeignKey{\n\t\t\t\tTable: %q,\n\t\t\t\tConstraintName: %q,\n\t\t\t},\n",
+		change.TableName, constraintName), nil
 }
 
 // generateSetDefaults emits a &m.SetDefaults{...} literal.

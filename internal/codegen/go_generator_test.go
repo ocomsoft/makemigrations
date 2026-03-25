@@ -728,6 +728,72 @@ func TestGoGenerator_SetTypeMappings(t *testing.T) {
 	}
 }
 
+// TestGoGenerator_AddForeignKey verifies that a ChangeTypeForeignKeyAdded change
+// generates a valid &m.AddForeignKey{...} literal with the correct fields.
+func TestGoGenerator_AddForeignKey(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	change := yaml.Change{
+		Type:      yaml.ChangeTypeForeignKeyAdded,
+		TableName: "orders",
+		FieldName: "user_id",
+		NewValue: yaml.Field{
+			Name:       "user_id",
+			Type:       "foreign_key",
+			ForeignKey: &yaml.ForeignKey{Table: "auth_user", OnDelete: "PROTECT"},
+		},
+	}
+	diff := &yaml.SchemaDiff{HasChanges: true, Changes: []yaml.Change{change}}
+	code, err := g.GenerateMigration("0035_add_user_fk", []string{"0034_update_schema"}, diff, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if _, err := format.Source([]byte(code)); err != nil {
+		t.Fatalf("output is not valid Go: %v\nSource:\n%s", err, code)
+	}
+	if !strings.Contains(code, "&m.AddForeignKey{") {
+		t.Errorf("expected &m.AddForeignKey{} in output, got:\n%s", code)
+	}
+	if !strings.Contains(code, "ReferencedTable:") || !strings.Contains(code, `"auth_user"`) {
+		t.Errorf("expected ReferencedTable: \"auth_user\", got:\n%s", code)
+	}
+	if !strings.Contains(code, "OnDelete:") || !strings.Contains(code, `"PROTECT"`) {
+		t.Errorf("expected OnDelete: \"PROTECT\", got:\n%s", code)
+	}
+	if !strings.Contains(code, "ConstraintName:") || !strings.Contains(code, `"fk_orders_user_id"`) {
+		t.Errorf("expected ConstraintName: \"fk_orders_user_id\", got:\n%s", code)
+	}
+}
+
+// TestGoGenerator_DropForeignKey verifies that a ChangeTypeForeignKeyRemoved change
+// generates a valid &m.DropForeignKey{...} literal with the constraint name.
+func TestGoGenerator_DropForeignKey(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	change := yaml.Change{
+		Type:      yaml.ChangeTypeForeignKeyRemoved,
+		TableName: "orders",
+		FieldName: "user_id",
+		OldValue: yaml.Field{
+			Name:       "user_id",
+			Type:       "foreign_key",
+			ForeignKey: &yaml.ForeignKey{Table: "auth_user", OnDelete: "PROTECT"},
+		},
+	}
+	diff := &yaml.SchemaDiff{HasChanges: true, Changes: []yaml.Change{change}}
+	code, err := g.GenerateMigration("0036_drop_user_fk", []string{"0035_add_user_fk"}, diff, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if _, err := format.Source([]byte(code)); err != nil {
+		t.Fatalf("output is not valid Go: %v\nSource:\n%s", err, code)
+	}
+	if !strings.Contains(code, "&m.DropForeignKey{") {
+		t.Errorf("expected &m.DropForeignKey{} in output, got:\n%s", code)
+	}
+	if !strings.Contains(code, `ConstraintName: "fk_orders_user_id"`) {
+		t.Errorf("expected ConstraintName in output, got:\n%s", code)
+	}
+}
+
 // TestGoGenerator_SetDefaults verifies that a ChangeTypeDefaultsModified change
 // generates a valid &m.SetDefaults{...} literal with sorted keys.
 func TestGoGenerator_SetDefaults(t *testing.T) {

@@ -835,3 +835,47 @@ func TestGoGenerator_SetDefaults(t *testing.T) {
 		t.Errorf("expected keys sorted alphabetically ('now' before 'uuid'), got:\n%s", src)
 	}
 }
+
+// TestGoGenerator_NewTableWithForeignKey_CorrectOrder verifies that when creating a new table
+// with foreign key fields, the diff engine emits ChangeTypeTableAdded followed by
+// ChangeTypeForeignKeyAdded, and the generator produces CreateTable before AddForeignKey.
+func TestGoGenerator_NewTableWithForeignKey_CorrectOrder(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	de := yaml.NewDiffEngine(false)
+	old := &yaml.Schema{Tables: []yaml.Table{}}
+	newSchema := &yaml.Schema{
+		Tables: []yaml.Table{
+			{
+				Name: "orders",
+				Fields: []yaml.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "user_id", Type: "foreign_key",
+						ForeignKey: &yaml.ForeignKey{Table: "auth_user", OnDelete: "PROTECT"}},
+				},
+			},
+		},
+	}
+	diff, err := de.CompareSchemas(old, newSchema)
+	if err != nil {
+		t.Fatalf("CompareSchemas: %v", err)
+	}
+	code, err := g.GenerateMigration("0001_initial", []string{}, diff, newSchema, old, nil)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if _, err := format.Source([]byte(code)); err != nil {
+		t.Fatalf("output is not valid Go: %v\nSource:\n%s", err, code)
+	}
+	if !strings.Contains(code, "&m.CreateTable{") {
+		t.Errorf("expected CreateTable in output, got:\n%s", code)
+	}
+	if !strings.Contains(code, "&m.AddForeignKey{") {
+		t.Errorf("expected AddForeignKey in output, got:\n%s", code)
+	}
+	// CreateTable must appear before AddForeignKey
+	ctPos := strings.Index(code, "&m.CreateTable{")
+	fkPos := strings.Index(code, "&m.AddForeignKey{")
+	if ctPos >= fkPos {
+		t.Errorf("expected CreateTable before AddForeignKey; ctPos=%d fkPos=%d\n%s", ctPos, fkPos, code)
+	}
+}

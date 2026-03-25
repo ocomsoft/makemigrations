@@ -404,14 +404,41 @@ func buildMigrationsBinary(migrationsDir string, verbose bool, upgrade bool) (bi
 	return tmpBin, cleanup, nil
 }
 
+// stderrSupportsColor returns true when stderr is a real terminal and the
+// NO_COLOR environment variable is not set.
+func stderrSupportsColor() bool {
+	if os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	fi, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
+// warnf prints a warning to stderr. When the terminal supports colour the
+// message is rendered in orange (ANSI 256-colour code 214).
+func warnf(format string, args ...any) {
+	msg := fmt.Sprintf(format, args...)
+	if stderrSupportsColor() {
+		// \x1b[38;5;214m = orange (256-colour), \x1b[0m = reset
+		fmt.Fprintf(os.Stderr, "\x1b[38;5;214m%s\x1b[0m\n", msg)
+	} else {
+		fmt.Fprintln(os.Stderr, msg)
+	}
+}
+
 // upgradeMakemigrationsVersion checks whether the migrations go.mod requires a
 // different version of github.com/ocomsoft/makemigrations than the running CLI
 // binary and runs go get to align them. It runs with GOWORK=off so it operates
 // directly on the migrations module without workspace interference. Errors are
-// non-fatal and only surfaced when verbose is true.
+// non-fatal warnings printed to stderr.
 func upgradeMakemigrationsVersion(migrationsDir string, verbose bool) {
 	const modPkg = "github.com/ocomsoft/makemigrations"
-	target := "v" + version.GetVersion()
+	// Strip any leading "v" from the version string before prepending one so
+	// that both "1.4.1" and "v1.4.1" in the Version variable produce "v1.4.1".
+	target := "v" + strings.TrimPrefix(version.GetVersion(), "v")
 
 	goModPath := filepath.Join(migrationsDir, "go.mod")
 	data, err := os.ReadFile(goModPath)
@@ -422,9 +449,7 @@ func upgradeMakemigrationsVersion(migrationsDir string, verbose bool) {
 
 	f, err := modfile.Parse(goModPath, data, nil)
 	if err != nil {
-		if verbose {
-			fmt.Printf("Warning: could not parse %s: %v\n", goModPath, err)
-		}
+		warnf("Warning: could not parse %s: %v", goModPath, err)
 		return
 	}
 
@@ -439,7 +464,7 @@ func upgradeMakemigrationsVersion(migrationsDir string, verbose bool) {
 			getCmd.Dir = migrationsDir
 			getCmd.Env = append(os.Environ(), "GOWORK=off")
 			if out, getErr := getCmd.CombinedOutput(); getErr != nil {
-				fmt.Printf("Warning: go get %s@%s failed: %v\n%s\n", modPkg, target, getErr, string(out))
+				warnf("Warning: go get %s@%s failed: %v\n%s", modPkg, target, getErr, strings.TrimSpace(string(out)))
 			}
 			return
 		}

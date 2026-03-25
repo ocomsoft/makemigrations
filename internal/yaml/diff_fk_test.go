@@ -76,14 +76,26 @@ func TestDiff_ForeignKeyAdded_NewTable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompareSchemas: %v", err)
 	}
-	var hasFKChange bool
-	for _, c := range diff.Changes {
-		if c.Type == ChangeTypeForeignKeyAdded {
-			hasFKChange = true
+
+	// Verify ordering: TableAdded must precede ForeignKeyAdded for the same table
+	tableAddedIdx := -1
+	fkAddedIdx := -1
+	for i, c := range diff.Changes {
+		if c.Type == ChangeTypeTableAdded && c.TableName == "orders" {
+			tableAddedIdx = i
+		}
+		if c.Type == ChangeTypeForeignKeyAdded && c.TableName == "orders" {
+			fkAddedIdx = i
 		}
 	}
-	if !hasFKChange {
-		t.Errorf("expected ChangeTypeForeignKeyAdded for new table, changes: %v", diff.Changes)
+	if tableAddedIdx == -1 {
+		t.Error("expected ChangeTypeTableAdded in diff")
+	}
+	if fkAddedIdx == -1 {
+		t.Error("expected ChangeTypeForeignKeyAdded in diff")
+	}
+	if tableAddedIdx != -1 && fkAddedIdx != -1 && tableAddedIdx >= fkAddedIdx {
+		t.Errorf("expected TableAdded (idx %d) before ForeignKeyAdded (idx %d)", tableAddedIdx, fkAddedIdx)
 	}
 }
 

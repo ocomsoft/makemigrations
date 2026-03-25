@@ -45,8 +45,9 @@ var (
 // migration .go file with no operations, similar to Django's
 // `makemigrations --empty`. The developer fills in the operations manually.
 var emptyCmd = &cobra.Command{
-	Use:   "empty",
-	Short: "Create a blank migration with no operations",
+	Use:     "empty",
+	Aliases: []string{"blank"},
+	Short:   "Create a blank migration with no operations",
 	Long: `Creates a blank migration .go file with an empty Operations slice and
 a TODO comment as a placeholder. Use this to write custom migrations that
 contain operations not generated automatically from schema changes.

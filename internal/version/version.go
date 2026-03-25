@@ -32,7 +32,7 @@ import (
 var (
 	// Version represents the current makemigrations version
 	// This variable is updated by bumpversion during releases or set via ldflags
-	Version = "1.1.2"
+	Version = "1.2.0"
 
 	// BuildDate is set via ldflags during build
 	BuildDate = "unknown"

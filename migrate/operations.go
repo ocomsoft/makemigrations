@@ -115,6 +115,8 @@ func stateToSchema(state *SchemaState) *types.Schema {
 				Name:   idx.Name,
 				Fields: idx.Fields,
 				Unique: idx.Unique,
+				Method: idx.Method,
+				Where:  idx.Where,
 			})
 		}
 		s.Tables = append(s.Tables, *t)
@@ -169,7 +171,7 @@ func (op *CreateTable) Up(p providers.Provider, state *SchemaState, defaults map
 		table.Fields = append(table.Fields, *tf)
 	}
 	for _, idx := range op.Indexes {
-		table.Indexes = append(table.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})
+		table.Indexes = append(table.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique, Method: idx.Method, Where: idx.Where})
 	}
 	return p.GenerateCreateTable(schema, table)
 }
@@ -241,7 +243,7 @@ func (op *DropTable) Down(p providers.Provider, state *SchemaState, defaults map
 		t.Fields = append(t.Fields, *tf)
 	}
 	for _, idx := range ts.Indexes {
-		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})
+		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique, Method: idx.Method, Where: idx.Where})
 	}
 	return p.GenerateCreateTable(schema, t)
 }
@@ -438,7 +440,7 @@ func tableStateToTypesTable(state *SchemaState, tableName string, defaults map[s
 		t.Fields = append(t.Fields, *tf)
 	}
 	for _, idx := range ts.Indexes {
-		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique})
+		t.Indexes = append(t.Indexes, types.Index{Name: idx.Name, Fields: idx.Fields, Unique: idx.Unique, Method: idx.Method, Where: idx.Where})
 	}
 	return t
 }
@@ -543,7 +545,7 @@ func (op *AddIndex) Describe() string {
 
 // Up generates the CREATE INDEX SQL statement.
 func (op *AddIndex) Up(p providers.Provider, state *SchemaState, defaults map[string]string) (string, error) {
-	ti := &types.Index{Name: op.Index.Name, Unique: op.Index.Unique, Fields: op.Index.Fields}
+	ti := &types.Index{Name: op.Index.Name, Unique: op.Index.Unique, Fields: op.Index.Fields, Method: op.Index.Method, Where: op.Index.Where}
 	return p.GenerateCreateIndex(ti, op.Table), nil
 }
 
@@ -592,7 +594,7 @@ func (op *DropIndex) Down(p providers.Provider, state *SchemaState, defaults map
 	}
 	for _, idx := range ts.Indexes {
 		if idx.Name == op.Index {
-			ti := &types.Index{Name: idx.Name, Unique: idx.Unique, Fields: idx.Fields}
+			ti := &types.Index{Name: idx.Name, Unique: idx.Unique, Fields: idx.Fields, Method: idx.Method, Where: idx.Where}
 			return p.GenerateCreateIndex(ti, op.Table), nil
 		}
 	}

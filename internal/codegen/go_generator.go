@@ -472,6 +472,14 @@ func generateIndexLiteral(idx yaml.Index) string {
 		parts = append(parts, "Unique: true")
 	}
 
+	if idx.Method != "" {
+		parts = append(parts, fmt.Sprintf("Method: %q", idx.Method))
+	}
+
+	if idx.Where != "" {
+		parts = append(parts, fmt.Sprintf("Where: %q", idx.Where))
+	}
+
 	return fmt.Sprintf("m.Index{%s}", strings.Join(parts, ", "))
 }
 

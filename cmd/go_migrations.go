@@ -180,14 +180,19 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	}
 
 	// 4. Handle merge if requested
-	if goMigMerge && dagOut != nil && dagOut.HasBranches {
+	if goMigMerge && dagOut != nil && dagOut.HasUnresolvedBranches {
 		return goGenerateMerge(migrationsDir, dagOut, goMigDryRun, goMigVerbose)
 	}
 
-	// 5. Check for branches (warn if present and not doing merge)
-	if dagOut != nil && dagOut.HasBranches && !goMigMerge {
-		fmt.Printf("WARNING: Branches detected: %s\n", strings.Join(dagOut.Leaves, ", "))
-		fmt.Println("Run 'makemigrations makemigrations --merge' to generate a merge migration.")
+	// 5. Check for unresolved branches (warn if present and not doing merge).
+	// HasUnresolvedBranches is true only when there are multiple leaf migrations —
+	// resolved diamond topologies (already merged) do not trigger this warning.
+	if dagOut != nil && dagOut.HasUnresolvedBranches && !goMigMerge {
+		fmt.Println("WARNING: Multiple migration branches detected — merge required.")
+		for i, leaf := range dagOut.Leaves {
+			fmt.Printf("  Branch %d: %s\n", i+1, leaf)
+		}
+		fmt.Println("Run 'makemigrations --merge' to generate a merge migration.")
 	}
 
 	if !diff.HasChanges {

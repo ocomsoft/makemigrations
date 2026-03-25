@@ -214,11 +214,12 @@ func (g *Graph) ReconstructState() (*SchemaState, error) {
 // DAGOutput is the JSON-serialisable representation of the full migration graph.
 // This is what the compiled migration binary emits via the `dag --format json` command.
 type DAGOutput struct {
-	Migrations  []MigrationSummary `json:"migrations"`
-	Roots       []string           `json:"roots"`
-	Leaves      []string           `json:"leaves"`
-	HasBranches bool               `json:"has_branches"`
-	SchemaState *SchemaState       `json:"schema_state"`
+	Migrations           []MigrationSummary `json:"migrations"`
+	Roots                []string           `json:"roots"`
+	Leaves               []string           `json:"leaves"`
+	HasBranches          bool               `json:"has_branches"`
+	HasUnresolvedBranches bool              `json:"has_unresolved_branches"`
+	SchemaState          *SchemaState       `json:"schema_state"`
 }
 
 // MigrationSummary is a JSON-serialisable summary of a single migration.
@@ -246,11 +247,13 @@ func (g *Graph) ToDAGOutput() (*DAGOutput, error) {
 		return nil, err
 	}
 
+	leaves := g.Leaves()
 	out := &DAGOutput{
-		Roots:       g.Roots(),
-		Leaves:      g.Leaves(),
-		HasBranches: g.HasBranches(),
-		SchemaState: state,
+		Roots:                 g.Roots(),
+		Leaves:                leaves,
+		HasBranches:           g.HasBranches(),
+		HasUnresolvedBranches: len(leaves) > 1,
+		SchemaState:           state,
 	}
 
 	for _, mig := range order {

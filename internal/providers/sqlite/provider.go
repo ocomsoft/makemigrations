@@ -120,12 +120,14 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 	case "boolean":
 		return "INTEGER"
 	case "date", "time", "timestamp":
-		if field.Type == "date" {
+		switch field.Type {
+		case "date":
 			return "DATE"
-		} else if field.Type == "time" {
+		case "time":
 			return "TIME"
+		default:
+			return "DATETIME"
 		}
-		return "DATETIME"
 	case "uuid", "jsonb":
 		return "TEXT"
 	default:

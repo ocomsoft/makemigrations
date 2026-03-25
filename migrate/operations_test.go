@@ -173,6 +173,8 @@ func TestAllTypenames(t *testing.T) {
 		{&migrate.AddIndex{Table: "t", Index: migrate.Index{Name: "i", Fields: []string{"f"}}}, "add_index"},
 		{&migrate.DropIndex{Table: "t", Index: "i"}, "drop_index"},
 		{&migrate.RunSQL{}, "run_sql"},
+		{&migrate.AddForeignKey{Table: "t", FieldName: "fk_id", ReferencedTable: "other", ConstraintName: "fk_t_other"}, "add_foreign_key"},
+		{&migrate.DropForeignKey{Table: "t", ConstraintName: "fk_t_other"}, "drop_foreign_key"},
 	}
 	for _, tc := range cases {
 		if tc.op.TypeName() != tc.expected {

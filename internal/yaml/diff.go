@@ -64,6 +64,8 @@ const (
 	ChangeTypeFieldModified        ChangeType = "field_modified"
 	ChangeTypeIndexAdded           ChangeType = "index_added"
 	ChangeTypeIndexRemoved         ChangeType = "index_removed"
+	ChangeTypeForeignKeyAdded      ChangeType = "foreign_key_added"
+	ChangeTypeForeignKeyRemoved    ChangeType = "foreign_key_removed"
 	ChangeTypeDefaultsModified     ChangeType = "defaults_modified"      // non-destructive: updates active schema defaults
 	ChangeTypeTypeMappingsModified ChangeType = "type_mappings_modified" // non-destructive: updates active provider type mappings
 )
@@ -104,6 +106,11 @@ func (de *DiffEngine) CompareSchemas(oldSchema, newSchema *Schema) (*SchemaDiff,
 					Description: fmt.Sprintf("Add table '%s'", table.Name),
 					NewValue:    table,
 				})
+				// Emit companion FK changes for any foreign_key fields in the new table.
+				// ChangeTypeTableAdded must come before ChangeTypeForeignKeyAdded so the
+				// code generator can process column creation before constraint creation.
+				fkChanges := fkChangesForFields(table.Name, table.Fields, nil)
+				diff.Changes = append(diff.Changes, fkChanges...)
 			}
 		}
 		diff.HasChanges = len(diff.Changes) > 0
@@ -146,6 +153,11 @@ func (de *DiffEngine) CompareSchemas(oldSchema, newSchema *Schema) (*SchemaDiff,
 				Description: fmt.Sprintf("Add table '%s'", tableName),
 				NewValue:    *newTable,
 			})
+			// Emit companion FK changes for any foreign_key fields in the new table.
+			// ChangeTypeTableAdded must come before ChangeTypeForeignKeyAdded so the
+			// code generator can process column creation before constraint creation.
+			fkChanges := fkChangesForFields(tableName, newTable.Fields, nil)
+			diff.Changes = append(diff.Changes, fkChanges...)
 			if de.verbose {
 				fmt.Printf("Table added: %s\n", tableName)
 			}
@@ -251,6 +263,36 @@ func (de *DiffEngine) compareTablesForChanges(oldTable, newTable *Table) ([]Chan
 			changes = append(changes, fieldChanges...)
 		}
 	}
+
+	// Emit companion FK changes for any foreign_key fields added or removed.
+	// We collect the added/removed field slices by re-walking the field maps so
+	// that the logic stays self-contained and independent of the loops above.
+	var addedFKFields, removedFKFields []Field
+	for _, newField := range newTable.Fields {
+		found := false
+		for _, oldField := range oldTable.Fields {
+			if oldField.Name == newField.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			addedFKFields = append(addedFKFields, newField)
+		}
+	}
+	for _, oldField := range oldTable.Fields {
+		found := false
+		for _, newField := range newTable.Fields {
+			if newField.Name == oldField.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			removedFKFields = append(removedFKFields, oldField)
+		}
+	}
+	changes = append(changes, fkChangesForFields(newTable.Name, addedFKFields, removedFKFields)...)
 
 	// Compare indexes
 	indexChanges := de.compareIndexes(oldTable, newTable)
@@ -581,4 +623,38 @@ func isIndexEqual(idx1, idx2 *Index) bool {
 		}
 	}
 	return true
+}
+
+// fkChangesForFields emits FK change records for foreign_key fields that are
+// present in addedFields (ChangeTypeForeignKeyAdded) or removedFields (ChangeTypeForeignKeyRemoved).
+func fkChangesForFields(tableName string, addedFields, removedFields []Field) []Change {
+	var changes []Change
+	for _, f := range addedFields {
+		if f.Type != "foreign_key" || f.ForeignKey == nil {
+			continue
+		}
+		constraintName := fmt.Sprintf("fk_%s_%s", tableName, f.Name)
+		changes = append(changes, Change{
+			Type:        ChangeTypeForeignKeyAdded,
+			TableName:   tableName,
+			FieldName:   f.Name,
+			Description: fmt.Sprintf("Add foreign key %s on %s.%s → %s", constraintName, tableName, f.Name, f.ForeignKey.Table),
+			NewValue:    f,
+		})
+	}
+	for _, f := range removedFields {
+		if f.Type != "foreign_key" || f.ForeignKey == nil {
+			continue
+		}
+		constraintName := fmt.Sprintf("fk_%s_%s", tableName, f.Name)
+		changes = append(changes, Change{
+			Type:        ChangeTypeForeignKeyRemoved,
+			TableName:   tableName,
+			FieldName:   f.Name,
+			Description: fmt.Sprintf("Remove foreign key %s from %s.%s", constraintName, tableName, f.Name),
+			OldValue:    f,
+			Destructive: true,
+		})
+	}
+	return changes
 }

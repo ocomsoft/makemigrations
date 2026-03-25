@@ -193,11 +193,18 @@ func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) str
 		indexType = "UNIQUE INDEX"
 	}
 
-	return fmt.Sprintf("CREATE %s %s ON %s (%s);",
+	sql := fmt.Sprintf("CREATE %s %s ON %s",
 		indexType,
 		p.QuoteName(index.Name),
-		p.QuoteName(tableName),
-		strings.Join(quotedFields, ", "))
+		p.QuoteName(tableName))
+	if index.Method != "" {
+		sql += fmt.Sprintf(" USING %s", strings.ToUpper(index.Method))
+	}
+	sql += fmt.Sprintf(" (%s)", strings.Join(quotedFields, ", "))
+	if index.Where != "" {
+		sql += fmt.Sprintf(" WHERE %s", index.Where)
+	}
+	return sql + ";"
 }
 
 // GenerateDropIndex generates DROP INDEX statement for PostgreSQL

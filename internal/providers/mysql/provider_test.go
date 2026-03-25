@@ -283,3 +283,12 @@ func TestProvider_GenerateAddColumn_WithDefault(t *testing.T) {
 		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
 	}
 }
+
+func TestProvider_GenerateCreateIndex_WithMethod(t *testing.T) {
+	p := New()
+	idx := &types.Index{Name: "u_email_hash_idx", Fields: []string{"email"}, Method: "HASH"}
+	sql := p.GenerateCreateIndex(idx, "users")
+	if !strings.Contains(sql, "USING HASH") {
+		t.Errorf("expected USING HASH, got: %s", sql)
+	}
+}

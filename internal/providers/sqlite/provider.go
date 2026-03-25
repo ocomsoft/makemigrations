@@ -120,12 +120,14 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 	case "boolean":
 		return "INTEGER"
 	case "date", "time", "timestamp":
-		if field.Type == "date" {
+		switch field.Type {
+		case "date":
 			return "DATE"
-		} else if field.Type == "time" {
+		case "time":
 			return "TIME"
+		default:
+			return "DATETIME"
 		}
-		return "DATETIME"
 	case "uuid", "jsonb":
 		return "TEXT"
 	default:
@@ -142,7 +144,8 @@ func (p *Provider) GetDefaultValue(defaultRef string, defaults map[string]string
 	return fmt.Sprintf("'%s'", defaultRef), nil
 }
 
-// GenerateCreateIndex generates CREATE INDEX statement for SQLite
+// GenerateCreateIndex generates CREATE INDEX statement for SQLite.
+// SQLite supports WHERE clauses for partial indexes but does not support Method (USING clause).
 func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) string {
 	var quotedFields []string
 	for _, fieldName := range index.Fields {
@@ -154,11 +157,17 @@ func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) str
 		indexType = "UNIQUE INDEX"
 	}
 
-	return fmt.Sprintf("CREATE %s %s ON %s (%s);",
+	sql := fmt.Sprintf("CREATE %s %s ON %s (%s)",
 		indexType,
 		p.QuoteName(index.Name),
 		p.QuoteName(tableName),
 		strings.Join(quotedFields, ", "))
+
+	if index.Where != "" {
+		sql += fmt.Sprintf(" WHERE %s", index.Where)
+	}
+
+	return sql + ";"
 }
 
 // GenerateDropIndex generates DROP INDEX statement for SQLite

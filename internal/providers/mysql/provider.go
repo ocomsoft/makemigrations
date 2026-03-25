@@ -157,7 +157,8 @@ func (p *Provider) GetDefaultValue(defaultRef string, defaults map[string]string
 	return fmt.Sprintf("'%s'", defaultRef), nil
 }
 
-// GenerateCreateIndex generates CREATE INDEX statement for MySQL
+// GenerateCreateIndex generates CREATE INDEX statement for MySQL.
+// MySQL supports Method (USING clause for index type) but does not support WHERE clauses.
 func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) string {
 	var quotedFields []string
 	for _, fieldName := range index.Fields {
@@ -169,11 +170,18 @@ func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) str
 		indexType = "UNIQUE INDEX"
 	}
 
-	return fmt.Sprintf("CREATE %s %s ON %s (%s);",
+	sql := fmt.Sprintf("CREATE %s %s ON %s",
 		indexType,
 		p.QuoteName(index.Name),
-		p.QuoteName(tableName),
-		strings.Join(quotedFields, ", "))
+		p.QuoteName(tableName))
+
+	if index.Method != "" {
+		sql += fmt.Sprintf(" USING %s", strings.ToUpper(index.Method))
+	}
+
+	sql += fmt.Sprintf(" (%s)", strings.Join(quotedFields, ", "))
+
+	return sql + ";"
 }
 
 // GenerateDropIndex generates DROP INDEX statement for MySQL

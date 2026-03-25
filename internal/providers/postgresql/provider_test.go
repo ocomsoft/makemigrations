@@ -352,3 +352,21 @@ func TestProvider_GenerateAddColumn_NullableWithDefault(t *testing.T) {
 		t.Errorf("GenerateAddColumn() = %q; want %q", got, expected)
 	}
 }
+
+func TestGenerateCreateIndex_WithMethod(t *testing.T) {
+	p := New()
+	idx := &types.Index{Name: "users_email_gin_idx", Fields: []string{"email"}, Method: "GIN"}
+	sql := p.GenerateCreateIndex(idx, "users")
+	if !strings.Contains(sql, "USING GIN") {
+		t.Errorf("expected USING GIN in SQL, got: %s", sql)
+	}
+}
+
+func TestGenerateCreateIndex_WithWhere(t *testing.T) {
+	p := New()
+	idx := &types.Index{Name: "users_active_idx", Fields: []string{"email"}, Where: "active = true"}
+	sql := p.GenerateCreateIndex(idx, "users")
+	if !strings.Contains(sql, "WHERE active = true") {
+		t.Errorf("expected WHERE clause in SQL, got: %s", sql)
+	}
+}

@@ -152,7 +152,8 @@ func (p *Provider) GetDefaultValue(defaultRef string, defaults map[string]string
 	return fmt.Sprintf("'%s'", defaultRef), nil
 }
 
-// GenerateCreateIndex generates CREATE INDEX statement for SQL Server
+// GenerateCreateIndex generates CREATE INDEX statement for SQL Server.
+// SQL Server supports WHERE clauses for filtered indexes but does not support Method (USING clause).
 func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) string {
 	var quotedFields []string
 	for _, fieldName := range index.Fields {
@@ -164,11 +165,17 @@ func (p *Provider) GenerateCreateIndex(index *types.Index, tableName string) str
 		indexType = "UNIQUE INDEX"
 	}
 
-	return fmt.Sprintf("CREATE %s %s ON %s (%s);",
+	sql := fmt.Sprintf("CREATE %s %s ON %s (%s)",
 		indexType,
 		p.QuoteName(index.Name),
 		p.QuoteName(tableName),
 		strings.Join(quotedFields, ", "))
+
+	if index.Where != "" {
+		sql += fmt.Sprintf(" WHERE %s", index.Where)
+	}
+
+	return sql + ";"
 }
 
 // GenerateDropIndex generates DROP INDEX statement for SQL Server

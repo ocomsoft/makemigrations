@@ -191,6 +191,8 @@ func TestSchemaStateToYAMLSchema_EmptyState(t *testing.T) {
 
 // TestSchemaStateToYAMLSchema_WithTables verifies that tables, fields, and
 // indexes are correctly converted from SchemaState to yaml.Schema.
+// FK annotation is only present in the output when the constraint exists in
+// state — this enables the diff engine to detect missing FK constraints.
 func TestSchemaStateToYAMLSchema_WithTables(t *testing.T) {
 	state := migrate.NewSchemaState()
 	err := state.AddTable("users", []migrate.Field{
@@ -211,6 +213,25 @@ func TestSchemaStateToYAMLSchema_WithTables(t *testing.T) {
 	}, nil)
 	if err != nil {
 		t.Fatalf("AddTable: %v", err)
+	}
+
+	// Without an FK constraint in state, the FK annotation must be nil so the
+	// diff engine can detect the missing constraint.
+	resultNoConstraint := schemaStateToYAMLSchema(state, "postgresql")
+	usersTableNoConstraint := resultNoConstraint.Tables[1] // sorted: orgs, users
+	orgFieldNoConstraint := usersTableNoConstraint.Fields[2]
+	if orgFieldNoConstraint.ForeignKey != nil {
+		t.Error("expected ForeignKey to be nil when constraint is absent from state")
+	}
+
+	// Add the FK constraint to state — the annotation should now be present.
+	if err := state.AddForeignKey("users", migrate.ForeignKeyConstraint{
+		Name:            "fk_users_org_id",
+		FieldName:       "org_id",
+		ReferencedTable: "orgs",
+		OnDelete:        "CASCADE",
+	}); err != nil {
+		t.Fatalf("AddForeignKey: %v", err)
 	}
 
 	result := schemaStateToYAMLSchema(state, "postgresql")
@@ -250,10 +271,10 @@ func TestSchemaStateToYAMLSchema_WithTables(t *testing.T) {
 		t.Errorf("expected name length 100, got %d", nameField.Length)
 	}
 
-	// Verify foreign key field
+	// Verify foreign key field — annotation present because constraint exists in state
 	orgField := usersTable.Fields[2]
 	if orgField.ForeignKey == nil {
-		t.Fatal("expected foreign key on org_id field")
+		t.Fatal("expected foreign key on org_id field when constraint is in state")
 	}
 	if orgField.ForeignKey.Table != "orgs" {
 		t.Errorf("expected FK table 'orgs', got %q", orgField.ForeignKey.Table)

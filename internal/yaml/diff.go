@@ -386,26 +386,52 @@ func (de *DiffEngine) compareFieldsForChanges(tableName string, oldField, newFie
 		})
 	}
 
-	// Foreign key changes
+	// Foreign key constraint changes — for foreign_key typed fields the
+	// constraint is tracked independently from the column. Emit FK
+	// operations (not FieldModified) so the code generator produces
+	// AddForeignKey / DropForeignKey rather than an AlterField.
 	if !de.compareForeignKeys(oldField.ForeignKey, newField.ForeignKey) {
-		oldFK := "none"
-		newFK := "none"
-		if oldField.ForeignKey != nil {
-			oldFK = oldField.ForeignKey.Table
+		if oldField.Type == "foreign_key" || newField.Type == "foreign_key" {
+			if oldField.ForeignKey != nil {
+				constraintName := fmt.Sprintf("fk_%s_%s", tableName, oldField.Name)
+				changes = append(changes, Change{
+					Type:        ChangeTypeForeignKeyRemoved,
+					TableName:   tableName,
+					FieldName:   oldField.Name,
+					Description: fmt.Sprintf("Remove foreign key %s from %s.%s", constraintName, tableName, oldField.Name),
+					OldValue:    *oldField,
+					Destructive: true,
+				})
+			}
+			if newField.ForeignKey != nil {
+				constraintName := fmt.Sprintf("fk_%s_%s", tableName, newField.Name)
+				changes = append(changes, Change{
+					Type:        ChangeTypeForeignKeyAdded,
+					TableName:   tableName,
+					FieldName:   newField.Name,
+					Description: fmt.Sprintf("Add foreign key %s on %s.%s → %s", constraintName, tableName, newField.Name, newField.ForeignKey.Table),
+					NewValue:    *newField,
+				})
+			}
+		} else {
+			oldFK := "none"
+			newFK := "none"
+			if oldField.ForeignKey != nil {
+				oldFK = oldField.ForeignKey.Table
+			}
+			if newField.ForeignKey != nil {
+				newFK = newField.ForeignKey.Table
+			}
+			changes = append(changes, Change{
+				Type:        ChangeTypeFieldModified,
+				TableName:   tableName,
+				FieldName:   oldField.Name,
+				Description: fmt.Sprintf("Change field '%s.%s' foreign key from %s to %s", tableName, oldField.Name, oldFK, newFK),
+				OldValue:    oldField.ForeignKey,
+				NewValue:    newField.ForeignKey,
+				Destructive: newField.ForeignKey == nil && oldField.ForeignKey != nil,
+			})
 		}
-		if newField.ForeignKey != nil {
-			newFK = newField.ForeignKey.Table
-		}
-
-		changes = append(changes, Change{
-			Type:        ChangeTypeFieldModified,
-			TableName:   tableName,
-			FieldName:   oldField.Name,
-			Description: fmt.Sprintf("Change field '%s.%s' foreign key from %s to %s", tableName, oldField.Name, oldFK, newFK),
-			OldValue:    oldField.ForeignKey,
-			NewValue:    newField.ForeignKey,
-			Destructive: newField.ForeignKey == nil && oldField.ForeignKey != nil, // Removing FK is destructive
-		})
 	}
 
 	if de.verbose && len(changes) > 0 {
@@ -612,6 +638,12 @@ func (de *DiffEngine) compareIndexes(oldTable, newTable *Table) []Change {
 // isIndexEqual compares two index definitions
 func isIndexEqual(idx1, idx2 *Index) bool {
 	if idx1.Unique != idx2.Unique {
+		return false
+	}
+	if idx1.Method != idx2.Method {
+		return false
+	}
+	if idx1.Where != idx2.Where {
 		return false
 	}
 	if len(idx1.Fields) != len(idx2.Fields) {

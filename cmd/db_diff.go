@@ -511,6 +511,9 @@ func sortedKeys(m map[string][]yamlpkg.Change) []string {
 
 // isForeignKeyChange returns true if the change involves a foreign key modification.
 func isForeignKeyChange(ch yamlpkg.Change) bool {
+	if ch.Type == yamlpkg.ChangeTypeForeignKeyAdded || ch.Type == yamlpkg.ChangeTypeForeignKeyRemoved {
+		return true
+	}
 	if _, ok := ch.OldValue.(*yamlpkg.ForeignKey); ok {
 		return true
 	}

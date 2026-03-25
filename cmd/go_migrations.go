@@ -442,9 +442,20 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 				AutoUpdate: f.AutoUpdate,
 			}
 			if f.ForeignKey != nil {
-				yf.ForeignKey = &yamlpkg.ForeignKey{
-					Table:    f.ForeignKey.Table,
-					OnDelete: f.ForeignKey.OnDelete,
+				// Only include the FK annotation when the constraint actually exists in
+				// the migration state. If it is absent (e.g. tables created before
+				// AddForeignKey support was introduced), leave ForeignKey nil so the
+				// diff engine detects the missing constraint and emits
+				// ChangeTypeForeignKeyAdded.
+				constraintName := fmt.Sprintf("fk_%s_%s", ts.Name, f.Name)
+				for _, fkc := range ts.ForeignKeys {
+					if fkc.Name == constraintName {
+						yf.ForeignKey = &yamlpkg.ForeignKey{
+							Table:    f.ForeignKey.Table,
+							OnDelete: f.ForeignKey.OnDelete,
+						}
+						break
+					}
 				}
 			}
 			t.Fields = append(t.Fields, yf)
@@ -454,6 +465,8 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 				Name:   idx.Name,
 				Fields: idx.Fields,
 				Unique: idx.Unique,
+				Method: idx.Method,
+				Where:  idx.Where,
 			})
 		}
 		schema.Tables = append(schema.Tables, t)

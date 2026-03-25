@@ -35,8 +35,8 @@ import (
 
 // migrateCmd compiles the migrations module and runs it with the given args.
 // DisableFlagParsing passes all arguments — including any flags intended for
-// the binary — through unchanged. --verbose / -v are intercepted locally and
-// stripped before forwarding so they control build output only.
+// the binary — through unchanged. --verbose / -v and --dont-upgrade are
+// intercepted locally and stripped before forwarding.
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [args...]",
 	Short: "Build and run the compiled migrations binary",
@@ -54,24 +54,35 @@ binary unchanged, so every subcommand the binary supports is available:
 
 Pass --verbose (or -v) to see build output:
 
-  makemigrations migrate --verbose up`,
+  makemigrations migrate --verbose up
+
+By default the command upgrades the migrations go.mod to match the running CLI
+version before building. Pass --dont-upgrade to skip this step (useful in CI
+environments where go.mod must not be modified at runtime):
+
+  makemigrations migrate --dont-upgrade up`,
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
 	RunE: func(_ *cobra.Command, args []string) error {
 		cfg := config.LoadOrDefault(configFile)
 
-		// Intercept --verbose / -v so it controls build output only.
+		// Intercept --verbose / -v and --dont-upgrade so they control build
+		// behaviour only and are not forwarded to the migrations binary.
 		verbose := false
+		upgrade := true
 		var binaryArgs []string
 		for _, a := range args {
-			if a == "--verbose" || a == "-v" {
+			switch a {
+			case "--verbose", "-v":
 				verbose = true
-			} else {
+			case "--dont-upgrade":
+				upgrade = false
+			default:
 				binaryArgs = append(binaryArgs, a)
 			}
 		}
 
-		return ExecuteMigrate(cfg.Migration.Directory, binaryArgs, verbose)
+		return ExecuteMigrate(cfg.Migration.Directory, binaryArgs, verbose, upgrade)
 	},
 }
 
@@ -82,8 +93,12 @@ func init() {
 // ExecuteMigrate builds the migrations binary for migrationsDir and runs it
 // with the provided args. stdin, stdout and stderr are inherited so interactive
 // prompts and coloured output from the binary work correctly.
-func ExecuteMigrate(migrationsDir string, args []string, verbose bool) error {
-	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose)
+//
+// When upgrade is true the migrations go.mod is brought up to the same
+// makemigrations version as the running CLI before building. Pass false to
+// skip this step (--dont-upgrade flag).
+func ExecuteMigrate(migrationsDir string, args []string, verbose bool, upgrade bool) error {
+	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose, upgrade)
 	if err != nil {
 		return fmt.Errorf("building migrations binary: %w", err)
 	}

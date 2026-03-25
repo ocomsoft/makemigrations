@@ -42,6 +42,7 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/version"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 )
@@ -300,7 +301,14 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 // buildMigrationsBinary compiles the migrations module in migrationsDir into a
 // temporary binary. It returns the binary path and a cleanup function that
 // removes the temporary directory. The caller must invoke cleanup() when done.
-func buildMigrationsBinary(migrationsDir string, verbose bool) (binPath string, cleanup func(), err error) {
+//
+// When upgrade is true and no local replace directive is found, the function
+// checks whether the migrations go.mod requires an older version of
+// github.com/ocomsoft/makemigrations and runs go get to bring it up to the
+// version currently running. Pass upgrade=false (--dont-upgrade flag) to skip
+// this step, which is useful in CI environments where go.mod must not be
+// modified at runtime.
+func buildMigrationsBinary(migrationsDir string, verbose bool, upgrade bool) (binPath string, cleanup func(), err error) {
 	absMigrationsDir, err := filepath.Abs(migrationsDir)
 	if err != nil {
 		return "", nil, fmt.Errorf("resolving migrations dir: %w", err)
@@ -336,6 +344,14 @@ func buildMigrationsBinary(migrationsDir string, verbose bool) (binPath string, 
 	// If found, include it in the workspace so the build resolves locally
 	// without any network access or go.sum concerns.
 	localMakemig := findLocalMakemigrations(parentDir)
+
+	// When upgrade is requested and no local replace is active, ensure the
+	// migrations module depends on the same makemigrations version as the
+	// running CLI binary. This prevents runtime mismatches where operations
+	// added in a newer release are unavailable to the compiled binary.
+	if upgrade && localMakemig == "" {
+		upgradeMakemigrationsVersion(absMigrationsDir, verbose)
+	}
 
 	// Build a temporary go.work that includes the migrations module (and
 	// optionally a local makemigrations). This solves two problems:
@@ -388,11 +404,53 @@ func buildMigrationsBinary(migrationsDir string, verbose bool) (binPath string, 
 	return tmpBin, cleanup, nil
 }
 
+// upgradeMakemigrationsVersion checks whether the migrations go.mod requires a
+// different version of github.com/ocomsoft/makemigrations than the running CLI
+// binary and runs go get to align them. It runs with GOWORK=off so it operates
+// directly on the migrations module without workspace interference. Errors are
+// non-fatal and only surfaced when verbose is true.
+func upgradeMakemigrationsVersion(migrationsDir string, verbose bool) {
+	const modPkg = "github.com/ocomsoft/makemigrations"
+	target := "v" + version.GetVersion()
+
+	goModPath := filepath.Join(migrationsDir, "go.mod")
+	data, err := os.ReadFile(goModPath)
+	if err != nil {
+		// No go.mod found — nothing to upgrade.
+		return
+	}
+
+	f, err := modfile.Parse(goModPath, data, nil)
+	if err != nil {
+		if verbose {
+			fmt.Printf("Warning: could not parse %s: %v\n", goModPath, err)
+		}
+		return
+	}
+
+	for _, req := range f.Require {
+		if req.Mod.Path == modPkg {
+			if req.Mod.Version == target {
+				// Already at the correct version.
+				return
+			}
+			fmt.Printf("Upgrading %s %s → %s\n", modPkg, req.Mod.Version, target)
+			getCmd := exec.Command("go", "get", modPkg+"@"+target)
+			getCmd.Dir = migrationsDir
+			getCmd.Env = append(os.Environ(), "GOWORK=off")
+			if out, getErr := getCmd.CombinedOutput(); getErr != nil {
+				fmt.Printf("Warning: go get %s@%s failed: %v\n%s\n", modPkg, target, getErr, string(out))
+			}
+			return
+		}
+	}
+}
+
 // queryDAG builds the migrations binary in a temporary directory and runs
 // `dag --format json` to retrieve the current migration graph state. The
 // binary is cleaned up automatically when the function returns.
 func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
-	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose)
+	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose, true)
 	if err != nil {
 		return nil, err
 	}

@@ -44,6 +44,7 @@ func resetDumpDataFlags() {
 	dumpDataVerbose = false
 	dumpDataConflictKey = nil
 	dumpDataDSN = ""
+	dumpDataWhere = nil
 	configFile = ""
 	// Reset shared DB connection vars (declared in db2schema.go)
 	host = ""
@@ -180,6 +181,91 @@ func TestDumpData_MissingArg(t *testing.T) {
 	}
 }
 
+// TestResolveWhere_PerTable verifies that table:condition syntax targets only
+// the named table.
+func TestResolveWhere_PerTable(t *testing.T) {
+	t.Cleanup(func() { dumpDataWhere = nil })
+
+	dumpDataWhere = []string{"users:status='active'", "orders:total > 0"}
+	tables := []string{"users", "orders"}
+
+	got := resolveWhere("users", tables)
+	if got != "status='active'" {
+		t.Errorf("resolveWhere(users) = %q, want %q", got, "status='active'")
+	}
+
+	got = resolveWhere("orders", tables)
+	if got != "total > 0" {
+		t.Errorf("resolveWhere(orders) = %q, want %q", got, "total > 0")
+	}
+
+	got = resolveWhere("other", tables)
+	if got != "" {
+		t.Errorf("resolveWhere(other) = %q, want empty", got)
+	}
+}
+
+// TestResolveWhere_Bare verifies that a condition without a table prefix
+// applies to all tables.
+func TestResolveWhere_Bare(t *testing.T) {
+	t.Cleanup(func() { dumpDataWhere = nil })
+
+	dumpDataWhere = []string{"active = 1"}
+	tables := []string{"users", "orders"}
+
+	got := resolveWhere("users", tables)
+	if got != "active = 1" {
+		t.Errorf("resolveWhere(users) = %q, want %q", got, "active = 1")
+	}
+
+	got = resolveWhere("orders", tables)
+	if got != "active = 1" {
+		t.Errorf("resolveWhere(orders) = %q, want %q", got, "active = 1")
+	}
+}
+
+// TestResolveWhere_Combined verifies that multiple matching entries are
+// joined with AND.
+func TestResolveWhere_Combined(t *testing.T) {
+	t.Cleanup(func() { dumpDataWhere = nil })
+
+	dumpDataWhere = []string{"users:status='active'", "users:age > 18", "visible = 1"}
+	tables := []string{"users"}
+
+	got := resolveWhere("users", tables)
+	expected := "status='active' AND age > 18 AND visible = 1"
+	if got != expected {
+		t.Errorf("resolveWhere(users) = %q, want %q", got, expected)
+	}
+}
+
+// TestResolveWhere_Empty verifies that no --where flags returns empty string.
+func TestResolveWhere_Empty(t *testing.T) {
+	t.Cleanup(func() { dumpDataWhere = nil })
+
+	dumpDataWhere = nil
+
+	got := resolveWhere("users", []string{"users"})
+	if got != "" {
+		t.Errorf("resolveWhere(users) = %q, want empty", got)
+	}
+}
+
+// TestResolveWhere_ColonInCondition verifies that colons inside SQL values
+// (e.g. timestamps) are not misinterpreted as table:condition separators.
+func TestResolveWhere_ColonInCondition(t *testing.T) {
+	t.Cleanup(func() { dumpDataWhere = nil })
+
+	dumpDataWhere = []string{"created_at > '2025-01-01 10:30:00'"}
+	tables := []string{"events"}
+
+	got := resolveWhere("events", tables)
+	expected := "created_at > '2025-01-01 10:30:00'"
+	if got != expected {
+		t.Errorf("resolveWhere(events) = %q, want %q", got, expected)
+	}
+}
+
 // TestDumpData_NoMigrationsDir_PKFromFlag verifies the fallback path where
 // there are no existing migrations and primary keys come from --conflict-key.
 func TestDumpData_NoMigrationsDir_PKFromFlag(t *testing.T) {
@@ -226,5 +312,99 @@ func TestDumpData_NoMigrationsDir_PKFromFlag(t *testing.T) {
 
 	if !strings.Contains(output, "green") {
 		t.Errorf("expected output to contain row value 'green', got:\n%s", output)
+	}
+}
+
+// TestDumpData_WhereFlag verifies that --where filters rows in the generated
+// migration output.
+func TestDumpData_WhereFlag(t *testing.T) {
+	t.Cleanup(func() {
+		resetDumpDataFlags()
+		rootCmd.SetArgs([]string{})
+	})
+
+	tmpDir := t.TempDir()
+	migrationsDir := filepath.Join(tmpDir, "migrations")
+	dbPath := filepath.Join(tmpDir, "test.db")
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+
+	createTestSQLiteDB(t, dbPath, `
+		CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, active INTEGER);
+		INSERT INTO products (id, name, active) VALUES (1, 'Widget', 1);
+		INSERT INTO products (id, name, active) VALUES (2, 'Gadget', 0);
+		INSERT INTO products (id, name, active) VALUES (3, 'Doohickey', 1);
+	`)
+
+	writeTestConfig(t, cfgPath, migrationsDir)
+
+	rootCmd.SetArgs([]string{
+		"--config", cfgPath,
+		"dump-data", "products",
+		"--dsn", dbPath,
+		"--conflict-key", "id",
+		"--where", "products:active = 1",
+		"--dry-run",
+	})
+
+	output := captureStdout(t, func() {
+		err := rootCmd.Execute()
+		if err != nil {
+			t.Fatalf("rootCmd.Execute: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, "Widget") {
+		t.Errorf("expected output to contain 'Widget', got:\n%s", output)
+	}
+	if !strings.Contains(output, "Doohickey") {
+		t.Errorf("expected output to contain 'Doohickey', got:\n%s", output)
+	}
+	if strings.Contains(output, "Gadget") {
+		t.Errorf("expected output NOT to contain 'Gadget', got:\n%s", output)
+	}
+}
+
+// TestDumpData_WhereFlagBare verifies that a bare --where (no table: prefix)
+// applies the filter to all tables.
+func TestDumpData_WhereFlagBare(t *testing.T) {
+	t.Cleanup(func() {
+		resetDumpDataFlags()
+		rootCmd.SetArgs([]string{})
+	})
+
+	tmpDir := t.TempDir()
+	migrationsDir := filepath.Join(tmpDir, "migrations")
+	dbPath := filepath.Join(tmpDir, "test.db")
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+
+	createTestSQLiteDB(t, dbPath, `
+		CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT, active INTEGER);
+		INSERT INTO items (id, name, active) VALUES (1, 'A', 1);
+		INSERT INTO items (id, name, active) VALUES (2, 'B', 0);
+	`)
+
+	writeTestConfig(t, cfgPath, migrationsDir)
+
+	rootCmd.SetArgs([]string{
+		"--config", cfgPath,
+		"dump-data", "items",
+		"--dsn", dbPath,
+		"--conflict-key", "id",
+		"--where", "active = 1",
+		"--dry-run",
+	})
+
+	output := captureStdout(t, func() {
+		err := rootCmd.Execute()
+		if err != nil {
+			t.Fatalf("rootCmd.Execute: %v", err)
+		}
+	})
+
+	if !strings.Contains(output, `"A"`) {
+		t.Errorf("expected output to contain 'A', got:\n%s", output)
+	}
+	if strings.Contains(output, `"B"`) {
+		t.Errorf("expected output NOT to contain 'B', got:\n%s", output)
 	}
 }

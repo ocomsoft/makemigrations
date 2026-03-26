@@ -45,6 +45,7 @@ var (
 	dumpDataVerbose     bool
 	dumpDataConflictKey []string
 	dumpDataDSN         string
+	dumpDataWhere       []string
 )
 
 // dumpDataCmd is the "makemigrations dump-data" subcommand. It connects to a
@@ -77,7 +78,13 @@ Examples:
   makemigrations dump-data countries --dry-run
 
   # Use a full DSN instead of individual flags
-  makemigrations dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"`,
+  makemigrations dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+
+  # Filter rows with a WHERE clause
+  makemigrations dump-data users --where "users:status='active'"
+
+  # Apply the same filter to all tables
+  makemigrations dump-data countries currencies --where "active = 1"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runDumpData,
 }
@@ -95,6 +102,8 @@ func init() {
 		"Override PK detection; applied to all tables")
 	dumpDataCmd.Flags().StringVar(&dumpDataDSN, "dsn", "",
 		"Full database DSN (overrides host/port/etc)")
+	dumpDataCmd.Flags().StringSliceVar(&dumpDataWhere, "where", nil,
+		`WHERE filter per table; use "table:condition" for per-table or just "condition" for all tables`)
 
 	// Register DB connection flags bound to existing package-level vars
 	// declared in cmd/db2schema.go.
@@ -173,11 +182,17 @@ func runDumpData(_ *cobra.Command, args []string) error {
 			)
 		}
 
+		whereClause := resolveWhere(tableName, args)
+
 		if dumpDataVerbose {
-			fmt.Printf("Fetching rows from %q (conflict keys: %v)...\n", tableName, conflictKeys)
+			msg := fmt.Sprintf("Fetching rows from %q (conflict keys: %v)", tableName, conflictKeys)
+			if whereClause != "" {
+				msg += fmt.Sprintf(" WHERE %s", whereClause)
+			}
+			fmt.Println(msg + "...")
 		}
 
-		rows, _, fetchErr := dumpdata.FetchRows(db, tableName, "")
+		rows, _, fetchErr := dumpdata.FetchRows(db, tableName, whereClause)
 		if fetchErr != nil {
 			return fmt.Errorf("fetching rows from %q: %w", tableName, fetchErr)
 		}
@@ -329,4 +344,37 @@ func buildDumpAutoName(tables []string) string {
 	}
 
 	return "dump_data"
+}
+
+// resolveWhere returns the WHERE clause for the given table based on the
+// --where flag values. Entries in "table:condition" format apply only to the
+// named table — but only if the prefix matches a known table name from the
+// command args. This avoids misinterpreting colons inside SQL values (e.g.
+// timestamps like '10:30:00') as a table separator. Bare entries (no matching
+// table prefix) apply to all tables. If multiple entries match, they are
+// combined with AND.
+func resolveWhere(tableName string, knownTables []string) string {
+	tableSet := make(map[string]bool, len(knownTables))
+	for _, t := range knownTables {
+		tableSet[t] = true
+	}
+
+	var conditions []string
+
+	for _, w := range dumpDataWhere {
+		if idx := strings.Index(w, ":"); idx > 0 {
+			prefix := w[:idx]
+			if tableSet[prefix] {
+				cond := w[idx+1:]
+				if prefix == tableName {
+					conditions = append(conditions, cond)
+				}
+				continue
+			}
+		}
+		// Bare condition — applies to all tables.
+		conditions = append(conditions, w)
+	}
+
+	return strings.Join(conditions, " AND ")
 }

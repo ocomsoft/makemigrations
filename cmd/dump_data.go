@@ -177,7 +177,7 @@ func runDumpData(_ *cobra.Command, args []string) error {
 			fmt.Printf("Fetching rows from %q (conflict keys: %v)...\n", tableName, conflictKeys)
 		}
 
-		rows, _, fetchErr := dumpdata.FetchRows(db, tableName)
+		rows, _, fetchErr := dumpdata.FetchRows(db, tableName, "")
 		if fetchErr != nil {
 			return fmt.Errorf("fetching rows from %q: %w", tableName, fetchErr)
 		}

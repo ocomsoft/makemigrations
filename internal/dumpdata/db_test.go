@@ -79,7 +79,7 @@ func TestFetchRows_SQLite(t *testing.T) {
 		t.Fatalf("failed to insert rows: %v", err)
 	}
 
-	rows, cols, err := dumpdata.FetchRows(db, "items")
+	rows, cols, err := dumpdata.FetchRows(db, "items", "")
 	if err != nil {
 		t.Fatalf("FetchRows returned error: %v", err)
 	}
@@ -184,5 +184,74 @@ func TestDetectPrimaryKeys_UnsupportedDB(t *testing.T) {
 	}
 	if pks != nil {
 		t.Errorf("expected nil primary keys for unsupported DB, got: %v", pks)
+	}
+}
+
+// TestFetchRows_WithWhere verifies that FetchRows applies a WHERE clause
+// to filter rows when a non-empty where string is provided.
+func TestFetchRows_WithWhere(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite3: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	_, err = db.Exec(`CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, active INTEGER)`)
+	if err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	_, err = db.Exec(`INSERT INTO products (id, name, active) VALUES
+		(1, 'Widget', 1), (2, 'Gadget', 0), (3, 'Doohickey', 1)`)
+	if err != nil {
+		t.Fatalf("failed to insert rows: %v", err)
+	}
+
+	rows, cols, err := dumpdata.FetchRows(db, "products", "active = 1")
+	if err != nil {
+		t.Fatalf("FetchRows returned error: %v", err)
+	}
+
+	if len(rows) != 2 {
+		t.Errorf("expected 2 rows with active=1, got %d", len(rows))
+	}
+
+	if len(cols) != 3 {
+		t.Errorf("expected 3 columns, got %d", len(cols))
+	}
+
+	for i, row := range rows {
+		if row["active"] != int64(1) {
+			t.Errorf("row %d: expected active=1, got %v", i, row["active"])
+		}
+	}
+}
+
+// TestFetchRows_EmptyWhere verifies that FetchRows with an empty where string
+// returns all rows (backward-compatible behavior).
+func TestFetchRows_EmptyWhere(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("failed to open sqlite3: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	_, err = db.Exec(`CREATE TABLE colors (id INTEGER PRIMARY KEY, name TEXT)`)
+	if err != nil {
+		t.Fatalf("failed to create table: %v", err)
+	}
+
+	_, err = db.Exec(`INSERT INTO colors (id, name) VALUES (1, 'Red'), (2, 'Blue')`)
+	if err != nil {
+		t.Fatalf("failed to insert rows: %v", err)
+	}
+
+	rows, _, err := dumpdata.FetchRows(db, "colors", "")
+	if err != nil {
+		t.Fatalf("FetchRows returned error: %v", err)
+	}
+
+	if len(rows) != 2 {
+		t.Errorf("expected 2 rows, got %d", len(rows))
 	}
 }

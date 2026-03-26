@@ -180,18 +180,28 @@ func queryStringColumn(db *sql.DB, query string, args ...any) ([]string, error) 
 	return result, nil
 }
 
-// FetchRows queries all rows from the given table and returns them as a slice
-// of maps (column name to value) along with the ordered column names. Values
-// are normalized using NormalizeValue. It first tries ANSI SQL double-quoted
-// table names and falls back to MySQL backtick quoting if the first attempt fails.
-func FetchRows(db *sql.DB, table string) ([]map[string]any, []string, error) {
+// FetchRows queries rows from the given table, optionally filtered by a WHERE
+// clause. The where parameter should contain just the condition (e.g.
+// "status = 'active'"), not the WHERE keyword itself. Pass an empty string to
+// fetch all rows.
+//
+// Note: the where clause is appended to the query as-is. The caller is
+// responsible for ensuring it is valid SQL. This is safe because the where
+// value originates from the CLI operator (the person running the tool), not
+// from untrusted external input.
+func FetchRows(db *sql.DB, table string, where string) ([]map[string]any, []string, error) {
+	whereSuffix := ""
+	if where != "" {
+		whereSuffix = " WHERE " + where
+	}
+
 	// Try ANSI SQL double-quoted identifier first (works for PostgreSQL, SQLite)
-	query := fmt.Sprintf(`SELECT * FROM "%s"`, table) //nolint:gosec // table name from internal schema
+	query := fmt.Sprintf(`SELECT * FROM "%s"%s`, table, whereSuffix) //nolint:gosec // table name from internal schema, where from CLI operator
 	rows, err := db.Query(query)
 
 	if err != nil {
 		// Fall back to backtick quoting for MySQL/TiDB
-		query = fmt.Sprintf("SELECT * FROM `%s`", table) //nolint:gosec // table name from internal schema
+		query = fmt.Sprintf("SELECT * FROM `%s`%s", table, whereSuffix) //nolint:gosec // table name from internal schema, where from CLI operator
 		rows, err = db.Query(query)
 
 		if err != nil {

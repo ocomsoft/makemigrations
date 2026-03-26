@@ -22,6 +22,7 @@ makemigrations dump-data [table1 table2 ...] [flags]
 | `--dry-run`      | bool     | `false`     | Print generated source without writing                                                           |
 | `--verbose`      | bool     | `false`     | Show connection and row-count details                                                            |
 | `--conflict-key` | []string | (auto)      | PK columns for ON CONFLICT; applied to all tables; required if table not in migration schema     |
+| `--where`        | []string | (none)      | WHERE filter; use `table:condition` for per-table or just `condition` for all                     |
 | `--dsn`          | string   | `""`        | Full database DSN (overrides host/port/etc.)                                                     |
 | `--host`         | string   | `localhost` | Database host                                                                                    |
 | `--port`         | int      | (varies)    | Database port                                                                                    |
@@ -86,9 +87,24 @@ makemigrations dump-data legacy_table --conflict-key id
 makemigrations dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
 ```
 
+## Filtering Rows with --where
+
+By default, all rows are fetched. Use `--where` to filter:
+
+```bash
+# Per-table filter
+makemigrations dump-data users orders --where "users:status='active'" --where "orders:total > 0"
+
+# Global filter (applies to all tables)
+makemigrations dump-data users orders --where "active = 1"
+
+# Multiple conditions combined with AND
+makemigrations dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
+```
+
 ## Limitations
 
-- Dumps the **entire table** — there is no WHERE filtering support.
+- The `--where` condition is appended to the query as-is. Ensure the condition is valid SQL for your target database.
 - `--conflict-key` applies to **all** tables in one invocation. If tables have
   different primary keys, run the command separately for each table.
 - Values are stored as plain Go literals (strings, ints, `nil`). SQL quoting

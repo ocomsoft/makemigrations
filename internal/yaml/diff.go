@@ -25,8 +25,93 @@ package yaml
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
+
+// topologicallySortTables returns tables sorted so that a referenced table always
+// appears before the table that references it via a foreign_key field.  Only
+// intra-set dependencies are considered; references to tables outside the provided
+// set (e.g. already-existing tables) are ignored.  If a cycle is detected the
+// function falls back to alphabetical order so callers always receive a stable,
+// deterministic result.
+func topologicallySortTables(tables []Table) []Table {
+	// Build a name→index lookup for fast membership tests.
+	idx := make(map[string]int, len(tables))
+	for i, t := range tables {
+		idx[t.Name] = i
+	}
+
+	// in-degree count and adjacency list (dependency → dependents).
+	inDegree := make([]int, len(tables))
+	deps := make([][]int, len(tables)) // deps[i] = tables that i depends on (within the set)
+
+	for i, t := range tables {
+		for _, f := range t.Fields {
+			if f.Type == "foreign_key" && f.ForeignKey != nil {
+				if j, ok := idx[f.ForeignKey.Table]; ok && j != i {
+					// table i depends on table j
+					deps[i] = append(deps[i], j)
+					inDegree[i]++
+				}
+			}
+		}
+	}
+
+	// Kahn's algorithm: start with nodes that have no in-set dependencies.
+	queue := make([]int, 0, len(tables))
+	for i := range tables {
+		if inDegree[i] == 0 {
+			queue = append(queue, i)
+		}
+	}
+	// Sort initial queue alphabetically for determinism.
+	sort.Slice(queue, func(a, b int) bool { return tables[queue[a]].Name < tables[queue[b]].Name })
+
+	// Build reverse adjacency: which tables depend on table j?
+	rdeps := make([][]int, len(tables))
+	for i, ds := range deps {
+		for _, j := range ds {
+			rdeps[j] = append(rdeps[j], i)
+		}
+	}
+
+	sorted := make([]Table, 0, len(tables))
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, tables[cur])
+
+		// Reduce in-degree for all tables that depend on cur.
+		next := make([]int, 0)
+		for _, dependent := range rdeps[cur] {
+			inDegree[dependent]--
+			if inDegree[dependent] == 0 {
+				next = append(next, dependent)
+			}
+		}
+		sort.Slice(next, func(a, b int) bool { return tables[next[a]].Name < tables[next[b]].Name })
+		queue = append(queue, next...)
+	}
+
+	// Cycle fallback: append any remaining tables alphabetically.
+	if len(sorted) < len(tables) {
+		remaining := make([]Table, 0, len(tables)-len(sorted))
+		inSorted := make(map[string]bool, len(sorted))
+		for _, t := range sorted {
+			inSorted[t.Name] = true
+		}
+		for _, t := range tables {
+			if !inSorted[t.Name] {
+				remaining = append(remaining, t)
+			}
+		}
+		sort.Slice(remaining, func(a, b int) bool { return remaining[a].Name < remaining[b].Name })
+		sorted = append(sorted, remaining...)
+	}
+
+	return sorted
+}
 
 // DiffEngine handles YAML schema comparison and diff generation
 type DiffEngine struct {
@@ -99,19 +184,22 @@ func (de *DiffEngine) CompareSchemas(oldSchema, newSchema *Schema) (*SchemaDiff,
 	// Handle case where old schema is nil (initial migration)
 	if oldSchema == nil {
 		if newSchema != nil {
-			for _, table := range newSchema.Tables {
+			// Topologically sort so that referenced tables come before referencing tables,
+			// then emit all CreateTable changes first, followed by all FK changes.
+			sorted := topologicallySortTables(newSchema.Tables)
+			var allFKChanges []Change
+			for _, table := range sorted {
 				diff.Changes = append(diff.Changes, Change{
 					Type:        ChangeTypeTableAdded,
 					TableName:   table.Name,
 					Description: fmt.Sprintf("Add table '%s'", table.Name),
 					NewValue:    table,
 				})
-				// Emit companion FK changes for any foreign_key fields in the new table.
-				// ChangeTypeTableAdded must come before ChangeTypeForeignKeyAdded so the
-				// code generator can process column creation before constraint creation.
-				fkChanges := fkChangesForFields(table.Name, table.Fields, nil)
-				diff.Changes = append(diff.Changes, fkChanges...)
+				// Collect FK changes to emit after all CreateTable operations so that
+				// every referenced table exists before any FK constraint is added.
+				allFKChanges = append(allFKChanges, fkChangesForFields(table.Name, table.Fields, nil)...)
 			}
+			diff.Changes = append(diff.Changes, allFKChanges...)
 		}
 		diff.HasChanges = len(diff.Changes) > 0
 		return diff, nil
@@ -144,25 +232,31 @@ func (de *DiffEngine) CompareSchemas(oldSchema, newSchema *Schema) (*SchemaDiff,
 		newTables[newSchema.Tables[i].Name] = &newSchema.Tables[i]
 	}
 
-	// Find added tables
+	// Find added tables: collect first, then topologically sort so that
+	// referenced tables (even across the new-table set) are created before
+	// referencing tables.  All CreateTable changes are emitted before any
+	// AddForeignKey change so every referenced table exists when the FK is added.
+	var addedTables []Table
 	for tableName, newTable := range newTables {
 		if _, exists := oldTables[tableName]; !exists {
-			diff.Changes = append(diff.Changes, Change{
-				Type:        ChangeTypeTableAdded,
-				TableName:   tableName,
-				Description: fmt.Sprintf("Add table '%s'", tableName),
-				NewValue:    *newTable,
-			})
-			// Emit companion FK changes for any foreign_key fields in the new table.
-			// ChangeTypeTableAdded must come before ChangeTypeForeignKeyAdded so the
-			// code generator can process column creation before constraint creation.
-			fkChanges := fkChangesForFields(tableName, newTable.Fields, nil)
-			diff.Changes = append(diff.Changes, fkChanges...)
-			if de.verbose {
-				fmt.Printf("Table added: %s\n", tableName)
-			}
+			addedTables = append(addedTables, *newTable)
 		}
 	}
+	sortedAdded := topologicallySortTables(addedTables)
+	var addedFKChanges []Change
+	for _, table := range sortedAdded {
+		diff.Changes = append(diff.Changes, Change{
+			Type:        ChangeTypeTableAdded,
+			TableName:   table.Name,
+			Description: fmt.Sprintf("Add table '%s'", table.Name),
+			NewValue:    table,
+		})
+		addedFKChanges = append(addedFKChanges, fkChangesForFields(table.Name, table.Fields, nil)...)
+		if de.verbose {
+			fmt.Printf("Table added: %s\n", table.Name)
+		}
+	}
+	diff.Changes = append(diff.Changes, addedFKChanges...)
 
 	// Find removed tables
 	for tableName, oldTable := range oldTables {

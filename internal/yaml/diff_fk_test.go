@@ -175,3 +175,117 @@ func TestDiff_ForeignKeyRemoved_ExistingTable(t *testing.T) {
 		t.Errorf("expected ChangeTypeForeignKeyRemoved in diff, changes: %v", diff.Changes)
 	}
 }
+
+// TestDiff_TopologicalOrder_TwoNewTablesWithFK verifies that when two new tables are added
+// and one has a FK to the other, the referenced table's CreateTable comes before the
+// referencing table's CreateTable in the diff changes.
+func TestDiff_TopologicalOrder_TwoNewTablesWithFK(t *testing.T) {
+	de := NewDiffEngine(false)
+	old := &Schema{Tables: []Table{}}
+	// child has FK to parent — parent must be created first
+	newSchema := &Schema{
+		Tables: []Table{
+			{
+				Name: "child",
+				Fields: []Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "parent_id", Type: "foreign_key", ForeignKey: &ForeignKey{Table: "parent", OnDelete: "CASCADE"}},
+				},
+			},
+			{
+				Name:   "parent",
+				Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}},
+			},
+		},
+	}
+	diff, err := de.CompareSchemas(old, newSchema)
+	if err != nil {
+		t.Fatalf("CompareSchemas: %v", err)
+	}
+
+	childCreateIdx := -1
+	parentCreateIdx := -1
+	childFKIdx := -1
+	for i, c := range diff.Changes {
+		if c.Type == ChangeTypeTableAdded && c.TableName == "child" {
+			childCreateIdx = i
+		}
+		if c.Type == ChangeTypeTableAdded && c.TableName == "parent" {
+			parentCreateIdx = i
+		}
+		if c.Type == ChangeTypeForeignKeyAdded && c.TableName == "child" {
+			childFKIdx = i
+		}
+	}
+
+	if parentCreateIdx == -1 {
+		t.Fatal("expected ChangeTypeTableAdded for 'parent'")
+	}
+	if childCreateIdx == -1 {
+		t.Fatal("expected ChangeTypeTableAdded for 'child'")
+	}
+	if childFKIdx == -1 {
+		t.Fatal("expected ChangeTypeForeignKeyAdded for 'child'")
+	}
+	// parent must be created before child (topological order)
+	if parentCreateIdx > childCreateIdx {
+		t.Errorf("'parent' CreateTable (idx %d) must come before 'child' CreateTable (idx %d) because child has FK to parent",
+			parentCreateIdx, childCreateIdx)
+	}
+	// FK constraint must come after both tables are created
+	if childFKIdx < childCreateIdx {
+		t.Errorf("'child' AddForeignKey (idx %d) must come after 'child' CreateTable (idx %d)",
+			childFKIdx, childCreateIdx)
+	}
+	if childFKIdx < parentCreateIdx {
+		t.Errorf("'child' AddForeignKey (idx %d) must come after 'parent' CreateTable (idx %d)",
+			childFKIdx, parentCreateIdx)
+	}
+}
+
+// TestDiff_TopologicalOrder_NilOldSchema verifies the oldSchema==nil path also topologically
+// sorts tables so referenced tables come before referencing tables.
+func TestDiff_TopologicalOrder_NilOldSchema_TwoNewTablesWithFK(t *testing.T) {
+	de := NewDiffEngine(false)
+	newSchema := &Schema{
+		Tables: []Table{
+			{
+				Name: "child",
+				Fields: []Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+					{Name: "parent_id", Type: "foreign_key", ForeignKey: &ForeignKey{Table: "parent", OnDelete: "CASCADE"}},
+				},
+			},
+			{
+				Name:   "parent",
+				Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}},
+			},
+		},
+	}
+	diff, err := de.CompareSchemas(nil, newSchema)
+	if err != nil {
+		t.Fatalf("CompareSchemas: %v", err)
+	}
+
+	childCreateIdx := -1
+	parentCreateIdx := -1
+	for i, c := range diff.Changes {
+		if c.Type == ChangeTypeTableAdded && c.TableName == "child" {
+			childCreateIdx = i
+		}
+		if c.Type == ChangeTypeTableAdded && c.TableName == "parent" {
+			parentCreateIdx = i
+		}
+	}
+
+	if parentCreateIdx == -1 {
+		t.Fatal("expected ChangeTypeTableAdded for 'parent'")
+	}
+	if childCreateIdx == -1 {
+		t.Fatal("expected ChangeTypeTableAdded for 'child'")
+	}
+	if parentCreateIdx > childCreateIdx {
+		t.Errorf("'parent' CreateTable (idx %d) must come before 'child' CreateTable (idx %d)",
+			parentCreateIdx, childCreateIdx)
+	}
+}

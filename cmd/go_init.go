@@ -112,10 +112,13 @@ Initialization complete. No existing schema found.
 To generate your first migration:
   makemigrations makemigrations --name "initial"
 
-Then build and run:
-  cd %s && go mod tidy && go build -o migrate .
-  ./migrate up
-`, migrationsDir)
+Then run:
+  makemigrations migrate up
+
+Migrations are interpreted in-process — no Go toolchain required at runtime.
+The generated %s/main.go and %s/go.mod remain available so you can still
+'go build' the migrations module for IDE type-checking or as a fallback.
+`, migrationsDir, migrationsDir)
 	}
 
 	return nil

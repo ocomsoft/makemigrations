@@ -9,6 +9,7 @@ require (
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
+	github.com/traefik/yaegi v0.16.1
 	golang.org/x/mod v0.27.0
 	gopkg.in/yaml.v3 v3.0.1
 )

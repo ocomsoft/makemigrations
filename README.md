@@ -1,16 +1,16 @@
 # makemigrations
 
-A **Go-first** database migration tool with a Django-style workflow. Define your schema in YAML, generate type-safe Go migration files, and run them with a compiled binary that embeds every migration your project has ever had.
+A **Go-first** database migration tool with a Django-style workflow. Define your schema in YAML, generate type-safe Go migration files, and run them in-process — no Go toolchain required at runtime, no compiled binary to ship.
 
 ## ✨ Why Go Migrations?
 
-- 🔒 **Type-safe**: Migrations are Go code — caught by the compiler, not at runtime
-- 📦 **Self-contained binary**: One compiled binary knows all migrations, their dependencies, and their SQL
+- 🔒 **Type-safe at edit time**: Migrations are real Go files — caught by your IDE and `go vet`
+- ⚡ **No build step**: Migrations are interpreted in-process via [yaegi](https://github.com/traefik/yaegi); no `go build`, no temporary binary, no GOWORK juggling
 - 🗄️ **Database-agnostic schema**: Write YAML once, deploy to PostgreSQL, MySQL, SQLite, or SQL Server
 - 🔀 **DAG-based ordering**: Migrations form a dependency graph so parallel branches merge cleanly
 - 🔄 **Auto change detection**: Diff YAML schemas, generate only what changed
 - ⚠️ **Safe destructive ops**: Field removals, table drops, and renames require explicit review
-- 🔧 **Zero runtime dependency**: The compiled binary has no runtime dependency on makemigrations itself
+- 🛠 **Optional fallback**: The generated `migrations/` directory is still a buildable Go module, so you can `go build` it for IDE checks or as an escape hatch
 
 ---
 
@@ -34,8 +34,8 @@ This creates:
 ```
 your-project/
 └── migrations/
-    ├── main.go     ← compiled binary entry point
-    └── go.mod      ← dedicated migrations module
+    ├── main.go     ← optional fallback entry point (`go build` still works)
+    └── go.mod      ← dedicated migrations module (used by your IDE / gopls)
 ```
 
 ### 3. Define your schema
@@ -99,7 +99,7 @@ export DATABASE_URL="postgresql://user:pass@localhost/mydb"
 makemigrations migrate up
 ```
 
-`makemigrations migrate` compiles the migration binary automatically and runs it with the correct Go workspace settings. No manual `go build` required.
+`makemigrations migrate` interprets the migration files in-process using yaegi and runs the embedded migration App. No `go build`, no temporary binary.
 
 ---
 
@@ -130,7 +130,7 @@ makemigrations migrate status
 
 ## 📋 migrate Subcommands
 
-`makemigrations migrate` compiles and runs the migration binary. All arguments are forwarded:
+`makemigrations migrate` interprets the migration files in-process via yaegi and runs the embedded App. All arguments are forwarded:
 
 ```bash
 makemigrations migrate up                       # apply all pending
@@ -141,7 +141,6 @@ makemigrations migrate status                   # show applied / pending
 makemigrations migrate showsql                  # print SQL without running it
 makemigrations migrate fake 0001_initial        # mark applied without running SQL
 makemigrations migrate dag                      # show migration dependency graph
-makemigrations migrate --verbose up             # show build output
 ```
 
 ---
@@ -242,14 +241,14 @@ makemigrations migrate-to-go --dir migrations/
 
 ### Database connection
 
-The compiled binary reads connection details from `migrations/main.go`. The generated file uses `DATABASE_URL` and `DB_TYPE`:
+`makemigrations migrate` reads connection details from `DATABASE_URL` and `DB_TYPE`:
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost/mydb"
 export DB_TYPE=postgresql   # optional, defaults to postgresql
 ```
 
-`DB_HOST`, `DB_PORT`, `DB_USER` etc. can be added by editing `migrations/main.go` — see the [Manual Build Guide](docs/manual-migration-build.md#running-the-binary).
+If you prefer the optional fallback path of compiling `migrations/` into a standalone binary, edit `migrations/main.go` to read additional vars (`DB_HOST`, `DB_PORT`, `DB_USER`, …) — see the [Manual Build Guide](docs/manual-migration-build.md#running-the-binary).
 
 ### Configuration file
 
@@ -286,7 +285,7 @@ See the [Configuration Guide](docs/configuration.md) for complete options.
 |---------|-------------|
 | **[init](docs/commands/init.md)** | Bootstrap the `migrations/` directory |
 | **[makemigrations](docs/commands/makemigrations.md)** | Generate `.go` migration files from YAML schema |
-| **[migrate](docs/commands/migrate.md)** | Build and run the compiled migration binary |
+| **[migrate](docs/commands/migrate.md)** | Run migrations in-process via the yaegi interpreter |
 | **[migrate-to-go](docs/commands/migrate_to_go.md)** | Convert existing Goose SQL migrations to Go |
 | [struct2schema](docs/commands/struct2schema.md) | Generate YAML schemas from Go structs |
 | [dump_sql](docs/commands/dump_sql.md) | Preview generated SQL from schemas |

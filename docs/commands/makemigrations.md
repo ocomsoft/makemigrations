@@ -6,7 +6,7 @@ The `makemigrations` command is the **primary command** for generating Go-based 
 
 The `makemigrations` command compares the desired schema (defined in YAML files) against the current schema (reconstructed by replaying all registered Go migration files) and generates a new `.go` migration file containing typed operations for each detected change.
 
-Unlike the SQL-mode commands, Go migrations are compiled into a standalone binary (`./migrations/migrate`) that manages migration state, runs `up`/`down` operations, and emits the DAG structure for introspection.
+Unlike the SQL-mode commands, Go migrations are real `.go` source files. They run via `makemigrations migrate up` (etc.), which loads them in-process with the [yaegi](https://github.com/traefik/yaegi) Go interpreter — no `go build`, no temporary binary, no Go toolchain at runtime. The same files can also be compiled into a self-contained binary as an optional fallback.
 
 ## Usage
 
@@ -42,14 +42,14 @@ The command scans the `migrations/` directory (as configured) for `*.go` files, 
 
 When migration files exist, the command:
 
-1. Compiles all `*.go` files in the migrations directory into a temporary binary using `go build`.
-2. Executes `<binary> dag --format json` to retrieve `DAGOutput` — a JSON structure containing:
+1. Loads all `*.go` files in the migrations directory in-process via `internal/interp.LoadRegistry`. The yaegi Go interpreter runs each file's `init()`, registering its `Migration` into a fresh `*migrate.Registry`. No `go build` is invoked.
+2. Calls `migrate.BuildGraph(reg).ToDAGOutput()` to produce a `DAGOutput` value containing:
    - The full migration graph (names, dependencies, operations)
    - The reconstructed `SchemaState` (all tables, fields, and indexes after replaying every migration in topological order)
    - The list of leaf migrations (the "tips" of the graph that a new migration must depend on)
    - Whether the graph has branches (concurrent development)
 
-The temporary binary is discarded after the query.
+The registry and graph live only for the duration of this query; nothing is written to disk.
 
 ### Step 3 — Parse the YAML schema
 
@@ -406,7 +406,7 @@ makemigrations makemigrations --check
 makemigrations makemigrations --verbose
 
 # Output
-Building migration binary from migrations/...
+Loading migrations/ via yaegi...
 No changes detected.
 ```
 
@@ -416,7 +416,7 @@ No changes detected.
 
 ```bash
 # 1. Initialise the migrations directory
-makemigrations init-go
+makemigrations init
 
 # 2. Edit the schema
 vim schema/schema.yaml
@@ -425,11 +425,8 @@ vim schema/schema.yaml
 makemigrations makemigrations --name "initial"
 # Created migrations/0001_initial.go
 
-# 4. Build and run the migrations binary
-cd migrations && go mod tidy && go build -o migrate .
-
-# 5. Apply migrations
-./migrations/migrate up
+# 4. Apply (yaegi loads the .go file in-process — no go build)
+makemigrations migrate up
 ```
 
 ### Adding a New Table
@@ -444,11 +441,8 @@ makemigrations makemigrations --name "add_products"
 # 3. Review the generated file
 cat migrations/0002_add_products.go
 
-# 4. Rebuild the binary
-cd migrations && go build -o migrate .
-
-# 5. Apply
-./migrations/migrate up
+# 4. Apply
+makemigrations migrate up
 ```
 
 ### Altering an Existing Field
@@ -460,8 +454,8 @@ cd migrations && go build -o migrate .
 makemigrations makemigrations --name "expand_user_status"
 # Created migrations/0003_expand_user_status.go
 
-# 3. Build and apply
-cd migrations && go build -o migrate . && ./migrate up
+# 3. Apply
+makemigrations migrate up
 ```
 
 ## Branch and Merge Workflow
@@ -553,11 +547,8 @@ else
     echo "Generating migrations..."
     makemigrations makemigrations --verbose
 
-    echo "Rebuilding migration binary..."
-    cd migrations && go build -o migrate .
-
     echo "Applying migrations..."
-    ./migrate up
+    makemigrations migrate up
 
     echo "Done"
 fi
@@ -569,18 +560,17 @@ After initialisation and several generated migrations, the `migrations/` directo
 
 ```
 migrations/
-├── go.mod              # Module file: myproject/migrations
+├── go.mod              # Module file: myproject/migrations  (used by IDE/gopls)
 ├── go.sum
-├── main.go             # Entry point — runs the migrate app
+├── main.go             # Optional standalone-binary entry point  (NOT used by `makemigrations migrate`)
 ├── 0001_initial.go     # Auto-generated
 ├── 0002_add_products.go
-├── 0003_expand_user_status.go
-└── migrate             # Compiled binary (gitignored)
+└── 0003_expand_user_status.go
 ```
 
-### main.go
+### main.go (optional)
 
-`main.go` is generated once by `makemigrations init-go` and must not be deleted:
+`main.go` is generated once by `makemigrations init`. **It is not invoked by `makemigrations migrate`** — that command interprets the migration files in-process via yaegi. The file exists so you can `go build` the directory into a self-contained binary if you want one. Safe to delete if you only ever use `makemigrations migrate`:
 
 ```go
 package main
@@ -619,30 +609,29 @@ require (
 
 ## After Generating a Migration
 
-Every time a new migration file is generated you must rebuild the binary before applying:
+There is **no rebuild step**. `makemigrations migrate` re-reads the latest migration files on every invocation and interprets them in-process via yaegi:
 
 ```bash
-cd migrations && go mod tidy && go build -o migrate .
-./migrations/migrate up
+makemigrations migrate up
 ```
 
 To verify the migration was applied:
 
 ```bash
-./migrations/migrate status
+makemigrations migrate status
 ```
 
 To roll back the last migration:
 
 ```bash
-./migrations/migrate down
+makemigrations migrate down
 ```
 
 To view the full DAG:
 
 ```bash
-./migrations/migrate dag
-./migrations/migrate dag --format json
+makemigrations migrate dag
+makemigrations migrate dag --format json
 ```
 
 ## Configuration Integration
@@ -667,15 +656,18 @@ Error: parsing YAML schema: no schema files found
 ```
 Create `schema/schema.yaml` or check the search paths.
 
-**Build failure in migrations directory**
+**yaegi load failure in migrations directory**
 ```
-Error: querying migration DAG: building migration binary: ...
+Error: querying migration DAG: loading migrations: interpreting <file>: ...
 ```
-Run `cd migrations && go mod tidy && go build -o migrate .` manually to see the compiler error. Often caused by a missing `go.sum` entry after adding dependencies.
+yaegi failed to interpret a migration file. Common causes:
+- A typo or syntax error in a hand-edited migration. Run `cd migrations && go vet ./...` or open the file in your IDE — `gopls` will surface the same error with better context.
+- An `import` of a third-party package not in the yaegi symbol map. See [Extending the yaegi Symbol Map](../extending-yaegi-symbols.md).
+- A language feature yaegi does not support (cgo, certain reflection patterns). Either rewrite the migration to avoid it or use the optional standalone-binary path: `cd migrations && go mod tidy && go build -o migrate . && ./migrate up`.
 
 **Missing dependency**
 ```
-Error: querying migration DAG: running dag command: migration "0003_add_orders" depends on "0002_missing" which is not registered
+Error: querying migration DAG: migration "0003_add_orders" depends on "0002_missing" which is not registered
 ```
 A migration file references a dependency that does not exist. Check the `Dependencies` field in the affected migration file.
 

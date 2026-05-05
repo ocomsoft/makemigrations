@@ -409,7 +409,7 @@ Before applying anything, inspect the SQL that will be executed. There are two w
 
 ### Option 1 — dump_sql (schema preview, no migration state)
 
-`dump_sql` shows the CREATE TABLE statements that your YAML schema would generate, without building the migration binary:
+`dump_sql` shows the CREATE TABLE statements that your YAML schema would generate, without consulting the migration history at all:
 
 ```bash
 makemigrations dump_sql --database postgresql
@@ -477,9 +477,9 @@ Notice that:
 - `default: new_uuid` resolves to `gen_random_uuid()` (from `defaults`)
 - `default: default_role` resolves to `'member'`
 
-### Option 2 — showsql (migration binary SQL)
+### Option 2 — showsql (pending-migration SQL)
 
-After generating the migration file, `showsql` shows exactly what SQL the migration binary will execute when you run `up`. This includes only the pending migrations:
+After generating the migration file, `showsql` shows exactly what SQL `makemigrations migrate up` will execute. This includes only the pending migrations:
 
 ```bash
 makemigrations migrate showsql
@@ -500,7 +500,7 @@ Use `showsql` for final review before production deployments.
 
 ## Applying Migrations
 
-`makemigrations migrate` compiles the migration binary automatically and runs it:
+`makemigrations migrate` loads the migration `.go` files in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter and runs them — no `go build`, no temporary binary:
 
 ```bash
 makemigrations migrate up

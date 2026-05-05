@@ -1,8 +1,24 @@
-# Manual Migration Binary Build Guide
+# Manual Migration Binary Build Guide (Optional)
 
-This guide explains how to build and run the compiled migrations binary by hand — useful for CI/CD pipelines, Docker builds, debugging, or any situation where you can't use `makemigrations migrate`.
+> **You almost certainly do not need this.** The default workflow is
+> `makemigrations migrate <command>`, which loads the migration `.go` files
+> in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter
+> and runs them without ever invoking `go build`. There is no compile or
+> rebuild step in the day-to-day developer loop.
 
-> **For day-to-day use** prefer `makemigrations migrate <command>` which handles all of this automatically.
+This guide covers the **optional** standalone-binary path: compiling the
+`migrations/` directory into a self-contained binary using `go build`. Reasons
+you might want this:
+
+- **Shipping a release artifact** that runs migrations on a host where you don't
+  want to install the makemigrations CLI.
+- **Avoiding yaegi entirely** — for example to debug a yaegi-specific
+  interpretation issue, or because your migrations import a third-party
+  package that you don't want to register in the symbol map.
+- **A locked-down CI environment** that already has Go but not makemigrations.
+
+The migration `.go` files are valid Go source either way: yaegi-interpreted
+and `gc`-compiled paths produce the same on-disk schema state.
 
 ---
 
@@ -75,7 +91,7 @@ EOF
 GOWORK=/tmp/migrations.work go build -o migrations/migrate ./migrations/
 ```
 
-> `makemigrations migrate` does all of this automatically by detecting the local replace directive in parent `go.mod` files.
+> Note: `makemigrations migrate` (the default, yaegi path) does **not** need any of this — it neither compiles the migrations directory nor reads `go.mod` at runtime. The setup above only matters if you specifically want a standalone binary.
 
 ---
 
@@ -97,9 +113,9 @@ GOWORK=off go build -o migrations/migrate ./migrations/
 
 ---
 
-## Running the binary
+## Running the standalone binary
 
-The binary reads database connection details from environment variables wired up in `migrations/main.go`. The **generated** `main.go` only reads `DB_TYPE` and `DATABASE_URL`:
+Once compiled, the standalone binary reads database connection details from environment variables wired up in `migrations/main.go`. The **generated** `main.go` only reads `DB_TYPE` and `DATABASE_URL`:
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost/mydb"
@@ -132,6 +148,19 @@ app := m.NewApp(m.Config{
 
 ## CI/CD example (GitHub Actions)
 
+The recommended approach — install makemigrations and use yaegi:
+
+```yaml
+- name: Apply database migrations
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  run: |
+    go install github.com/ocomsoft/makemigrations@latest
+    makemigrations migrate up
+```
+
+Or, if you specifically want the standalone-binary path:
+
 ```yaml
 - name: Apply database migrations
   env:
@@ -141,15 +170,6 @@ app := m.NewApp(m.Config{
     GOWORK=off go mod download
     GOWORK=off go build -o migrate .
     ./migrate up
-```
-
-Or, if `makemigrations` is installed as a tool:
-
-```yaml
-- name: Apply database migrations
-  env:
-    DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  run: makemigrations migrate up
 ```
 
 ---

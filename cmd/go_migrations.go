@@ -26,12 +26,9 @@ SOFTWARE.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -41,8 +38,8 @@ import (
 
 	"github.com/ocomsoft/makemigrations/internal/codegen"
 	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/interp"
 	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/version"
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 	"github.com/ocomsoft/makemigrations/migrate"
 )
@@ -298,204 +295,23 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 	return decisions, nil
 }
 
-// buildMigrationsBinary compiles the migrations module in migrationsDir into a
-// temporary binary. It returns the binary path and a cleanup function that
-// removes the temporary directory. The caller must invoke cleanup() when done.
+// queryDAG loads the migrations directory with the yaegi interpreter and
+// returns the current migration graph state. No Go toolchain is invoked; the
+// migration .go files are interpreted in-process and registered with a fresh
+// *migrate.Registry, then BuildGraph + ToDAGOutput run directly.
 //
-// When upgrade is true and no local replace directive is found, the function
-// checks whether the migrations go.mod requires an older version of
-// github.com/ocomsoft/makemigrations and runs go get to bring it up to the
-// version currently running. Pass upgrade=false (--dont-upgrade flag) to skip
-// this step, which is useful in CI environments where go.mod must not be
-// modified at runtime.
-func buildMigrationsBinary(migrationsDir string, verbose bool, upgrade bool) (binPath string, cleanup func(), err error) {
-	absMigrationsDir, err := filepath.Abs(migrationsDir)
+// The verbose parameter is preserved for API compatibility with callers but
+// has no effect now that no build step takes place.
+func queryDAG(migrationsDir string, _ bool) (*migrate.DAGOutput, error) {
+	reg, err := interp.LoadRegistry(migrationsDir)
 	if err != nil {
-		return "", nil, fmt.Errorf("resolving migrations dir: %w", err)
+		return nil, fmt.Errorf("loading migrations: %w", err)
 	}
-
-	tmpDir, err := os.MkdirTemp("", "makemigrations-*")
+	g, err := migrate.BuildGraph(reg)
 	if err != nil {
-		return "", nil, fmt.Errorf("creating temp dir: %w", err)
+		return nil, fmt.Errorf("building migration graph: %w", err)
 	}
-	cleanup = func() { _ = os.RemoveAll(tmpDir) }
-
-	tmpBin := filepath.Join(tmpDir, "migrations-bin")
-
-	if verbose {
-		fmt.Printf("Building migration binary from %s...\n", absMigrationsDir)
-	}
-
-	// Determine the Go version for the temp workspace.
-	// Prefer the toolchain directive from the nearest parent go.work/go.mod
-	// (e.g. "go1.25.7" → "1.25.7"), which has an exact patch version and is
-	// already cached locally. Fall back to the version of the currently running
-	// binary (runtime.Version() strips the leading "go"). A plain major.minor
-	// like "1.25" from a go directive is not enough — Go would try to download
-	// a toolchain to satisfy it.
-	parentDir := filepath.Dir(absMigrationsDir)
-	goVersion := findParentGoVersion(parentDir)
-	if !isFullGoVersion(goVersion) {
-		// runtime.Version() returns e.g. "go1.25.7"; strip the "go" prefix.
-		goVersion = strings.TrimPrefix(runtime.Version(), "go")
-	}
-
-	// Check parent go.mod files for a local replace of makemigrations.
-	// If found, include it in the workspace so the build resolves locally
-	// without any network access or go.sum concerns.
-	localMakemig := findLocalMakemigrations(parentDir)
-
-	// When upgrade is requested and no local replace is active, ensure the
-	// migrations module depends on the same makemigrations version as the
-	// running CLI binary. This prevents runtime mismatches where operations
-	// added in a newer release are unavailable to the compiled binary.
-	if upgrade && localMakemig == "" {
-		upgradeMakemigrationsVersion(absMigrationsDir, verbose)
-	}
-
-	// Build a temporary go.work that includes the migrations module (and
-	// optionally a local makemigrations). This solves two problems:
-	//  1. Parent workspace conflict: a go.work in a parent directory may not
-	//     list the migrations sub-module, causing "main module does not contain
-	//     package" errors when GOWORK is inherited.
-	//  2. Toolchain downloads: by declaring the same go version as the parent
-	//     project, Go reuses the already-cached toolchain rather than fetching
-	//     a different one.
-	var work strings.Builder
-	fmt.Fprintf(&work, "go %s\n\nuse %s\n", goVersion, absMigrationsDir)
-	if localMakemig != "" {
-		fmt.Fprintf(&work, "use %s\n", localMakemig)
-		if verbose {
-			fmt.Printf("Using local makemigrations: %s\n", localMakemig)
-		}
-	}
-
-	var goEnv []string
-	tmpWork := filepath.Join(tmpDir, "go.work")
-	if werr := os.WriteFile(tmpWork, []byte(work.String()), 0o644); werr == nil {
-		goEnv = append(os.Environ(), "GOWORK="+tmpWork)
-	} else {
-		// Fallback: disable workspace entirely.
-		goEnv = append(os.Environ(), "GOWORK=off")
-	}
-
-	// When no local makemigrations is available the migrations go.sum may be
-	// stale (e.g. a new subpackage was added to the published module). Run
-	// go mod download to sync go.sum without modifying go.mod.
-	if localMakemig == "" {
-		downloadCmd := exec.Command("go", "mod", "download")
-		downloadCmd.Dir = absMigrationsDir
-		downloadCmd.Env = goEnv
-		if out, dlErr := downloadCmd.CombinedOutput(); dlErr != nil {
-			if verbose {
-				fmt.Printf("go mod download warning: %s\n", string(out))
-			}
-		}
-	}
-
-	buildCmd := exec.Command("go", "build", "-o", tmpBin, ".")
-	buildCmd.Dir = absMigrationsDir
-	buildCmd.Env = goEnv
-	if out, buildErr := buildCmd.CombinedOutput(); buildErr != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("building migration binary: %w\nOutput: %s", buildErr, string(out))
-	}
-
-	return tmpBin, cleanup, nil
-}
-
-// stderrSupportsColor returns true when stderr is a real terminal and the
-// NO_COLOR environment variable is not set.
-func stderrSupportsColor() bool {
-	if os.Getenv("NO_COLOR") != "" {
-		return false
-	}
-	fi, err := os.Stderr.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
-}
-
-// warnf prints a warning to stderr. When the terminal supports colour the
-// message is rendered in orange (ANSI 256-colour code 214).
-func warnf(format string, args ...any) {
-	msg := fmt.Sprintf(format, args...)
-	if stderrSupportsColor() {
-		// \x1b[38;5;214m = orange (256-colour), \x1b[0m = reset
-		fmt.Fprintf(os.Stderr, "\x1b[38;5;214m%s\x1b[0m\n", msg)
-	} else {
-		fmt.Fprintln(os.Stderr, msg)
-	}
-}
-
-// upgradeMakemigrationsVersion checks whether the migrations go.mod requires a
-// different version of github.com/ocomsoft/makemigrations than the running CLI
-// binary and runs go get to align them. It runs with GOWORK=off so it operates
-// directly on the migrations module without workspace interference. Errors are
-// non-fatal warnings printed to stderr.
-func upgradeMakemigrationsVersion(migrationsDir string, verbose bool) {
-	const modPkg = "github.com/ocomsoft/makemigrations"
-	// Strip any leading "v" from the version string before prepending one so
-	// that both "1.4.1" and "v1.4.1" in the Version variable produce "v1.4.1".
-	target := "v" + strings.TrimPrefix(version.GetVersion(), "v")
-
-	goModPath := filepath.Join(migrationsDir, "go.mod")
-	data, err := os.ReadFile(goModPath)
-	if err != nil {
-		// No go.mod found — nothing to upgrade.
-		return
-	}
-
-	f, err := modfile.Parse(goModPath, data, nil)
-	if err != nil {
-		warnf("Warning: could not parse %s: %v", goModPath, err)
-		return
-	}
-
-	for _, req := range f.Require {
-		if req.Mod.Path == modPkg {
-			if req.Mod.Version == target {
-				// Already at the correct version.
-				return
-			}
-			fmt.Printf("Upgrading %s %s → %s\n", modPkg, req.Mod.Version, target)
-			getCmd := exec.Command("go", "get", modPkg+"@"+target)
-			getCmd.Dir = migrationsDir
-			getCmd.Env = append(os.Environ(), "GOWORK=off")
-			if out, getErr := getCmd.CombinedOutput(); getErr != nil {
-				warnf("Warning: go get %s@%s failed: %v\n%s", modPkg, target, getErr, strings.TrimSpace(string(out)))
-			}
-			return
-		}
-	}
-}
-
-// queryDAG builds the migrations binary in a temporary directory and runs
-// `dag --format json` to retrieve the current migration graph state. The
-// binary is cleaned up automatically when the function returns.
-func queryDAG(migrationsDir string, verbose bool) (*migrate.DAGOutput, error) {
-	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose, true)
-	if err != nil {
-		return nil, err
-	}
-	defer cleanup()
-
-	dagCmd := exec.Command(binPath, "dag", "--format", "json")
-	dagOutput, err := dagCmd.Output()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Fprintf(os.Stderr, "DAG command stderr: %s\n", string(exitErr.Stderr))
-		}
-
-		return nil, fmt.Errorf("running dag command: %w", err)
-	}
-
-	var result migrate.DAGOutput
-	if err := json.Unmarshal(dagOutput, &result); err != nil {
-		return nil, fmt.Errorf("parsing DAG output: %w", err)
-	}
-	return &result, nil
+	return g.ToDAGOutput()
 }
 
 // schemaStateToYAMLSchema converts a migrate.SchemaState (reconstructed from
@@ -747,44 +563,3 @@ func findParentGoVersion(startDir string) string {
 	}
 }
 
-// isFullGoVersion reports whether v is a complete three-part Go version
-// (e.g. "1.25.7") rather than a partial major.minor like "1.25". A partial
-// version used in a go.work 'go' directive causes Go to attempt a toolchain
-// download rather than reusing an already-installed binary.
-func isFullGoVersion(v string) bool {
-	parts := strings.Split(v, ".")
-	return len(parts) >= 3
-}
-
-// findLocalMakemigrations walks up from startDir looking for a go.mod that
-// has a replace directive for github.com/ocomsoft/makemigrations pointing to
-// a local path. Returns the absolute path of the local module, or "" if none
-// is found.
-func findLocalMakemigrations(startDir string) string {
-	const modPkg = "github.com/ocomsoft/makemigrations"
-	dir := startDir
-	for {
-		modPath := filepath.Join(dir, "go.mod")
-		if data, err := os.ReadFile(modPath); err == nil {
-			if f, err := modfile.Parse(modPath, data, nil); err == nil {
-				for _, r := range f.Replace {
-					if r.Old.Path == modPkg && r.New.Path != "" {
-						p := r.New.Path
-						if !filepath.IsAbs(p) {
-							p = filepath.Join(dir, filepath.FromSlash(p))
-						}
-						if abs, err := filepath.Abs(p); err == nil {
-							return abs
-						}
-						return p
-					}
-				}
-			}
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return ""
-		}
-		dir = parent
-	}
-}

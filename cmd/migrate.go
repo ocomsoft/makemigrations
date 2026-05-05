@@ -25,24 +25,24 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/interp"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
-// migrateCmd compiles the migrations module and runs it with the given args.
-// DisableFlagParsing passes all arguments — including any flags intended for
-// the binary — through unchanged. --verbose / -v and --dont-upgrade are
-// intercepted locally and stripped before forwarding.
+// migrateCmd interprets the migrations module with yaegi and runs the embedded
+// migrate.App in-process. DisableFlagParsing passes every argument straight to
+// the App, so each of its subcommands works unchanged.
 var migrateCmd = &cobra.Command{
 	Use:   "migrate [args...]",
-	Short: "Build and run the compiled migrations binary",
-	Long: `Build the compiled migrations binary for the configured migrations directory
-and run it with the provided arguments. All arguments are forwarded to the
-binary unchanged, so every subcommand the binary supports is available:
+	Short: "Run migrations in-process via the yaegi interpreter",
+	Long: `Load the migrations directory with the yaegi interpreter and run the embedded
+migrate App with the provided arguments. No Go toolchain is invoked — the
+migration .go files are interpreted in-process. All subcommands the App
+supports are available:
 
   makemigrations migrate up
   makemigrations migrate up --to 0005_add_index
@@ -50,39 +50,12 @@ binary unchanged, so every subcommand the binary supports is available:
   makemigrations migrate status
   makemigrations migrate showsql
   makemigrations migrate fake 0001_initial
-  makemigrations migrate dag
-
-Pass --verbose (or -v) to see build output:
-
-  makemigrations migrate --verbose up
-
-By default the command upgrades the migrations go.mod to match the running CLI
-version before building. Pass --dont-upgrade to skip this step (useful in CI
-environments where go.mod must not be modified at runtime):
-
-  makemigrations migrate --dont-upgrade up`,
+  makemigrations migrate dag`,
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
 	RunE: func(_ *cobra.Command, args []string) error {
 		cfg := config.LoadOrDefault(configFile)
-
-		// Intercept --verbose / -v and --dont-upgrade so they control build
-		// behaviour only and are not forwarded to the migrations binary.
-		verbose := false
-		upgrade := true
-		var binaryArgs []string
-		for _, a := range args {
-			switch a {
-			case "--verbose", "-v":
-				verbose = true
-			case "--dont-upgrade":
-				upgrade = false
-			default:
-				binaryArgs = append(binaryArgs, a)
-			}
-		}
-
-		return ExecuteMigrate(cfg.Migration.Directory, binaryArgs, verbose, upgrade)
+		return ExecuteMigrate(cfg.Migration.Directory, args)
 	},
 }
 
@@ -90,32 +63,16 @@ func init() {
 	rootCmd.AddCommand(migrateCmd)
 }
 
-// ExecuteMigrate builds the migrations binary for migrationsDir and runs it
-// with the provided args. stdin, stdout and stderr are inherited so interactive
-// prompts and coloured output from the binary work correctly.
-//
-// When upgrade is true the migrations go.mod is brought up to the same
-// makemigrations version as the running CLI before building. Pass false to
-// skip this step (--dont-upgrade flag).
-func ExecuteMigrate(migrationsDir string, args []string, verbose bool, upgrade bool) error {
-	binPath, cleanup, err := buildMigrationsBinary(migrationsDir, verbose, upgrade)
+// ExecuteMigrate loads migrationsDir with the yaegi interpreter and runs the
+// embedded migrate.App with the provided args.
+func ExecuteMigrate(migrationsDir string, args []string) error {
+	reg, err := interp.LoadRegistry(migrationsDir)
 	if err != nil {
-		return fmt.Errorf("building migrations binary: %w", err)
+		return fmt.Errorf("loading migrations: %w", err)
 	}
-	defer cleanup()
-
-	cmd := exec.Command(binPath, args...)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if runErr := cmd.Run(); runErr != nil {
-		// The binary has already written its error to stderr; propagate the
-		// exit code without adding a second error message.
-		if exitErr, ok := runErr.(*exec.ExitError); ok {
-			os.Exit(exitErr.ExitCode())
-		}
-		return runErr
-	}
-	return nil
+	app := migrate.NewAppWithRegistry(migrate.Config{
+		DatabaseType: migrate.EnvOr("DB_TYPE", "postgresql"),
+		DatabaseURL:  migrate.EnvOr("DATABASE_URL", ""),
+	}, reg)
+	return app.Run(args)
 }

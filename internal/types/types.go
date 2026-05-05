@@ -212,6 +212,7 @@ var ValidFieldTypes = map[string]bool{
 	"serial":       true,
 	"foreign_key":  true,
 	"many_to_many": true,
+	"text[]":       true,
 }
 
 // IsValidFieldType checks if a field type is valid

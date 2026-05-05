@@ -510,6 +510,14 @@ func (sc *SQLConverter) convertFieldTypeWithSchema(schema *Schema, field *Field)
 			return "JSONB", nil
 		}
 
+	case "text[]":
+		switch sc.databaseType {
+		case DatabasePostgreSQL:
+			return "TEXT[]", nil
+		default:
+			return "TEXT", nil
+		}
+
 	default:
 		return "", fmt.Errorf("unsupported field type: %s", field.Type)
 	}

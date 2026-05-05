@@ -29,6 +29,12 @@ package cmd
 // own migrations/main.go; with yaegi the migrations run in the CLI's
 // process, so the CLI itself must register the drivers. lib/pq is already
 // registered transitively by internal/providers/postgresql.
+//
+// The mapping from migrate.Config.DatabaseType to driver name is in
+// migrate/app.go (driverName): "mysql"/"tidb" → mysql, "sqlserver" →
+// sqlserver, "sqlite" → sqlite3, anything else → postgres.
 import (
+	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/microsoft/go-mssqldb"
 )

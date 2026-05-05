@@ -278,6 +278,7 @@ See the [Configuration Guide](docs/configuration.md) for complete options.
 - **[Schema Format Guide](docs/schema-format.md)** — complete YAML schema reference
 - **[Configuration Guide](docs/configuration.md)**
 - **[Manual Build Guide](docs/manual-migration-build.md)** — GOWORK/GOTOOLCHAIN details for CI/CD
+- **[Extending the yaegi Symbol Map](docs/extending-yaegi-symbols.md)** — let interpreted migrations import third-party packages
 
 ### Command Reference
 

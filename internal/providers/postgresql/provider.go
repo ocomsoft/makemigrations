@@ -33,6 +33,7 @@ import (
 	"github.com/ocomsoft/makemigrations/internal/fkutils"
 	"github.com/ocomsoft/makemigrations/internal/typemap"
 	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 	"github.com/ocomsoft/makemigrations/internal/version"
 )
 
@@ -266,6 +267,15 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	var fieldDefs []string
 	var constraints []string
 
+	// Pre-scan to collect all PK field names so we can emit a single composite
+	// PRIMARY KEY constraint instead of one per field (PostgreSQL allows only one).
+	var pkFields []string
+	for _, field := range table.Fields {
+		if field.PrimaryKey {
+			pkFields = append(pkFields, p.QuoteName(field.Name))
+		}
+	}
+
 	for _, field := range table.Fields {
 		fieldDef, constraint, err := p.convertField(schema, &field)
 		if err != nil {
@@ -276,9 +286,16 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 		if fieldDef != "" {
 			fieldDefs = append(fieldDefs, fieldDef)
 		}
-		if constraint != "" {
+		// Suppress per-field PRIMARY KEY constraints when there are multiple PK
+		// columns; the composite constraint is added below.
+		if constraint != "" && len(pkFields) <= 1 {
 			constraints = append(constraints, constraint)
 		}
+	}
+
+	// Emit a single composite PRIMARY KEY when multiple PK columns exist.
+	if len(pkFields) > 1 {
+		constraints = append(constraints, fmt.Sprintf("PRIMARY KEY (%s)", strings.Join(pkFields, ", ")))
 	}
 
 	// Combine field definitions and constraints
@@ -457,7 +474,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
-	constraintName := fmt.Sprintf("fk_%s_%s", tableName, fieldName)
+	constraintName := utils.SafeConstraintName(fmt.Sprintf("fk_%s_%s", tableName, fieldName))
 	onDeleteClause := ""
 	if onDelete != "" {
 		onDeleteClause = fmt.Sprintf(" ON DELETE %s", strings.ToUpper(onDelete))

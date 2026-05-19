@@ -33,6 +33,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ocomsoft/makemigrations/internal/utils"
 	"github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
@@ -373,7 +374,7 @@ func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) 
 	if field.ForeignKey == nil {
 		return "", fmt.Errorf("FK added change for %s.%s has nil ForeignKey", change.TableName, change.FieldName)
 	}
-	constraintName := fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName)
+	constraintName := utils.SafeConstraintName(fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName))
 	onDelete := field.ForeignKey.OnDelete
 	if onDelete == "" {
 		onDelete = "PROTECT"
@@ -391,7 +392,7 @@ func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) 
 
 // generateDropForeignKey emits a &m.DropForeignKey{...} literal.
 func (g *GoGenerator) generateDropForeignKey(change yaml.Change) (string, error) {
-	constraintName := fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName)
+	constraintName := utils.SafeConstraintName(fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName))
 	return fmt.Sprintf("\t\t\t&m.DropForeignKey{\n\t\t\t\tTable: %q,\n\t\t\t\tConstraintName: %q,\n\t\t\t},\n",
 		change.TableName, constraintName), nil
 }
@@ -528,7 +529,7 @@ func (g *GoGenerator) GenerateMainGo() string {
 	return `// Optional standalone-binary entry point for the migrations module.
 //
 // makemigrations migrate runs the migration files in-process via yaegi and
-// does NOT invoke this main(). Keep this file if you want to `+"`go build`"+` the
+// does NOT invoke this main(). Keep this file if you want to ` + "`go build`" + ` the
 // migrations directory into a self-contained binary as a fallback (or to
 // ship in a release artifact). Otherwise it is safe to delete — the
 // migrations directory will still type-check in your IDE via go.mod.

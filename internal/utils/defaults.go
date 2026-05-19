@@ -94,3 +94,19 @@ func HandleFallbackDefault(defaultValue string) string {
 	// Otherwise treat as string literal
 	return fmt.Sprintf("'%s'", defaultValue)
 }
+
+// SafeConstraintName returns a PostgreSQL-safe constraint name (max 63 chars).
+// If the full name exceeds 63 characters, it is truncated to 54 chars and an
+// 8-hex-char FNV-32a hash of the original name is appended (54+1+8=63).
+func SafeConstraintName(name string) string {
+	const maxLen = 63
+	if len(name) <= maxLen {
+		return name
+	}
+	var h uint32
+	for _, b := range []byte(name) {
+		h ^= uint32(b)
+		h *= 16777619
+	}
+	return fmt.Sprintf("%s_%08x", name[:54], h)
+}

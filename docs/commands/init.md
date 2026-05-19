@@ -1,14 +1,14 @@
 # init Command
 
-The `init` command initialises a new makemigrations project. By default it sets up the **Go migration framework** — a compiled, type-safe migration binary that lives alongside your application. A legacy YAML-to-SQL workflow is available via the `--sql` flag.
+The `init` command initialises a new makemigrations project. By default it sets up the **Go migration framework** — type-safe migration `.go` files that the makemigrations CLI runs in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter. A legacy YAML-to-SQL workflow is available via the `--sql` flag.
 
 ## Overview
 
 Running `makemigrations init` bootstraps everything needed to start writing Go-based migrations:
 
 - Creates the `migrations/` directory
-- Generates `migrations/main.go` — the entry point for the compiled migration binary
-- Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/makemigrations/migrate`
+- Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/makemigrations/migrate`. This is what gives your IDE / `gopls` type-checking on the migration files; it is **not** consulted at runtime by `makemigrations migrate`.
+- Generates `migrations/main.go` — an **optional** entry point for compiling the migrations directory into a self-contained binary (`go build -o migrate .`). `makemigrations migrate` does not invoke this `main()`; the file exists purely as a fallback for users who want a standalone binary (e.g. for shipping in a release artifact, or running on a host without makemigrations installed).
 - If an existing `migrations/.schema_snapshot.yaml` is found, generates `migrations/0001_initial.go` with `CreateTable` operations for every table already defined in that snapshot, and prints instructions for fake-applying it
 
 If no snapshot is found the command creates an empty setup and prints instructions for generating the first migration.
@@ -42,14 +42,14 @@ makemigrations init [flags]
 ```
 project/
 └── migrations/
-    ├── go.mod          # Dedicated module: <project>/migrations
-    ├── main.go         # Entry point for the compiled migrate binary
+    ├── go.mod          # Dedicated module: <project>/migrations  (used by IDE/gopls)
+    ├── main.go         # Optional standalone-binary entry point  (NOT used by `makemigrations migrate`)
     └── 0001_initial.go # Only created when .schema_snapshot.yaml is found
 ```
 
-### `migrations/main.go`
+### `migrations/main.go` (optional)
 
-The generated entry point reads database connection details from environment variables and runs the compiled CLI:
+`makemigrations migrate` interprets the `.go` files in this directory via yaegi and never invokes `main()`. The generated `main.go` exists so you can `go build` the directory into a self-contained binary if you want one. Its body reads database connection details from environment variables:
 
 ```go
 package main
@@ -87,7 +87,7 @@ require (
 )
 ```
 
-The module name is derived from the parent project's `go.mod`. The Go version is read from the nearest `go.work` or `go.mod` in the parent tree so the binary is always built with a locally-available toolchain.
+The module name is derived from the parent project's `go.mod`. The Go version is read from the nearest `go.work` or `go.mod` in the parent tree, ensuring `gopls` resolves the same toolchain the rest of your project uses (and that the optional standalone-binary build picks a locally-available toolchain).
 
 ### `migrations/0001_initial.go` (snapshot import)
 
@@ -146,9 +146,10 @@ makemigrations init
 # To generate your first migration:
 #   makemigrations makemigrations --name "initial"
 #
-# Then build and run:
-#   cd migrations && go mod tidy && go build -o migrate .
-#   ./migrate up
+# Then run:
+#   makemigrations migrate up
+#
+# Migrations are interpreted in-process — no Go toolchain required at runtime.
 ```
 
 Step-by-step after a fresh init:
@@ -157,7 +158,7 @@ Step-by-step after a fresh init:
 # 1. Generate your first migration
 makemigrations makemigrations --name "initial"
 
-# 2. Apply migrations to the database (build is handled automatically)
+# 2. Apply migrations (yaegi loads the .go files in-process; no go build)
 makemigrations migrate up
 ```
 
@@ -353,30 +354,25 @@ git add migrations/0001_initial.go   # if generated from snapshot
 git commit -m "chore: initialise Go migration framework"
 ```
 
-### Keep the Migrations Module Tidy
+### Keep the Migrations Module Tidy (optional)
 
-Run `go mod tidy` inside `migrations/` after every new migration file is added so the lock file stays up to date:
+`migrations/go.mod` is consulted by your IDE / `gopls`, not by `makemigrations migrate` (which uses yaegi and the symbol map shipped with the CLI). If you also use the optional standalone-binary path, run `go mod tidy` after adding new migrations to keep `go.sum` accurate:
 
 ```bash
 cd migrations && go mod tidy
 ```
 
-### Rebuild After Changes
+### No Rebuild Step Required
 
-The migration binary must be recompiled whenever migration files are added or changed. `makemigrations migrate` handles this automatically, or do it manually:
-
-```bash
-cd migrations && go build -o migrate .
-```
-
-See the [Manual Build Guide](../manual-migration-build.md) if you need to control `GOWORK` or `GOTOOLCHAIN` explicitly.
+`makemigrations migrate` reads the latest migration files on every invocation — there is no compile or rebuild step between generating a migration and applying it. If you want a self-contained binary as a fallback, see the [Manual Build Guide](../manual-migration-build.md).
 
 ---
 
 ## See Also
 
 - [migrate command](./migrate.md) — run `up`, `down`, `status`, `fake` etc. without manual builds
-- [Manual Build Guide](../manual-migration-build.md) — build the binary with explicit GOWORK/GOTOOLCHAIN
+- [Manual Build Guide](../manual-migration-build.md) — optional: compile `migrations/` into a standalone binary (GOWORK/GOTOOLCHAIN guidance)
+- [Extending the yaegi Symbol Map](../extending-yaegi-symbols.md) — let interpreted migrations import third-party packages
 - [makemigrations Command](./makemigrations.md) — Generate a new migration file
 - [migrate-to-go command](./migrate_to_go.md) — convert existing Goose SQL migrations to Go
 - [Configuration Guide](../configuration.md) — Full configuration reference

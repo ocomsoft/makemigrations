@@ -48,7 +48,7 @@ var rootCmd = &cobra.Command{
 Available commands:
   init              Initialize migrations directory and create initial migration
   makemigrations    Generate Go migration files from YAML schema changes
-  migrate           Build and run the compiled migrations binary
+  migrate           Run migrations in-process via the yaegi interpreter
   db2schema         Extract database schema to YAML
   struct2schema     Convert Go structs to YAML schema
   dump_sql          Dump merged YAML schema as SQL

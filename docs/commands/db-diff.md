@@ -5,9 +5,10 @@ from the migration DAG.
 
 ## What It Does
 
-1. **Reads migration files** from the migrations directory and queries the
-   compiled migration binary (`dag --format json`) to reconstruct the "expected"
-   schema state from the migration chain.
+1. **Reads migration files** from the migrations directory by loading them
+   in-process via the yaegi Go interpreter, then reconstructs the "expected"
+   schema state by replaying the migration DAG (the same path used by
+   `migrate dag --format json`).
 2. **Connects to the live database** and extracts the actual schema using the
    provider's `GetDatabaseSchema`.
 3. **Normalizes SQL-native type names** (e.g. `character varying` to `varchar`)

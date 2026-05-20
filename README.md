@@ -291,6 +291,7 @@ See the [Configuration Guide](docs/configuration.md) for complete options.
 - **[Configuration Guide](docs/configuration.md)**
 - **[Manual Build Guide](docs/manual-migration-build.md)** — GOWORK/GOTOOLCHAIN details for CI/CD
 - **[Extending the yaegi Symbol Map](docs/extending-yaegi-symbols.md)** — let interpreted migrations import third-party packages
+- **[Claude Code Skill](docs/claude-code-skill.md)** — auto-triggered AI assistant skill for schema-first migrations
 
 ### Command Reference
 
@@ -313,6 +314,34 @@ makemigrations init --sql          # create SQL-based project
 makemigrations makemigrations_sql  # generate Goose-compatible SQL files
 makemigrations goose up            # apply via Goose
 ```
+
+---
+
+## 🤖 Claude Code Skill
+
+makemigrations includes a **Claude Code skill** that auto-triggers whenever Claude detects database schema work in your Go project. It enforces the correct workflow: edit `schema/schema.yaml` → generate migrations → avoid raw SQL.
+
+### Installing the Skill
+
+**Option 1: Personal skill** (recommended — available in all Go projects):
+
+```bash
+cp -r skills/ ~/.claude/skills/go-makemigrations
+```
+
+**Option 2: Plugin** (if the repo is registered as a Claude Code plugin):
+
+The `.claude-plugin/` directory is detected automatically when installed.
+
+### What the Skill Does
+
+- Auto-triggers when you ask Claude to add tables, fields, indexes, foreign keys, or modify columns
+- Guides Claude through init → schema edit → migration generation → SQL preview → verification
+- Provides quick reference for field types, properties, indexes, defaults, and type mappings
+- Enforces schema-first workflow — RunSQL only as a last resort
+- Covers both new project bootstrapping and ongoing schema changes
+
+See [`skills/SKILL.md`](skills/SKILL.md) for the full skill content and [`docs/claude-code-skill.md`](docs/claude-code-skill.md) for detailed usage.
 
 ---
 

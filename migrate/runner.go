@@ -229,9 +229,9 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 		}
 		skipped := false
 		if sqlStr != "" {
-			if _, execErr := tx.Exec(sqlStr); execErr != nil {
-				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
-					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
+			if execErr := execWithSavepoint(tx, sqlStr, canIgnoreError(op, opts)); execErr != nil {
+				if shouldIgnoreError(op, opts, r.provider, execErr) {
+					fmt.Printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
 					skipped = true
 				} else {
 					return fmt.Errorf("executing SQL %q: %w", sqlStr, execErr)
@@ -286,9 +286,10 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
 		}
 		if sqlStr != "" {
-			if _, execErr := tx.Exec(sqlStr); execErr != nil {
-				if opts.WarnOnMissingDrop && isDropOp(op) && r.provider.IsNotFoundError(execErr) {
-					fmt.Printf("[WARNING] %s — object not found in database, skipping\n", op.Describe())
+			mayIgnore := canIgnoreError(op, opts) || (isCreateOp(op) && true)
+			if execErr := execWithSavepoint(tx, sqlStr, mayIgnore); execErr != nil {
+				if shouldIgnoreError(op, opts, r.provider, execErr) {
+					fmt.Printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
 				} else if isCreateOp(op) && r.provider.IsAlreadyExistsError(execErr) {
 					fmt.Printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
 				} else {
@@ -305,11 +306,54 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 	return tx.Commit()
 }
 
+// canIgnoreError returns true when the operation MIGHT have its error ignored,
+// without inspecting the actual error. Used to decide whether to wrap the SQL
+// execution in a SAVEPOINT (required for PostgreSQL, which aborts the entire
+// transaction after any error).
+func canIgnoreError(op Operation, opts RunOptions) bool {
+	if ei, ok := op.(ErrorIgnorer); ok && ei.ShouldIgnoreErrors() {
+		return true
+	}
+	return opts.WarnOnMissingDrop && isDropOp(op)
+}
+
+// shouldIgnoreError returns true when a SQL execution error should be logged as
+// a warning rather than aborting the migration. This happens when:
+//   - The operation has IgnoreErrors set (unconditional), or
+//   - WarnOnMissingDrop is enabled AND the operation is a drop AND the error
+//     indicates the object doesn't exist in the database.
+func shouldIgnoreError(op Operation, opts RunOptions, p providers.Provider, execErr error) bool {
+	if ei, ok := op.(ErrorIgnorer); ok && ei.ShouldIgnoreErrors() {
+		return true
+	}
+	return opts.WarnOnMissingDrop && isDropOp(op) && p.IsNotFoundError(execErr)
+}
+
+// execWithSavepoint executes SQL within a SAVEPOINT when mayFail is true,
+// so that a failed statement does not poison the surrounding transaction
+// (required for PostgreSQL). When mayFail is false it executes directly.
+func execWithSavepoint(tx *sql.Tx, sqlStr string, mayFail bool) error {
+	if !mayFail {
+		_, err := tx.Exec(sqlStr)
+		return err
+	}
+	if _, err := tx.Exec("SAVEPOINT ignore_errors"); err != nil {
+		_, execErr := tx.Exec(sqlStr)
+		return execErr
+	}
+	if _, err := tx.Exec(sqlStr); err != nil {
+		_, _ = tx.Exec("ROLLBACK TO SAVEPOINT ignore_errors")
+		return err
+	}
+	_, _ = tx.Exec("RELEASE SAVEPOINT ignore_errors")
+	return nil
+}
+
 // isDropOp returns true for operations that remove a database object.
 // Only drop operations trigger WarnOnMissingDrop — all other failures stop immediately.
 func isDropOp(op Operation) bool {
 	switch op.TypeName() {
-	case "drop_table", "drop_field", "drop_index":
+	case "drop_table", "drop_field", "drop_index", "drop_foreign_key":
 		return true
 	default:
 		return false
@@ -320,7 +364,7 @@ func isDropOp(op Operation) bool {
 // Used during rollback to skip re-creating objects that already exist.
 func isCreateOp(op Operation) bool {
 	switch op.TypeName() {
-	case "drop_table", "drop_field", "drop_index":
+	case "drop_table", "drop_field", "drop_index", "drop_foreign_key":
 		return true
 	default:
 		return false

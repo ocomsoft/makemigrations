@@ -711,3 +711,82 @@ func TestApp_Run_Down_WarnOnMissingDrop(t *testing.T) {
 		t.Fatalf("down --warn-on-missing-drop failed: %v", err)
 	}
 }
+
+// TestApp_Run_Up_IgnoreErrors confirms that DropTable with IgnoreErrors: true
+// logs a warning and continues when the table does not exist in the database.
+func TestApp_Run_Up_IgnoreErrors(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_ignore_errors.db")
+
+	seedDB, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("opening seed db: %v", err)
+	}
+	if _, err := seedDB.Exec(`CREATE TABLE makemigrations_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
+		t.Fatalf("creating history table: %v", err)
+	}
+	if _, err := seedDB.Exec(`INSERT INTO makemigrations_history (name) VALUES ('0001_initial')`); err != nil {
+		t.Fatalf("recording initial: %v", err)
+	}
+	_ = seedDB.Close()
+
+	reg := migrate.NewRegistry()
+	reg.Register(&migrate.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []migrate.Operation{
+			&migrate.CreateTable{
+				Name:   "ghosts",
+				Fields: []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}},
+			},
+		},
+	})
+	reg.Register(&migrate.Migration{
+		Name:         "0002_cleanup",
+		Dependencies: []string{"0001_initial"},
+		Operations: []migrate.Operation{
+			&migrate.DropTable{Name: "ghosts", IgnoreErrors: true},
+		},
+	})
+
+	cfg := migrate.Config{DatabaseType: "sqlite", DBName: dbPath}
+	app := migrate.NewAppWithRegistry(cfg, reg)
+
+	origStdout := os.Stdout
+	devNull, _ := os.Open(os.DevNull)
+	os.Stdout = devNull
+	defer func() {
+		os.Stdout = origStdout
+		_ = devNull.Close()
+	}()
+
+	// Without --warn-on-missing-drop, IgnoreErrors alone should be enough.
+	if err := app.Run([]string{"up"}); err != nil {
+		t.Fatalf("up with IgnoreErrors should succeed when drop target is missing, got: %v", err)
+	}
+}
+
+// TestErrorIgnorer_Interface confirms all drop operations implement ErrorIgnorer.
+func TestErrorIgnorer_Interface(t *testing.T) {
+	ops := []migrate.Operation{
+		&migrate.DropTable{Name: "t", IgnoreErrors: true},
+		&migrate.DropField{Table: "t", Field: "f", IgnoreErrors: true},
+		&migrate.DropIndex{Table: "t", Index: "i", IgnoreErrors: true},
+		&migrate.DropForeignKey{Table: "t", ConstraintName: "c", IgnoreErrors: true},
+	}
+	for _, op := range ops {
+		ei, ok := op.(migrate.ErrorIgnorer)
+		if !ok {
+			t.Errorf("%T does not implement ErrorIgnorer", op)
+			continue
+		}
+		if !ei.ShouldIgnoreErrors() {
+			t.Errorf("%T.ShouldIgnoreErrors() = false, want true", op)
+		}
+	}
+
+	// Verify false when not set
+	noIgnore := &migrate.DropTable{Name: "t"}
+	if noIgnore.ShouldIgnoreErrors() {
+		t.Error("ShouldIgnoreErrors() = true when IgnoreErrors is false")
+	}
+}

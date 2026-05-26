@@ -687,6 +687,45 @@ func TestGoGenerator_AddField_PromptOmit_EmitsSchemaOnly(t *testing.T) {
 	}
 }
 
+func TestGoGenerator_DropTable_PromptIgnoreErrors(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeTableRemoved, TableName: "old_table"},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptIgnoreErrors}
+	src, err := g.GenerateMigration("0050_drop_ignore", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "IgnoreErrors: true") {
+		t.Errorf("expected IgnoreErrors: true in output, got:\n%s", src)
+	}
+	if strings.Contains(src, "SchemaOnly") {
+		t.Error("expected no SchemaOnly when IgnoreErrors is set")
+	}
+}
+
+func TestGoGenerator_DropField_PromptIgnoreErrors(t *testing.T) {
+	g := codegen.NewGoGenerator()
+	diff := &yaml.SchemaDiff{
+		HasChanges: true,
+		Changes: []yaml.Change{
+			{Type: yaml.ChangeTypeFieldRemoved, TableName: "users", FieldName: "phone"},
+		},
+	}
+	decisions := map[int]yaml.PromptResponse{0: yaml.PromptIgnoreErrors}
+	src, err := g.GenerateMigration("0051_drop_field_ignore", []string{}, diff, nil, nil, decisions)
+	if err != nil {
+		t.Fatalf("GenerateMigration: %v", err)
+	}
+	if !strings.Contains(src, "IgnoreErrors: true") {
+		t.Errorf("expected IgnoreErrors: true in output, got:\n%s", src)
+	}
+}
+
 // TestGoGenerator_SetTypeMappings verifies that a ChangeTypeTypeMappingsModified change
 // generates a valid &m.SetTypeMappings{...} literal with sorted keys.
 func TestGoGenerator_SetTypeMappings(t *testing.T) {

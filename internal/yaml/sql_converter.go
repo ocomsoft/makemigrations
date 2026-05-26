@@ -38,11 +38,12 @@ import (
 type PromptResponse int
 
 const (
-	PromptGenerate    PromptResponse = 1 // Generate SQL without any prefix
-	PromptReview      PromptResponse = 2 // Mark for review (use review prefix)
-	PromptOmit        PromptResponse = 3 // Don't generate statement (omit from output)
-	PromptExit        PromptResponse = 4 // Exit migration generation
-	PromptGenerateAll PromptResponse = 5 // Generate all remaining destructive operations without prompting
+	PromptGenerate     PromptResponse = 1 // Generate SQL without any prefix
+	PromptReview       PromptResponse = 2 // Mark for review (use review prefix)
+	PromptOmit         PromptResponse = 3 // Don't generate statement (omit from output)
+	PromptExit         PromptResponse = 4 // Exit migration generation
+	PromptGenerateAll  PromptResponse = 5 // Generate all remaining destructive operations without prompting
+	PromptIgnoreErrors PromptResponse = 6 // Generate with IgnoreErrors: true (runner continues on failure)
 )
 
 // Field types

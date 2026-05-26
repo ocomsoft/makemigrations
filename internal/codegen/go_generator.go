@@ -107,8 +107,9 @@ func (g *GoGenerator) GenerateMigration(
 		decision := decisions[i] // zero value (0) when map is nil or key absent
 		schemaOnly := decision == yaml.PromptOmit
 		review := decision == yaml.PromptReview
+		ignoreErrors := decision == yaml.PromptIgnoreErrors
 
-		op, err := g.generateOperation(change, currentSchema, previousSchema, schemaOnly)
+		op, err := g.generateOperation(change, currentSchema, previousSchema, schemaOnly, ignoreErrors)
 		if err != nil {
 			return "", fmt.Errorf("generating operation for change %s on %s: %w",
 				change.Type, change.TableName, err)
@@ -135,22 +136,23 @@ func (g *GoGenerator) GenerateMigration(
 // for one migrate.Operation (e.g. &m.CreateTable{...}).
 // schemaOnly is passed to destructive operations (DropTable, DropField) to emit
 // SchemaOnly: true when the user chose to defer the SQL execution.
+// ignoreErrors emits IgnoreErrors: true so the runner continues on failure.
 func (g *GoGenerator) generateOperation(
 	change yaml.Change,
 	currentSchema, previousSchema *yaml.Schema,
-	schemaOnly bool,
+	schemaOnly, ignoreErrors bool,
 ) (string, error) {
 	switch change.Type {
 	case yaml.ChangeTypeTableAdded:
 		return g.generateCreateTable(change, currentSchema, schemaOnly)
 	case yaml.ChangeTypeTableRemoved:
-		return g.generateDropTable(change, schemaOnly)
+		return g.generateDropTable(change, schemaOnly, ignoreErrors)
 	case yaml.ChangeTypeTableRenamed:
 		return g.generateRenameTable(change)
 	case yaml.ChangeTypeFieldAdded:
 		return g.generateAddField(change, currentSchema, schemaOnly)
 	case yaml.ChangeTypeFieldRemoved:
-		return g.generateDropField(change, schemaOnly)
+		return g.generateDropField(change, schemaOnly, ignoreErrors)
 	case yaml.ChangeTypeFieldModified:
 		return g.generateAlterField(change, currentSchema, previousSchema)
 	case yaml.ChangeTypeFieldRenamed:
@@ -158,11 +160,11 @@ func (g *GoGenerator) generateOperation(
 	case yaml.ChangeTypeIndexAdded:
 		return g.generateAddIndex(change)
 	case yaml.ChangeTypeIndexRemoved:
-		return g.generateDropIndex(change)
+		return g.generateDropIndex(change, ignoreErrors)
 	case yaml.ChangeTypeForeignKeyAdded:
 		return g.generateAddForeignKey(change)
 	case yaml.ChangeTypeForeignKeyRemoved:
-		return g.generateDropForeignKey(change)
+		return g.generateDropForeignKey(change, ignoreErrors)
 	case yaml.ChangeTypeDefaultsModified:
 		return g.generateSetDefaults(change)
 	case yaml.ChangeTypeTypeMappingsModified:
@@ -217,9 +219,12 @@ func (g *GoGenerator) generateCreateTable(change yaml.Change, schema *yaml.Schem
 // generateDropTable emits a &m.DropTable{...} literal.
 // When schemaOnly is true, SchemaOnly: true is included so the runner updates
 // the schema state without executing DROP TABLE against the database.
-func (g *GoGenerator) generateDropTable(change yaml.Change, schemaOnly bool) (string, error) {
+func (g *GoGenerator) generateDropTable(change yaml.Change, schemaOnly, ignoreErrors bool) (string, error) {
 	if schemaOnly {
 		return fmt.Sprintf("\t\t\t&m.DropTable{Name: %q, SchemaOnly: true},\n", change.TableName), nil
+	}
+	if ignoreErrors {
+		return fmt.Sprintf("\t\t\t&m.DropTable{Name: %q, IgnoreErrors: true},\n", change.TableName), nil
 	}
 	return fmt.Sprintf("\t\t\t&m.DropTable{Name: %q},\n", change.TableName), nil
 }
@@ -257,9 +262,13 @@ func (g *GoGenerator) generateAddField(change yaml.Change, schema *yaml.Schema, 
 // generateDropField emits a &m.DropField{...} literal.
 // When schemaOnly is true, SchemaOnly: true is included so the runner updates
 // the schema state without executing DROP COLUMN against the database.
-func (g *GoGenerator) generateDropField(change yaml.Change, schemaOnly bool) (string, error) {
+func (g *GoGenerator) generateDropField(change yaml.Change, schemaOnly, ignoreErrors bool) (string, error) {
 	if schemaOnly {
 		return fmt.Sprintf("\t\t\t&m.DropField{Table: %q, Field: %q, SchemaOnly: true},\n",
+			change.TableName, change.FieldName), nil
+	}
+	if ignoreErrors {
+		return fmt.Sprintf("\t\t\t&m.DropField{Table: %q, Field: %q, IgnoreErrors: true},\n",
 			change.TableName, change.FieldName), nil
 	}
 	return fmt.Sprintf("\t\t\t&m.DropField{Table: %q, Field: %q},\n",
@@ -357,9 +366,13 @@ func (g *GoGenerator) generateAddIndex(change yaml.Change) (string, error) {
 }
 
 // generateDropIndex emits a &m.DropIndex{...} literal.
-func (g *GoGenerator) generateDropIndex(change yaml.Change) (string, error) {
+func (g *GoGenerator) generateDropIndex(change yaml.Change, ignoreErrors bool) (string, error) {
 	if change.FieldName == "" {
 		return "", fmt.Errorf("drop_index change for table %q has empty index name", change.TableName)
+	}
+	if ignoreErrors {
+		return fmt.Sprintf("\t\t\t&m.DropIndex{Table: %q, Index: %q, IgnoreErrors: true},\n",
+			change.TableName, change.FieldName), nil
 	}
 	return fmt.Sprintf("\t\t\t&m.DropIndex{Table: %q, Index: %q},\n",
 		change.TableName, change.FieldName), nil
@@ -391,8 +404,12 @@ func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) 
 }
 
 // generateDropForeignKey emits a &m.DropForeignKey{...} literal.
-func (g *GoGenerator) generateDropForeignKey(change yaml.Change) (string, error) {
+func (g *GoGenerator) generateDropForeignKey(change yaml.Change, ignoreErrors bool) (string, error) {
 	constraintName := utils.SafeConstraintName(fmt.Sprintf("fk_%s_%s", change.TableName, change.FieldName))
+	if ignoreErrors {
+		return fmt.Sprintf("\t\t\t&m.DropForeignKey{\n\t\t\t\tTable: %q,\n\t\t\t\tConstraintName: %q,\n\t\t\t\tIgnoreErrors: true,\n\t\t\t},\n",
+			change.TableName, constraintName), nil
+	}
 	return fmt.Sprintf("\t\t\t&m.DropForeignKey{\n\t\t\t\tTable: %q,\n\t\t\t\tConstraintName: %q,\n\t\t\t},\n",
 		change.TableName, constraintName), nil
 }

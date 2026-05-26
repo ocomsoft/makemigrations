@@ -284,6 +284,8 @@ Drops an existing table.
 | Field | Type | Description |
 |-------|------|-------------|
 | `Name` | `string` | Table name. Required. |
+| `SchemaOnly` | `bool` | When true, updates schema state without executing SQL. |
+| `IgnoreErrors` | `bool` | When true, log a warning and continue if the SQL fails. |
 
 ---
 
@@ -348,6 +350,8 @@ Removes a column from an existing table.
 |-------|------|-------------|
 | `Table` | `string` | Table to modify. |
 | `Field` | `string` | Column name to drop. |
+| `SchemaOnly` | `bool` | When true, updates schema state without executing SQL. |
+| `IgnoreErrors` | `bool` | When true, log a warning and continue if the SQL fails. |
 
 ---
 
@@ -439,6 +443,59 @@ Removes an index.
 |-------|------|-------------|
 | `Table` | `string` | Table the index belongs to. |
 | `Index` | `string` | Index name to drop. |
+| `IgnoreErrors` | `bool` | When true, log a warning and continue if the SQL fails. |
+
+---
+
+### `AddForeignKey`
+
+Adds a foreign key constraint to an existing table. The FK column must already exist (created by `AddField` or `CreateTable`).
+
+```go
+&m.AddForeignKey{
+    Table:           "orders",
+    FieldName:       "user_id",
+    ConstraintName:  "fk_orders_user_id",
+    ReferencedTable: "users",
+    OnDelete:        "CASCADE",
+}
+```
+
+**Generated SQL:** `ALTER TABLE orders ADD CONSTRAINT fk_orders_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`
+
+**Down:** `ALTER TABLE orders DROP CONSTRAINT fk_orders_user_id`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Table` | `string` | Table to add the constraint to. |
+| `FieldName` | `string` | Column that holds the foreign key. |
+| `ConstraintName` | `string` | Name of the constraint. |
+| `ReferencedTable` | `string` | Table referenced by the FK. |
+| `OnDelete` | `string` | CASCADE, RESTRICT, SET_NULL, PROTECT, etc. |
+| `OnUpdate` | `string` | Optional ON UPDATE action. |
+
+---
+
+### `DropForeignKey`
+
+Drops a foreign key constraint from an existing table.
+
+```go
+&m.DropForeignKey{
+    Table:          "orders",
+    ConstraintName: "fk_orders_user_id",
+}
+```
+
+**Generated SQL:** `ALTER TABLE orders DROP CONSTRAINT fk_orders_user_id`
+
+**Down:** Reconstructs `ADD CONSTRAINT` from the pre-drop schema state.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Table` | `string` | Table to drop the constraint from. |
+| `ConstraintName` | `string` | Constraint name to drop. |
+| `IgnoreErrors` | `bool` | When true, log a warning and continue if the SQL fails. |
 
 ---
 
@@ -581,6 +638,24 @@ Operations: []m.Operation{
     },
 },
 ```
+
+**Drop a table/column/index that might not exist:**
+
+When cleaning up schema drift or writing migrations against databases in an unknown state, set `IgnoreErrors: true` so the runner logs a warning and continues instead of aborting:
+
+```go
+Operations: []m.Operation{
+    &m.DropTable{Name: "legacy_cache", IgnoreErrors: true},
+    &m.DropIndex{Table: "users", Index: "idx_temp_sort", IgnoreErrors: true},
+    &m.DropForeignKey{
+        Table:          "orders",
+        ConstraintName: "fk_orders_old_user_id",
+        IgnoreErrors:   true,
+    },
+},
+```
+
+`IgnoreErrors` swallows the SQL execution error at the runner level. The state mutation is skipped for the failed operation so the schema state stays consistent. This flag is available on `DropTable`, `DropField`, `DropIndex`, and `DropForeignKey`.
 
 ### Writing a migration entirely by hand
 

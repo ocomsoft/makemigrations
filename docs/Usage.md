@@ -1032,6 +1032,7 @@ makemigrations migrate status           ← verify
 | `makemigrations makemigrations --dry-run` | Preview migration source without writing a file |
 | `makemigrations makemigrations --check` | CI mode: exit 1 if migrations are needed |
 | `makemigrations makemigrations --merge` | Generate a merge migration for concurrent branches |
+| `makemigrations current_state` | Show reconstructed schema from migration DAG as YAML |
 | `makemigrations dump_sql` | Show full CREATE TABLE SQL from the YAML schema |
 | `makemigrations dump_sql --verbose` | Include processing detail in the output |
 | `makemigrations migrate showsql` | Show SQL for all pending migrations |
@@ -1054,5 +1055,6 @@ makemigrations migrate status           ← verify
 - [migrate Command](commands/migrate.md) — all runtime commands and flags
 - [diff Command](commands/diff.md) — compare YAML schema against migration state
 - [db-diff Command](commands/db-diff.md) — compare migration state against live database
+- [current_state Command](commands/current_state.md) — inspect reconstructed migration state
 - [dump_sql Command](commands/dump_sql.md) — schema inspection command
 - [Configuration Guide](configuration.md) — full configuration reference

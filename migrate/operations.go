@@ -56,6 +56,13 @@ type Operation interface {
 	IsDestructive() bool
 }
 
+// ErrorIgnorer is an optional interface implemented by operations that support
+// ignoring execution errors at the runner level. When ShouldIgnoreErrors
+// returns true, the runner logs a warning and continues instead of aborting.
+type ErrorIgnorer interface {
+	ShouldIgnoreErrors() bool
+}
+
 // boolPtr converts a bool value to a *bool pointer for use with types.Field.Nullable.
 func boolPtr(b bool) *bool { return &b }
 
@@ -137,11 +144,15 @@ func joinFields(fields []string) string {
 // (via Mutate) but does not execute any SQL, allowing the schema state to be
 // seeded from an existing database without re-running CREATE TABLE.
 type CreateTable struct {
-	Name       string
-	Fields     []Field
-	Indexes    []Index
-	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
+	Name         string
+	Fields       []Field
+	Indexes      []Index
+	SchemaOnly   bool // when true, Up/Down return no SQL; Mutate still runs
+	IgnoreErrors bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *CreateTable) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *CreateTable) TypeName() string { return "create_table" }
@@ -201,9 +212,13 @@ func (op *CreateTable) Mutate(state *SchemaState) error {
 // developer to acknowledge a removal in the schema definition without
 // immediately dropping the live table.
 type DropTable struct {
-	Name       string
-	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
+	Name         string
+	SchemaOnly   bool // when true, Up/Down return no SQL; Mutate still runs
+	IgnoreErrors bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *DropTable) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *DropTable) TypeName() string { return "drop_table" }
@@ -344,10 +359,14 @@ func (op *AddField) Mutate(state *SchemaState) error {
 // developer to acknowledge a removal in the schema definition without
 // immediately dropping the live column.
 type DropField struct {
-	Table      string
-	Field      string
-	SchemaOnly bool // when true, Up/Down return no SQL; Mutate still runs
+	Table        string
+	Field        string
+	SchemaOnly   bool // when true, Up/Down return no SQL; Mutate still runs
+	IgnoreErrors bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *DropField) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *DropField) TypeName() string { return "drop_field" }
@@ -563,9 +582,13 @@ func (op *AddIndex) Mutate(state *SchemaState) error {
 
 // DropIndex is a migration operation that removes an index from an existing table.
 type DropIndex struct {
-	Table string
-	Index string
+	Table        string
+	Index        string
+	IgnoreErrors bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *DropIndex) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *DropIndex) TypeName() string { return "drop_index" }
@@ -635,7 +658,11 @@ type AddForeignKey struct {
 	ReferencedTable string
 	OnDelete        string
 	OnUpdate        string
+	IgnoreErrors    bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *AddForeignKey) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *AddForeignKey) TypeName() string { return "add_foreign_key" }
@@ -688,7 +715,11 @@ func (op *AddForeignKey) Mutate(state *SchemaState) error {
 type DropForeignKey struct {
 	Table          string
 	ConstraintName string
+	IgnoreErrors   bool // when true, runner logs a warning and continues on SQL failure
 }
+
+// ShouldIgnoreErrors implements ErrorIgnorer.
+func (op *DropForeignKey) ShouldIgnoreErrors() bool { return op.IgnoreErrors }
 
 // TypeName returns the operation type identifier.
 func (op *DropForeignKey) TypeName() string { return "drop_foreign_key" }

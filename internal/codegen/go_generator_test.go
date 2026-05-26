@@ -801,6 +801,9 @@ func TestGoGenerator_AddForeignKey(t *testing.T) {
 	if !strings.Contains(code, "ConstraintName:") || !strings.Contains(code, `"fk_orders_user_id"`) {
 		t.Errorf("expected ConstraintName: \"fk_orders_user_id\", got:\n%s", code)
 	}
+	if !strings.Contains(code, "IgnoreErrors:") {
+		t.Errorf("expected IgnoreErrors: true in AddForeignKey, got:\n%s", code)
+	}
 }
 
 // TestGoGenerator_DropForeignKey verifies that a ChangeTypeForeignKeyRemoved change

@@ -197,10 +197,16 @@ func (g *GoGenerator) generateCreateTable(change yaml.Change, schema *yaml.Schem
 		b.WriteString("\t\t\t\t},\n")
 	}
 
-	// Indexes
-	if len(table.Indexes) > 0 {
+	// Indexes (exclude FromFK — those are auto-managed by AddForeignKey)
+	var userIndexes []yaml.Index
+	for _, idx := range table.Indexes {
+		if !idx.FromFK {
+			userIndexes = append(userIndexes, idx)
+		}
+	}
+	if len(userIndexes) > 0 {
 		b.WriteString("\t\t\t\tIndexes: []m.Index{\n")
-		for _, idx := range table.Indexes {
+		for _, idx := range userIndexes {
 			b.WriteString("\t\t\t\t\t")
 			b.WriteString(generateIndexLiteral(idx))
 			b.WriteString(",\n")
@@ -399,6 +405,7 @@ func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) 
 	b.WriteString(fmt.Sprintf("\t\t\t\tConstraintName: %q,\n", constraintName))
 	b.WriteString(fmt.Sprintf("\t\t\t\tReferencedTable: %q,\n", field.ForeignKey.Table))
 	b.WriteString(fmt.Sprintf("\t\t\t\tOnDelete: %q,\n", onDelete))
+	b.WriteString("\t\t\t\tIgnoreErrors:    true,\n")
 	b.WriteString("\t\t\t},\n")
 	return b.String(), nil
 }

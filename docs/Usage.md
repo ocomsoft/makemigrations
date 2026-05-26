@@ -1052,5 +1052,7 @@ makemigrations migrate status           ← verify
 - [init Command](commands/init.md) — detailed init options
 - [makemigrations Command](commands/makemigrations.md) — all generation flags
 - [migrate Command](commands/migrate.md) — all runtime commands and flags
+- [diff Command](commands/diff.md) — compare YAML schema against migration state
+- [db-diff Command](commands/db-diff.md) — compare migration state against live database
 - [dump_sql Command](commands/dump_sql.md) — schema inspection command
 - [Configuration Guide](configuration.md) — full configuration reference

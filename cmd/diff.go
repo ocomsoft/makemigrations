@@ -24,9 +24,13 @@ SOFTWARE.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
 
@@ -35,26 +39,31 @@ import (
 	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
-var diffVerbose bool
+var (
+	diffVerbose bool
+	diffYAML    bool
+	diffJSON    bool
+)
 
 var diffCmd = &cobra.Command{
 	Use:   "diff",
-	Short: "Show schema drift between YAML and migration state as YAML",
+	Short: "Show schema drift between YAML and migration state",
 	Long: `Compare the current YAML schema files against the migration DAG state
-and output the differences as YAML. The output shows:
+and show the differences in both directions:
 
-  add:    - tables, fields, and indexes in schema.yaml but not yet in migrations
-  remove: - tables, fields, and indexes in migrations but removed from schema.yaml
-  modify: - fields whose properties changed between migration state and schema.yaml
+  In Schema, Not Yet Migrated  — tables/fields/indexes added to schema.yaml
+  In Migrations, Not in Schema — tables/fields/indexes removed from schema.yaml
 
-This helps you understand exactly what a new migration would do, expressed
-in the same YAML format as your schema files.`,
+Default output is a color-coded report with YAML snippets.
+Use --yaml for machine-readable YAML output, or --json for JSON.`,
 	RunE: runDiff,
 }
 
 func init() {
 	rootCmd.AddCommand(diffCmd)
 	diffCmd.Flags().BoolVar(&diffVerbose, "verbose", false, "Show detailed output")
+	diffCmd.Flags().BoolVar(&diffYAML, "yaml", false, "Output as YAML (add/remove/modify sections)")
+	diffCmd.Flags().BoolVar(&diffJSON, "json", false, "Output as JSON")
 }
 
 func runDiff(_ *cobra.Command, _ []string) error {
@@ -107,12 +116,275 @@ func runDiff(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("computing schema diff: %w", err)
 	}
 
+	// 4. Output
+	switch {
+	case diffJSON:
+		return formatSchemaDiffJSON(os.Stdout, diff)
+	case diffYAML:
+		return formatSchemaDiffYAML(os.Stdout, diff)
+	default:
+		formatSchemaDiffReport(os.Stdout, diff, diffVerbose)
+		return nil
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Human-readable report (default)
+// ---------------------------------------------------------------------------
+
+func formatSchemaDiffReport(w io.Writer, diff *yamlpkg.SchemaDiff, verboseFlag bool) {
+	bold := color.New(color.Bold)
+	red := color.New(color.FgRed)
+	yellow := color.New(color.FgYellow)
+	cyan := color.New(color.FgCyan)
+	green := color.New(color.FgGreen)
+
+	_, _ = bold.Fprintln(w, "Schema Diff Report")
+	_, _ = bold.Fprintln(w, "==================")
+	_, _ = fmt.Fprintln(w)
+
 	if !diff.HasChanges {
-		fmt.Println("# No differences — schema.yaml matches migration state.")
+		_, _ = green.Fprintln(w, "No differences — schema.yaml matches migration state.")
+		return
+	}
+
+	// Partition changes
+	var schemaOnlyTables []yamlpkg.Change // table_added: in schema, not migrated
+	var migOnlyTables []yamlpkg.Change    // table_removed: in migrations, not in schema
+	fieldChanges := make(map[string][]yamlpkg.Change)
+	indexChanges := make(map[string][]yamlpkg.Change)
+	fkChanges := make(map[string][]yamlpkg.Change)
+	var modifiedFields []yamlpkg.Change
+	totalFieldChanges := 0
+	totalIndexChanges := 0
+	totalFKChanges := 0
+
+	for _, ch := range diff.Changes {
+		switch {
+		case ch.Type == yamlpkg.ChangeTypeTableAdded:
+			schemaOnlyTables = append(schemaOnlyTables, ch)
+		case ch.Type == yamlpkg.ChangeTypeTableRemoved:
+			migOnlyTables = append(migOnlyTables, ch)
+		case ch.Type == yamlpkg.ChangeTypeFieldModified:
+			modifiedFields = append(modifiedFields, ch)
+		case ch.Type == yamlpkg.ChangeTypeIndexAdded || ch.Type == yamlpkg.ChangeTypeIndexRemoved:
+			indexChanges[ch.TableName] = append(indexChanges[ch.TableName], ch)
+			totalIndexChanges++
+		case isForeignKeyChange(ch):
+			fkChanges[ch.TableName] = append(fkChanges[ch.TableName], ch)
+			totalFKChanges++
+		default:
+			fieldChanges[ch.TableName] = append(fieldChanges[ch.TableName], ch)
+			totalFieldChanges++
+		}
+	}
+
+	// --- In Schema, Not Yet Migrated ---
+	if len(schemaOnlyTables) > 0 {
+		_, _ = bold.Fprintf(w, "In Schema, Not Yet Migrated (%d table(s)):\n", len(schemaOnlyTables))
+		for _, ch := range schemaOnlyTables {
+			_, _ = yellow.Fprintf(w, "  + %s\n", ch.TableName)
+			if verboseFlag {
+				_, _ = fmt.Fprintf(w, "    %s\n", ch.Description)
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- In Migrations, Removed from Schema ---
+	if len(migOnlyTables) > 0 {
+		_, _ = bold.Fprintf(w, "In Migrations, Removed from Schema (%d table(s)):\n", len(migOnlyTables))
+		for _, ch := range migOnlyTables {
+			_, _ = red.Fprintf(w, "  ✗ %s\n", ch.TableName)
+			if verboseFlag {
+				_, _ = fmt.Fprintf(w, "    %s\n", ch.Description)
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- Field Differences ---
+	if len(fieldChanges) > 0 {
+		tableNames := sortedKeys(fieldChanges)
+		_, _ = bold.Fprintf(w, "Field Differences (%d change(s) across %d table(s)):\n", totalFieldChanges, len(tableNames))
+		for _, tableName := range tableNames {
+			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
+			for _, ch := range fieldChanges[tableName] {
+				switch ch.Type {
+				case yamlpkg.ChangeTypeFieldAdded:
+					_, _ = yellow.Fprintf(w, "    + %s\n", ch.FieldName)
+				case yamlpkg.ChangeTypeFieldRemoved:
+					_, _ = red.Fprintf(w, "    ✗ %s\n", ch.FieldName)
+				default:
+					_, _ = fmt.Fprintf(w, "    ~ %s: %s\n", ch.FieldName, ch.Description)
+				}
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- Modified Fields ---
+	if len(modifiedFields) > 0 {
+		_, _ = bold.Fprintf(w, "Modified Fields (%d):\n", len(modifiedFields))
+		for _, ch := range modifiedFields {
+			_, _ = cyan.Fprintf(w, "  %s.%s:\n", ch.TableName, ch.FieldName)
+			_, _ = fmt.Fprintf(w, "    %s\n", ch.Description)
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- Index Differences ---
+	if len(indexChanges) > 0 {
+		tableNames := sortedKeys(indexChanges)
+		_, _ = bold.Fprintf(w, "Index Differences (%d change(s) across %d table(s)):\n", totalIndexChanges, len(tableNames))
+		for _, tableName := range tableNames {
+			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
+			for _, ch := range indexChanges[tableName] {
+				switch ch.Type {
+				case yamlpkg.ChangeTypeIndexAdded:
+					_, _ = yellow.Fprintf(w, "    + %s\n", ch.FieldName)
+				case yamlpkg.ChangeTypeIndexRemoved:
+					_, _ = red.Fprintf(w, "    ✗ %s\n", ch.FieldName)
+				}
+				if verboseFlag {
+					_, _ = fmt.Fprintf(w, "      %s\n", ch.Description)
+				}
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- Foreign Key Differences ---
+	if len(fkChanges) > 0 {
+		tableNames := sortedKeys(fkChanges)
+		_, _ = bold.Fprintf(w, "Foreign Key Differences (%d change(s) across %d table(s)):\n", totalFKChanges, len(tableNames))
+		for _, tableName := range tableNames {
+			_, _ = cyan.Fprintf(w, "  %s:\n", tableName)
+			for _, ch := range fkChanges[tableName] {
+				switch ch.Type {
+				case yamlpkg.ChangeTypeForeignKeyAdded:
+					_, _ = yellow.Fprintf(w, "    + %s\n", ch.FieldName)
+				case yamlpkg.ChangeTypeForeignKeyRemoved:
+					_, _ = red.Fprintf(w, "    ✗ %s\n", ch.FieldName)
+				default:
+					_, _ = fmt.Fprintf(w, "    ~ %s: %s\n", ch.FieldName, ch.Description)
+				}
+			}
+		}
+		_, _ = fmt.Fprintln(w)
+	}
+
+	// --- Summary ---
+	_, _ = bold.Fprintln(w, "Summary:")
+	_, _ = fmt.Fprintf(w, "  Total differences:    %d\n", len(diff.Changes))
+	_, _ = fmt.Fprintf(w, "  Schema-only tables:   %d\n", len(schemaOnlyTables))
+	_, _ = fmt.Fprintf(w, "  Migration-only tables: %d\n", len(migOnlyTables))
+	_, _ = fmt.Fprintf(w, "  Field changes:        %d\n", totalFieldChanges+len(modifiedFields))
+	_, _ = fmt.Fprintf(w, "  Index changes:        %d\n", totalIndexChanges)
+	_, _ = fmt.Fprintf(w, "  FK changes:           %d\n", totalFKChanges)
+
+	if diff.IsDestructive {
+		_, _ = fmt.Fprintln(w)
+		_, _ = red.Fprintln(w, "⚠ One or more differences are destructive (data loss risk).")
+	}
+
+	// --- YAML Snippets ---
+	_, _ = fmt.Fprintln(w)
+	_, _ = bold.Fprintln(w, "YAML Snippets")
+	_, _ = bold.Fprintln(w, "=============")
+
+	snippetCount := 0
+
+	// Tables in schema but not migrated
+	for _, ch := range schemaOnlyTables {
+		table, ok := ch.NewValue.(yamlpkg.Table)
+		if !ok {
+			continue
+		}
+		snippet, err := generateTableSnippet(table)
+		if err != nil {
+			continue
+		}
+		_, _ = fmt.Fprintln(w)
+		_, _ = cyan.Fprintf(w, "# Table '%s' (in schema, not yet migrated):\n", ch.TableName)
+		_, _ = fmt.Fprint(w, snippet)
+		snippetCount++
+	}
+
+	// Tables in migrations but removed from schema
+	for _, ch := range migOnlyTables {
+		table, ok := ch.OldValue.(yamlpkg.Table)
+		if !ok {
+			continue
+		}
+		snippet, err := generateTableSnippet(table)
+		if err != nil {
+			continue
+		}
+		_, _ = fmt.Fprintln(w)
+		_, _ = cyan.Fprintf(w, "# Table '%s' (in migrations, removed from schema):\n", ch.TableName)
+		_, _ = fmt.Fprint(w, snippet)
+		snippetCount++
+	}
+
+	// Added fields
+	for _, tableName := range sortedKeys(fieldChanges) {
+		for _, ch := range fieldChanges[tableName] {
+			if ch.Type != yamlpkg.ChangeTypeFieldAdded {
+				continue
+			}
+			field, ok := ch.NewValue.(yamlpkg.Field)
+			if !ok {
+				continue
+			}
+			snippet, err := generateFieldSnippet(tableName, field)
+			if err != nil {
+				continue
+			}
+			_, _ = fmt.Fprintln(w)
+			_, _ = cyan.Fprintf(w, "# Add field '%s' to table '%s':\n", ch.FieldName, tableName)
+			_, _ = fmt.Fprint(w, snippet)
+			snippetCount++
+		}
+	}
+
+	// Removed fields
+	for _, tableName := range sortedKeys(fieldChanges) {
+		for _, ch := range fieldChanges[tableName] {
+			if ch.Type != yamlpkg.ChangeTypeFieldRemoved {
+				continue
+			}
+			field, ok := ch.OldValue.(yamlpkg.Field)
+			if !ok {
+				continue
+			}
+			snippet, err := generateFieldSnippet(tableName, field)
+			if err != nil {
+				continue
+			}
+			_, _ = fmt.Fprintln(w)
+			_, _ = cyan.Fprintf(w, "# Field '%s' on table '%s' (in migrations, removed from schema):\n", ch.FieldName, tableName)
+			_, _ = fmt.Fprint(w, snippet)
+			snippetCount++
+		}
+	}
+
+	if snippetCount == 0 {
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w, "(no snippets to show)")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// YAML output (--yaml)
+// ---------------------------------------------------------------------------
+
+func formatSchemaDiffYAML(w io.Writer, diff *yamlpkg.SchemaDiff) error {
+	if !diff.HasChanges {
+		_, _ = fmt.Fprintln(w, "# No differences — schema.yaml matches migration state.")
 		return nil
 	}
 
-	// 4. Build YAML output from changes
 	output := buildDiffYAML(diff.Changes)
 
 	data, err := yaml.Marshal(output)
@@ -120,11 +392,11 @@ func runDiff(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("marshalling diff output: %w", err)
 	}
 
-	fmt.Printf("# Schema diff: %d change(s) between YAML schema and migration state\n", len(diff.Changes))
-	fmt.Println("# 'add' = in schema.yaml but not yet migrated")
-	fmt.Println("# 'remove' = in migration state but removed from schema.yaml")
-	fmt.Println("# 'modify' = field properties changed")
-	fmt.Print(string(data))
+	_, _ = fmt.Fprintf(w, "# Schema diff: %d change(s) between YAML schema and migration state\n", len(diff.Changes))
+	_, _ = fmt.Fprintln(w, "# 'add' = in schema.yaml but not yet migrated")
+	_, _ = fmt.Fprintln(w, "# 'remove' = in migration state but removed from schema.yaml")
+	_, _ = fmt.Fprintln(w, "# 'modify' = field properties changed")
+	_, _ = fmt.Fprint(w, string(data))
 
 	return nil
 }
@@ -223,7 +495,6 @@ func buildDiffYAML(changes []yamlpkg.Change) diffOutput {
 				})
 			}
 
-		// FK changes are informational — already captured via field/table changes
 		case yamlpkg.ChangeTypeForeignKeyAdded, yamlpkg.ChangeTypeForeignKeyRemoved:
 			continue
 		}
@@ -237,4 +508,14 @@ func buildDiffYAML(changes []yamlpkg.Change) diffOutput {
 	}
 
 	return out
+}
+
+// ---------------------------------------------------------------------------
+// JSON output (--json)
+// ---------------------------------------------------------------------------
+
+func formatSchemaDiffJSON(w io.Writer, diff *yamlpkg.SchemaDiff) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	return enc.Encode(diff)
 }

@@ -27,6 +27,8 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/ocomsoft/makemigrations/internal/providers"
@@ -45,16 +47,30 @@ type Runner struct {
 	provider providers.Provider
 	db       *sql.DB
 	recorder *MigrationRecorder
+	output   io.Writer
 }
 
-// NewRunner creates a Runner using the given graph, provider, db, and recorder.
-func NewRunner(graph *Graph, provider providers.Provider, db *sql.DB, recorder *MigrationRecorder) *Runner {
+// NewRunner creates a Runner using the given graph, provider, db, recorder,
+// and output writer. If output is nil, os.Stdout is used.
+func NewRunner(graph *Graph, provider providers.Provider, db *sql.DB, recorder *MigrationRecorder, output io.Writer) *Runner {
+	if output == nil {
+		output = os.Stdout
+	}
 	return &Runner{
 		graph:    graph,
 		provider: provider,
 		db:       db,
 		recorder: recorder,
+		output:   output,
 	}
+}
+
+// printf writes formatted output to the runner's output writer.
+// Errors from writing are intentionally discarded since these are
+// informational messages (progress, warnings) and write failures
+// should not abort migrations.
+func (r *Runner) printf(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(r.output, format, a...)
 }
 
 // Up applies all pending migrations in topological order.
@@ -86,12 +102,12 @@ func (r *Runner) Up(to string, opts RunOptions) error {
 		if applied[mig.Name] {
 			continue
 		}
-		fmt.Printf("Applying %s...", mig.Name)
+		r.printf("Applying %s...", mig.Name)
 		if err := r.applyMigration(mig, state, opts); err != nil {
-			fmt.Println(" FAILED")
+			r.printf(" FAILED\n")
 			return fmt.Errorf("applying migration %q: %w", mig.Name, err)
 		}
-		fmt.Println(" done")
+		r.printf(" done\n")
 		if to != "" && mig.Name == to {
 			break
 		}
@@ -141,12 +157,12 @@ func (r *Runner) Down(steps int, to string, opts RunOptions) error {
 				}
 			}
 		}
-		fmt.Printf("Rolling back %s...", mig.Name)
+		r.printf("Rolling back %s...", mig.Name)
 		if err := r.rollbackMigration(mig, state, opts); err != nil {
-			fmt.Println(" FAILED")
+			r.printf(" FAILED\n")
 			return fmt.Errorf("rolling back migration %q: %w", mig.Name, err)
 		}
-		fmt.Println(" done")
+		r.printf(" done\n")
 	}
 	return nil
 }
@@ -161,14 +177,14 @@ func (r *Runner) Status() error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%-50s %s\n", "Migration", "Status")
-	fmt.Println(strings.Repeat("-", 60))
+	r.printf("%-50s %s\n", "Migration", "Status")
+	r.printf("%s\n", strings.Repeat("-", 60))
 	for _, mig := range plan {
 		status := "Pending"
 		if applied[mig.Name] {
 			status = "Applied"
 		}
-		fmt.Printf("%-50s %s\n", mig.Name, status)
+		r.printf("%-50s %s\n", mig.Name, status)
 	}
 	return nil
 }
@@ -193,7 +209,7 @@ func (r *Runner) ShowSQL() error {
 			}
 			continue
 		}
-		fmt.Printf("-- %s\n", mig.Name)
+		r.printf("-- %s\n", mig.Name)
 		for _, op := range mig.Operations {
 			r.provider.SetTypeMappings(state.TypeMappings)
 			sqlStr, err := op.Up(r.provider, state, state.Defaults)
@@ -201,8 +217,7 @@ func (r *Runner) ShowSQL() error {
 				return fmt.Errorf("generating SQL for %q: %w", mig.Name, err)
 			}
 			if sqlStr != "" {
-				fmt.Println(sqlStr)
-				fmt.Println()
+				r.printf("%s\n\n", sqlStr)
 			}
 			if err := op.Mutate(state); err != nil {
 				return fmt.Errorf("mutating state for %q: %w", mig.Name, err)
@@ -237,7 +252,7 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 		if sqlStr != "" {
 			if execErr := execWithSavepoint(tx, sqlStr, canIgnoreError(op, opts)); execErr != nil {
 				if shouldIgnoreError(op, opts, r.provider, execErr) {
-					fmt.Printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
+					r.printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
 					skipped = true
 				} else {
 					return fmt.Errorf("executing SQL %q: %w", sqlStr, execErr)
@@ -297,13 +312,13 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			mayIgnore := canIgnoreError(op, opts) || isDropOp(op) || isCreateOp(op)
 			if execErr := execWithSavepoint(tx, sqlStr, mayIgnore); execErr != nil {
 				if shouldIgnoreError(op, opts, r.provider, execErr) {
-					fmt.Printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
+					r.printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
 				} else if isDropOp(op) && r.provider.IsAlreadyExistsError(execErr) {
 					// Drop ops' Down SQL re-creates objects; skip if object already exists.
-					fmt.Printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
+					r.printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
 				} else if isCreateOp(op) && r.provider.IsNotFoundError(execErr) {
 					// Create ops' Down SQL drops objects; skip if object doesn't exist.
-					fmt.Printf("[WARNING] %s — object does not exist in database, skipping\n", op.Describe())
+					r.printf("[WARNING] %s — object does not exist in database, skipping\n", op.Describe())
 				} else {
 					return fmt.Errorf("executing down SQL %q: %w", sqlStr, execErr)
 				}

@@ -26,6 +26,7 @@ package migrate_test
 
 import (
 	"database/sql"
+	"io"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -111,7 +112,7 @@ func TestFullRoundTrip(t *testing.T) {
 	}
 
 	p := sqlite.New()
-	runner := migrate.NewRunner(g, p, db, recorder)
+	runner := migrate.NewRunner(g, p, db, recorder, io.Discard)
 
 	// Apply all migrations
 	if err := runner.Up("", migrate.RunOptions{}); err != nil {
@@ -215,7 +216,7 @@ func TestRoundTrip_WithMerge(t *testing.T) {
 		t.Fatalf("EnsureTable: %v", err)
 	}
 
-	runner := migrate.NewRunner(g, sqlite.New(), db, recorder)
+	runner := migrate.NewRunner(g, sqlite.New(), db, recorder, io.Discard)
 
 	if err := runner.Up("", migrate.RunOptions{}); err != nil {
 		t.Fatalf("Up with merge migration: %v", err)

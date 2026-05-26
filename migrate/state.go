@@ -213,6 +213,14 @@ func (s *SchemaState) AddForeignKey(tableName string, fk ForeignKeyConstraint) e
 		}
 	}
 	t.ForeignKeys = append(t.ForeignKeys, fk)
+	// Keep the field's ForeignKey pointer in sync with the constraint.
+	for i := range t.Fields {
+		if t.Fields[i].Name == fk.FieldName && t.Fields[i].ForeignKey != nil {
+			t.Fields[i].ForeignKey.Table = fk.ReferencedTable
+			t.Fields[i].ForeignKey.OnDelete = fk.OnDelete
+			t.Fields[i].ForeignKey.OnUpdate = fk.OnUpdate
+		}
+	}
 	return nil
 }
 

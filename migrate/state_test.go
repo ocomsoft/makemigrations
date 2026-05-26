@@ -309,6 +309,48 @@ func TestSchemaState_AddDropForeignKey(t *testing.T) {
 	}
 }
 
+// TestSchemaState_AddForeignKeySyncsField verifies that AddForeignKey updates the
+// field's ForeignKey pointer so it stays consistent with the constraint list.
+func TestSchemaState_AddForeignKeySyncsField(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("file_blob", []migrate.Field{
+		{Name: "id", Type: "integer"},
+		{Name: "created_user_id", Type: "foreign_key", ForeignKey: &migrate.ForeignKey{
+			Table: "auth_user", OnDelete: "SET NULL",
+		}},
+	}, nil)
+
+	_ = state.AddForeignKey("file_blob", migrate.ForeignKeyConstraint{
+		Name:            "fk_file_blob_created_user_id",
+		FieldName:       "created_user_id",
+		ReferencedTable: "auth_user",
+		OnDelete:        "SET NULL",
+	})
+
+	// Drop and re-add with different OnDelete
+	_ = state.DropForeignKey("file_blob", "fk_file_blob_created_user_id")
+	_ = state.AddForeignKey("file_blob", migrate.ForeignKeyConstraint{
+		Name:            "fk_file_blob_created_user_id",
+		FieldName:       "created_user_id",
+		ReferencedTable: "auth_user",
+		OnDelete:        "PROTECT",
+	})
+
+	// The field's ForeignKey should reflect the updated OnDelete
+	for _, f := range state.Tables["file_blob"].Fields {
+		if f.Name == "created_user_id" {
+			if f.ForeignKey == nil {
+				t.Fatal("expected field ForeignKey to be non-nil")
+			}
+			if f.ForeignKey.OnDelete != "PROTECT" {
+				t.Errorf("expected field FK OnDelete=PROTECT, got %q", f.ForeignKey.OnDelete)
+			}
+			return
+		}
+	}
+	t.Fatal("created_user_id field not found")
+}
+
 // TestSchemaState_SetTypeMappings verifies that SetTypeMappings updates state.TypeMappings.
 func TestSchemaState_SetTypeMappings(t *testing.T) {
 	state := migrate.NewSchemaState()

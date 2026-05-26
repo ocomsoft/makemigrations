@@ -400,8 +400,8 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 				for _, fkc := range ts.ForeignKeys {
 					if fkc.Name == constraintName {
 						yf.ForeignKey = &yamlpkg.ForeignKey{
-							Table:    f.ForeignKey.Table,
-							OnDelete: f.ForeignKey.OnDelete,
+							Table:    fkc.ReferencedTable,
+							OnDelete: fkc.OnDelete,
 						}
 						break
 					}
@@ -612,4 +612,3 @@ func findParentGoVersion(startDir string) string {
 		dir = parent
 	}
 }
-

@@ -135,7 +135,9 @@ func (r *Runner) Down(steps int, to string, opts RunOptions) error {
 			}
 			if applied[m.Name] {
 				for _, op := range m.Operations {
-					_ = op.Mutate(state)
+					if err := op.Mutate(state); err != nil {
+						return fmt.Errorf("replaying state for %q: %w", m.Name, err)
+					}
 				}
 			}
 		}
@@ -185,7 +187,9 @@ func (r *Runner) ShowSQL() error {
 	for _, mig := range plan {
 		if applied[mig.Name] {
 			for _, op := range mig.Operations {
-				_ = op.Mutate(state)
+				if err := op.Mutate(state); err != nil {
+					return fmt.Errorf("replaying state for %q: %w", mig.Name, err)
+				}
 			}
 			continue
 		}
@@ -200,7 +204,9 @@ func (r *Runner) ShowSQL() error {
 				fmt.Println(sqlStr)
 				fmt.Println()
 			}
-			_ = op.Mutate(state)
+			if err := op.Mutate(state); err != nil {
+				return fmt.Errorf("mutating state for %q: %w", mig.Name, err)
+			}
 		}
 	}
 	return nil
@@ -274,7 +280,9 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 	for _, op := range mig.Operations {
 		switch op.TypeName() {
 		case "set_defaults", "set_type_mappings":
-			_ = op.Mutate(state)
+			if err := op.Mutate(state); err != nil {
+				return fmt.Errorf("pre-applying %s state for %q: %w", op.TypeName(), mig.Name, err)
+			}
 		}
 	}
 
@@ -286,12 +294,16 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
 		}
 		if sqlStr != "" {
-			mayIgnore := canIgnoreError(op, opts) || (isCreateOp(op) && true)
+			mayIgnore := canIgnoreError(op, opts) || isDropOp(op) || isCreateOp(op)
 			if execErr := execWithSavepoint(tx, sqlStr, mayIgnore); execErr != nil {
 				if shouldIgnoreError(op, opts, r.provider, execErr) {
 					fmt.Printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
-				} else if isCreateOp(op) && r.provider.IsAlreadyExistsError(execErr) {
+				} else if isDropOp(op) && r.provider.IsAlreadyExistsError(execErr) {
+					// Drop ops' Down SQL re-creates objects; skip if object already exists.
 					fmt.Printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
+				} else if isCreateOp(op) && r.provider.IsNotFoundError(execErr) {
+					// Create ops' Down SQL drops objects; skip if object doesn't exist.
+					fmt.Printf("[WARNING] %s — object does not exist in database, skipping\n", op.Describe())
 				} else {
 					return fmt.Errorf("executing down SQL %q: %w", sqlStr, execErr)
 				}
@@ -360,11 +372,13 @@ func isDropOp(op Operation) bool {
 	}
 }
 
-// isCreateOp returns true for operations whose Down SQL creates a database object.
-// Used during rollback to skip re-creating objects that already exist.
+// isCreateOp returns true for operations that create a database object in
+// their Up direction (create_table, add_field, add_index, add_foreign_key).
+// During rollback, these operations' Down SQL drops objects, so a "not found"
+// error can be safely skipped.
 func isCreateOp(op Operation) bool {
 	switch op.TypeName() {
-	case "drop_table", "drop_field", "drop_index", "drop_foreign_key":
+	case "create_table", "add_field", "add_index", "add_foreign_key":
 		return true
 	default:
 		return false

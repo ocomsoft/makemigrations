@@ -24,6 +24,7 @@ SOFTWARE.
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -99,28 +100,29 @@ func NewMigrationError(operation, message string) error {
 	return MigrationError{Operation: operation, Message: message}
 }
 
-// Utility functions for error checking
+// Utility functions for error checking.
+// These use errors.As so they work with wrapped errors (e.g. fmt.Errorf("...: %w", err)).
 func IsValidationError(err error) bool {
-	_, ok := err.(ValidationError)
-	return ok
+	var target ValidationError
+	return errors.As(err, &target)
 }
 
 func IsSchemaParseError(err error) bool {
-	_, ok := err.(SchemaParseError)
-	return ok
+	var target SchemaParseError
+	return errors.As(err, &target)
 }
 
 func IsDependencyError(err error) bool {
-	_, ok := err.(DependencyError)
-	return ok
+	var target DependencyError
+	return errors.As(err, &target)
 }
 
 func IsCircularDependencyError(err error) bool {
-	_, ok := err.(CircularDependencyError)
-	return ok
+	var target CircularDependencyError
+	return errors.As(err, &target)
 }
 
 func IsMigrationError(err error) bool {
-	_, ok := err.(MigrationError)
-	return ok
+	var target MigrationError
+	return errors.As(err, &target)
 }

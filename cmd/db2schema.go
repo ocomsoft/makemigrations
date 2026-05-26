@@ -52,7 +52,8 @@ var (
 
 // db2schemaCmd represents the db2schema command
 var db2schemaCmd = &cobra.Command{
-	Use:   "db2schema",
+	Use:     "db-to-schema",
+	Aliases: []string{"db2schema"},
 	Short: "Extract database schema to YAML schema file",
 	Long: `Extract database schema information from a PostgreSQL database and generate
 a YAML schema file compatible with makemigrations.
@@ -214,9 +215,14 @@ func buildConnectionString(dbType types.DatabaseType) string {
 	}
 }
 
-// buildPostgreSQLConnectionString builds PostgreSQL connection string from command flags
+// buildPostgreSQLConnectionString builds PostgreSQL connection string from
+// command flags or the DATABASE_URL environment variable. If no flags are
+// provided, DATABASE_URL is used as-is.
 func buildPostgreSQLConnectionString() string {
-	// Set defaults if not provided
+	if envURL := os.Getenv("DATABASE_URL"); envURL != "" && host == "" && database == "" && username == "" {
+		return envURL
+	}
+
 	connHost := host
 	if connHost == "" {
 		connHost = "localhost"
@@ -229,12 +235,12 @@ func buildPostgreSQLConnectionString() string {
 
 	connDatabase := database
 	if connDatabase == "" {
-		connDatabase = "postgres" // Default database
+		connDatabase = "postgres"
 	}
 
 	connUsername := username
 	if connUsername == "" {
-		connUsername = "postgres" // Default username
+		connUsername = "postgres"
 	}
 
 	connSSLMode := sslmode

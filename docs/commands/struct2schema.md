@@ -1,15 +1,15 @@
-# struct2schema Command
+# struct-to-schema Command
 
 Convert Go struct definitions to makemigrations-compatible YAML schema files automatically.
 
 ## Overview
 
-The `struct2schema` command analyzes Go source code to extract struct definitions and generates comprehensive YAML schema files that can be used with makemigrations. This powerful feature enables automatic database schema generation from existing Go codebases.
+The `struct-to-schema` command analyzes Go source code to extract struct definitions and generates comprehensive YAML schema files that can be used with makemigrations. This powerful feature enables automatic database schema generation from existing Go codebases.
 
 ## Usage
 
 ```bash
-makemigrations struct2schema [flags]
+makemigrations struct-to-schema [flags]
 ```
 
 ### Flags
@@ -27,28 +27,28 @@ makemigrations struct2schema [flags]
 
 Scan the current directory and generate a schema file:
 ```bash
-makemigrations struct2schema
+makemigrations struct-to-schema
 ```
 
 ### Scan Specific Directory
 
 Scan a models directory and output to a custom location:
 ```bash
-makemigrations struct2schema --input ./models --output schema/generated.yaml
+makemigrations struct-to-schema --input ./models --output schema/generated.yaml
 ```
 
 ### Preview Changes
 
 See what would be generated without creating files:
 ```bash
-makemigrations struct2schema --dry-run --verbose
+makemigrations struct-to-schema --dry-run --verbose
 ```
 
 ### Use Custom Configuration
 
 Apply custom type mappings and naming conventions:
 ```bash
-makemigrations struct2schema --config mappings.yaml --database postgresql
+makemigrations struct-to-schema --config mappings.yaml --database postgresql
 ```
 
 ## Features
@@ -211,7 +211,7 @@ tables:
 
 ### Schema Merging
 
-When an output file already exists, struct2schema will:
+When an output file already exists, struct-to-schema will:
 1. Create a timestamped backup
 2. Merge new tables with existing schema
 3. Preserve manual modifications
@@ -239,7 +239,7 @@ Generated schemas are fully compatible with the makemigrations workflow:
 
 ```bash
 # Generate schema from Go structs
-makemigrations struct2schema --input ./models
+makemigrations struct-to-schema --input ./models
 
 # Generate migration from schema
 makemigrations makemigrations
@@ -302,7 +302,7 @@ type Model struct {
 
 Use `--verbose` flag for detailed information:
 ```bash
-makemigrations struct2schema --verbose --dry-run
+makemigrations struct-to-schema --verbose --dry-run
 ```
 
 This will show:
@@ -314,7 +314,7 @@ This will show:
 
 ## Performance
 
-The struct2schema command is optimized for large codebases:
+The struct-to-schema command is optimized for large codebases:
 - Efficient AST parsing
 - Parallel file processing where possible
 - Smart caching of type information

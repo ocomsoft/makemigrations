@@ -1,10 +1,10 @@
-# dump_sql Command
+# dump-sql Command
 
-The `dump_sql` command analyzes and displays the current YAML schema definitions without generating migration files. This is primarily used for debugging, validation, and understanding what SQL would be generated from your schema.
+The `dump-sql` command analyzes and displays the current YAML schema definitions without generating migration files. This is primarily used for debugging, validation, and understanding what SQL would be generated from your schema.
 
 ## Overview
 
-The `dump_sql` command processes YAML schema files and outputs the database-specific SQL that would be generated, along with detailed information about the schema processing steps. It's useful for:
+The `dump-sql` command processes YAML schema files and outputs the database-specific SQL that would be generated, along with detailed information about the schema processing steps. It's useful for:
 
 - Validating YAML schema syntax and structure
 - Previewing database-specific SQL generation
@@ -15,7 +15,7 @@ The `dump_sql` command processes YAML schema files and outputs the database-spec
 ## Usage
 
 ```bash
-makemigrations dump_sql [flags]
+makemigrations dump-sql [flags]
 ```
 
 ## Command Flags
@@ -89,7 +89,7 @@ Shows how the same schema generates different SQL for different databases.
 
 ```bash
 # Show SQL for current schema
-makemigrations dump_sql
+makemigrations dump-sql
 
 # Output
 ▶ Scanning for schema files...
@@ -111,7 +111,7 @@ CREATE TABLE users (
 
 ```bash
 # Show detailed processing information
-makemigrations dump_sql --verbose
+makemigrations dump-sql --verbose
 
 # Output
 ▶ Scanning for schema files...
@@ -146,7 +146,7 @@ CREATE TABLE users (
 
 ```bash
 # Generate MySQL-specific SQL
-makemigrations dump_sql --database mysql
+makemigrations dump-sql --database mysql
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -159,7 +159,7 @@ CREATE TABLE users (
 );
 
 # Generate SQLite-specific SQL
-makemigrations dump_sql --database sqlite
+makemigrations dump-sql --database sqlite
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -286,7 +286,7 @@ CREATE TABLE products (
 The command will show detailed error messages for invalid schemas:
 
 ```bash
-$ makemigrations dump_sql
+$ makemigrations dump-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -299,7 +299,7 @@ $ makemigrations dump_sql
 ### YAML Syntax Errors
 
 ```bash
-$ makemigrations dump_sql
+$ makemigrations dump-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -312,7 +312,7 @@ $ makemigrations dump_sql
 ### Missing Schema Files
 
 ```bash
-$ makemigrations dump_sql
+$ makemigrations dump-sql
 ▶ Scanning for schema files...
 ✗ No schema files found in search paths:
   - ./schema/schema.yaml
@@ -329,7 +329,7 @@ $ makemigrations dump_sql
 ```bash
 # Iterative schema development
 vim schema/schema.yaml
-makemigrations dump_sql --verbose    # Check for issues
+makemigrations dump-sql --verbose    # Check for issues
 # Fix issues, repeat
 ```
 
@@ -337,9 +337,9 @@ makemigrations dump_sql --verbose    # Check for issues
 
 ```bash
 # Check how schema translates across databases
-makemigrations dump_sql --database postgresql > schema-pg.sql
-makemigrations dump_sql --database mysql > schema-mysql.sql
-makemigrations dump_sql --database sqlite > schema-sqlite.sql
+makemigrations dump-sql --database postgresql > schema-pg.sql
+makemigrations dump-sql --database mysql > schema-mysql.sql
+makemigrations dump-sql --database sqlite > schema-sqlite.sql
 
 # Compare outputs
 diff schema-pg.sql schema-mysql.sql
@@ -349,14 +349,14 @@ diff schema-pg.sql schema-mysql.sql
 
 ```bash
 # Generate schema documentation
-makemigrations dump_sql --verbose > docs/database-schema.sql
+makemigrations dump-sql --verbose > docs/database-schema.sql
 ```
 
 ### 4. CI/CD Validation
 
 ```bash
 # Validate schema in CI pipeline
-if ! makemigrations dump_sql --verbose; then
+if ! makemigrations dump-sql --verbose; then
     echo "Schema validation failed"
     exit 1
 fi
@@ -366,7 +366,7 @@ fi
 
 ```bash
 # Debug processing with maximum verbosity
-MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations dump_sql --verbose
+MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations dump-sql --verbose
 ```
 
 ## Configuration Integration
@@ -377,10 +377,10 @@ The command respects configuration settings:
 
 ```bash
 # Override config file database type
-makemigrations dump_sql --database mysql
+makemigrations dump-sql --database mysql
 
 # With environment variable
-MAKEMIGRATIONS_DATABASE_TYPE=sqlite makemigrations dump_sql
+MAKEMIGRATIONS_DATABASE_TYPE=sqlite makemigrations dump-sql
 ```
 
 ### Schema Search Paths
@@ -410,7 +410,7 @@ output:
 
 ```bash
 # Dump SQL showing module boundaries
-makemigrations dump_sql --verbose
+makemigrations dump-sql --verbose
 
 # Output shows file sources
 ▶ Processing YAML schema...
@@ -445,16 +445,16 @@ tables:
         default: custom_timestamp
 EOF
 
-makemigrations dump_sql
+makemigrations dump-sql
 ```
 
 ### Schema Comparison
 
 ```bash
 # Compare before/after schema changes
-makemigrations dump_sql > before.sql
+makemigrations dump-sql > before.sql
 # Make schema changes...
-makemigrations dump_sql > after.sql
+makemigrations dump-sql > after.sql
 diff before.sql after.sql
 ```
 
@@ -484,7 +484,7 @@ diff before.sql after.sql
 3. **Type validation errors**
    ```bash
    # Review field definitions
-   makemigrations dump_sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
+   makemigrations dump-sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
    ```
 
 4. **Foreign key reference errors**
@@ -502,7 +502,7 @@ For projects with many schema files:
 
 ```bash
 # Use verbose mode to monitor processing time
-time makemigrations dump_sql --verbose
+time makemigrations dump-sql --verbose
 
 # Consider splitting large schemas
 find . -name "schema.yaml" -exec wc -l {} + | sort -n
@@ -512,10 +512,10 @@ find . -name "schema.yaml" -exec wc -l {} + | sort -n
 
 ```bash
 # Redirect output for large schemas
-makemigrations dump_sql > full-schema.sql
+makemigrations dump-sql > full-schema.sql
 
 # Filter specific tables
-makemigrations dump_sql | grep -A20 "CREATE TABLE users"
+makemigrations dump-sql | grep -A20 "CREATE TABLE users"
 ```
 
 ## Integration Examples
@@ -528,16 +528,16 @@ makemigrations dump_sql | grep -A20 "CREATE TABLE users"
 
 schema-validate:
 	@echo "Validating schema..."
-	@makemigrations dump_sql --verbose > /dev/null
+	@makemigrations dump-sql --verbose > /dev/null
 
 schema-docs:
 	@echo "Generating schema documentation..."
-	@makemigrations dump_sql --verbose > docs/schema.sql
+	@makemigrations dump-sql --verbose > docs/schema.sql
 	@echo "Schema docs generated at docs/schema.sql"
 
 schema-compare:
-	@makemigrations dump_sql --database postgresql > schema-pg.sql
-	@makemigrations dump_sql --database mysql > schema-mysql.sql
+	@makemigrations dump-sql --database postgresql > schema-pg.sql
+	@makemigrations dump-sql --database mysql > schema-mysql.sql
 	@echo "Cross-database comparison files generated"
 ```
 
@@ -548,7 +548,7 @@ schema-compare:
 # .git/hooks/pre-commit
 
 echo "Validating schema before commit..."
-if ! makemigrations dump_sql --verbose > /dev/null 2>&1; then
+if ! makemigrations dump-sql --verbose > /dev/null 2>&1; then
     echo "Schema validation failed. Commit aborted."
     exit 1
 fi

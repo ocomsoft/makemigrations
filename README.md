@@ -301,10 +301,10 @@ See the [Configuration Guide](docs/configuration.md) for complete options.
 | **[makemigrations](docs/commands/makemigrations.md)** | Generate `.go` migration files from YAML schema |
 | **[migrate](docs/commands/migrate.md)** | Run migrations in-process via the yaegi interpreter |
 | **[migrate-to-go](docs/commands/migrate_to_go.md)** | Convert existing Goose SQL migrations to Go |
-| [struct2schema](docs/commands/struct2schema.md) | Generate YAML schemas from Go structs |
-| [current_state](docs/commands/current_state.md) | Show reconstructed schema state from migrations as YAML |
-| [dump_sql](docs/commands/dump_sql.md) | Preview generated SQL from schemas |
-| [db2schema](docs/commands/db2schema.md) | Reverse-engineer schema from existing database |
+| [struct-to-schema](docs/commands/struct2schema.md) | Generate YAML schemas from Go structs |
+| [current-state](docs/commands/current_state.md) | Show reconstructed schema state from migrations as YAML |
+| [dump-sql](docs/commands/dump_sql.md) | Preview generated SQL from schemas |
+| [db-to-schema](docs/commands/db2schema.md) | Reverse-engineer schema from existing database |
 
 ### Legacy SQL Workflow
 

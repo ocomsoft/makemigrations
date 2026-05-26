@@ -1,10 +1,10 @@
-# db2schema Command
+# db-to-schema Command
 
-The `db2schema` command extracts database schema information from a PostgreSQL database and generates a YAML schema file compatible with makemigrations. This reverse engineering tool allows you to convert existing database structures into makemigrations schema format.
+The `db-to-schema` command extracts database schema information from a PostgreSQL database and generates a YAML schema file compatible with makemigrations. This reverse engineering tool allows you to convert existing database structures into makemigrations schema format.
 
 ## Overview
 
-The `db2schema` command connects to a PostgreSQL database, reads the INFORMATION_SCHEMA tables, and extracts complete metadata to generate a comprehensive YAML schema file. It's useful for:
+The `db-to-schema` command connects to a PostgreSQL database, reads the INFORMATION_SCHEMA tables, and extracts complete metadata to generate a comprehensive YAML schema file. It's useful for:
 
 - Converting existing databases to makemigrations format
 - Reverse engineering database structures for documentation
@@ -15,7 +15,7 @@ The `db2schema` command connects to a PostgreSQL database, reads the INFORMATION
 ## Usage
 
 ```bash
-makemigrations db2schema [flags]
+makemigrations db-to-schema [flags]
 ```
 
 ## Command Flags
@@ -123,7 +123,7 @@ Intelligent conversion of SQL defaults to YAML format:
 
 ```bash
 # Extract schema from local PostgreSQL
-makemigrations db2schema --database=myapp --username=myuser --password=mypass
+makemigrations db-to-schema --database=myapp --username=myuser --password=mypass
 
 # Output
 Database schema successfully extracted to: schema.yaml
@@ -142,7 +142,7 @@ You can now use this schema file with other makemigrations commands.
 
 ```bash
 # Show detailed processing information
-makemigrations db2schema --verbose --database=myapp --username=myuser
+makemigrations db-to-schema --verbose --database=myapp --username=myuser
 
 # Output
 Extracting database schema to YAML
@@ -168,17 +168,17 @@ Database schema successfully extracted to: schema.yaml
 
 ```bash
 # Extract to specific file
-makemigrations db2schema --output=extracted_schema.yaml --database=myapp
+makemigrations db-to-schema --output=extracted_schema.yaml --database=myapp
 
 # Extract to directory
-makemigrations db2schema --output=schemas/production.yaml --database=prod_db
+makemigrations db-to-schema --output=schemas/production.yaml --database=prod_db
 ```
 
 ### Remote Database Connection
 
 ```bash
 # Connect to remote database
-makemigrations db2schema \
+makemigrations db-to-schema \
   --host=db.example.com \
   --port=5432 \
   --database=production \
@@ -199,7 +199,7 @@ export PGUSER=myuser
 export PGPASSWORD=mypass
 
 # Extract schema
-makemigrations db2schema --verbose
+makemigrations db-to-schema --verbose
 ```
 
 ## Database Support
@@ -361,7 +361,7 @@ CREATE TABLE products (
 
 ```bash
 # Production connection with full SSL verification
-makemigrations db2schema \
+makemigrations db-to-schema \
   --host=prod-db.company.com \
   --port=5432 \
   --database=production \
@@ -375,7 +375,7 @@ makemigrations db2schema \
 ### Connection Errors
 
 ```bash
-$ makemigrations db2schema --host=nonexistent --database=test
+$ makemigrations db-to-schema --host=nonexistent --database=test
 Error: failed to extract database schema: failed to ping database: 
 dial tcp: lookup nonexistent: no such host
 ```
@@ -383,7 +383,7 @@ dial tcp: lookup nonexistent: no such host
 ### Authentication Errors
 
 ```bash
-$ makemigrations db2schema --username=invalid --password=wrong
+$ makemigrations db-to-schema --username=invalid --password=wrong
 Error: failed to extract database schema: failed to ping database: 
 pq: password authentication failed for user "invalid"
 ```
@@ -391,7 +391,7 @@ pq: password authentication failed for user "invalid"
 ### Database Access Errors
 
 ```bash
-$ makemigrations db2schema --database=forbidden
+$ makemigrations db-to-schema --database=forbidden
 Error: failed to extract database schema: failed to ping database:
 pq: permission denied for database "forbidden"
 ```
@@ -399,7 +399,7 @@ pq: permission denied for database "forbidden"
 ### Permission Errors
 
 ```bash
-$ makemigrations db2schema --username=limited_user
+$ makemigrations db-to-schema --username=limited_user
 Error: failed to extract database schema: failed to extract tables: 
 failed to query tables: pq: permission denied for schema information_schema
 ```
@@ -436,7 +436,7 @@ failed to query tables: pq: permission denied for schema information_schema
 4. **Type Conversion Issues**
    ```bash
    # Use verbose mode to see detailed type processing
-   makemigrations db2schema --verbose --database=mydb
+   makemigrations db-to-schema --verbose --database=mydb
    ```
 
 ## Integration with Makemigrations
@@ -445,7 +445,7 @@ failed to query tables: pq: permission denied for schema information_schema
 
 ```bash
 # 1. Extract existing database schema
-makemigrations db2schema --database=production --output=baseline_schema.yaml
+makemigrations db-to-schema --database=production --output=baseline_schema.yaml
 
 # 2. Initialize migrations directory with extracted schema
 makemigrations init --schema=baseline_schema.yaml
@@ -464,7 +464,7 @@ goose -dir migrations postgres $DATABASE_URL up
 
 ```bash
 # Before making changes - capture current state
-makemigrations db2schema --database=staging --output=current_state.yaml
+makemigrations db-to-schema --database=staging --output=current_state.yaml
 
 # Make schema changes in YAML
 vim schema/schema.yaml
@@ -484,17 +484,17 @@ For databases with many tables:
 
 ```bash
 # Use verbose mode to monitor progress
-time makemigrations db2schema --verbose --database=large_db
+time makemigrations db-to-schema --verbose --database=large_db
 
 # Consider extracting specific schemas (future feature)
-# makemigrations db2schema --schema=specific_schema --database=large_db
+# makemigrations db-to-schema --schema=specific_schema --database=large_db
 ```
 
 ### Network Considerations
 
 ```bash
 # For remote databases, consider connection timeouts
-timeout 300 makemigrations db2schema \
+timeout 300 makemigrations db-to-schema \
   --host=remote-db.example.com \
   --database=myapp \
   --verbose
@@ -520,7 +520,7 @@ export MAKEMIGRATIONS_DATABASE_TYPE=postgresql
 export DATABASE_URL=postgres://user:pass@host:port/dbname
 
 # Run extraction
-makemigrations db2schema --verbose
+makemigrations db-to-schema --verbose
 ```
 
 ## Use Cases
@@ -529,7 +529,7 @@ makemigrations db2schema --verbose
 
 ```bash
 # Extract legacy database structure
-makemigrations db2schema \
+makemigrations db-to-schema \
   --host=legacy-db.company.com \
   --database=legacy_system \
   --username=readonly \
@@ -546,7 +546,7 @@ makemigrations init --schema=legacy_schema.yaml
 
 ```bash
 # Extract production schema
-makemigrations db2schema \
+makemigrations db-to-schema \
   --host=prod-db.company.com \
   --database=production \
   --username=readonly \
@@ -562,8 +562,8 @@ makemigrations init
 
 ```bash
 # Extract schema for documentation
-makemigrations db2schema --database=myapp --verbose > schema_extraction.log
-makemigrations dump_sql --database=postgresql > schema_structure.sql
+makemigrations db-to-schema --database=myapp --verbose > schema_extraction.log
+makemigrations dump-sql --database=postgresql > schema_structure.sql
 
 # Generate complete documentation
 echo "# Database Schema Documentation" > docs/database.md
@@ -577,8 +577,8 @@ cat schema_structure.sql >> docs/database.md
 
 ```bash
 # Compare staging vs production
-makemigrations db2schema --database=staging --output=staging_schema.yaml
-makemigrations db2schema --database=production --output=prod_schema.yaml
+makemigrations db-to-schema --database=staging --output=staging_schema.yaml
+makemigrations db-to-schema --database=production --output=prod_schema.yaml
 
 # Compare schemas
 diff staging_schema.yaml prod_schema.yaml
@@ -591,7 +591,7 @@ diff staging_schema.yaml prod_schema.yaml
 # ci/extract-schema.sh
 
 # Extract current production schema
-makemigrations db2schema \
+makemigrations db-to-schema \
   --host=$PROD_DB_HOST \
   --database=$PROD_DB_NAME \
   --username=$READONLY_USER \
@@ -613,7 +613,7 @@ fi
 
 ```bash
 # Override extracted database name
-makemigrations db2schema --database=myapp --output=temp_schema.yaml
+makemigrations db-to-schema --database=myapp --output=temp_schema.yaml
 
 # Edit the database section
 sed -i 's/extracted_schema/myapp_v2/g' temp_schema.yaml
@@ -623,14 +623,14 @@ sed -i 's/extracted_schema/myapp_v2/g' temp_schema.yaml
 
 ```bash
 # Future planned feature
-# makemigrations db2schema --tables="users,products,orders" --database=myapp
+# makemigrations db-to-schema --tables="users,products,orders" --database=myapp
 ```
 
 ### Schema Filtering (Future Feature)
 
 ```bash
 # Future planned feature  
-# makemigrations db2schema --exclude-tables="audit_*,temp_*" --database=myapp
+# makemigrations db-to-schema --exclude-tables="audit_*,temp_*" --database=myapp
 ```
 
 ## Migration Path Examples
@@ -639,7 +639,7 @@ sed -i 's/extracted_schema/myapp_v2/g' temp_schema.yaml
 
 ```bash
 # 1. Extract Django database
-makemigrations db2schema --database=django_app --output=django_schema.yaml
+makemigrations db-to-schema --database=django_app --output=django_schema.yaml
 
 # 2. Convert Django-specific types (manual review needed)
 # - Review auto_now and auto_now_add fields
@@ -654,7 +654,7 @@ makemigrations init --schema=django_schema.yaml
 
 ```bash
 # 1. Extract Rails database
-makemigrations db2schema --database=rails_app --output=rails_schema.yaml
+makemigrations db-to-schema --database=rails_app --output=rails_schema.yaml
 
 # 2. Review Rails conventions
 # - Convert created_at/updated_at to auto_create/auto_update
@@ -669,7 +669,7 @@ makemigrations init --schema=rails_schema.yaml
 
 ```bash
 # 1. Extract current database state
-makemigrations db2schema --database=liquibase_db --output=current_schema.yaml
+makemigrations db-to-schema --database=liquibase_db --output=current_schema.yaml
 
 # 2. Clean up and organize
 # - Remove Liquibase system tables from extracted schema
@@ -710,6 +710,6 @@ Some PostgreSQL types have no direct YAML equivalent:
 
 - [init Command](./init.md) - Initialize new projects with extracted schemas
 - [makemigrations Command](./makemigrations.md) - Generate migrations from schemas  
-- [dump_sql Command](./dump_sql.md) - View generated SQL from extracted schemas
+- [dump-sql Command](./dump-sql.md) - View generated SQL from extracted schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options

@@ -1,6 +1,6 @@
-# current_state Command
+# current-state Command
 
-The `current_state` command reconstructs the schema state from existing Go migration files and outputs it as YAML. This is the inverse of `dump_sql` — instead of showing what the YAML schema would produce, it shows what the migration DAG thinks the current schema looks like.
+The `current-state` command reconstructs the schema state from existing Go migration files and outputs it as YAML. This is the inverse of `dump-sql` — instead of showing what the YAML schema would produce, it shows what the migration DAG thinks the current schema looks like.
 
 ## Overview
 
@@ -16,7 +16,7 @@ This is useful for:
 ## Usage
 
 ```bash
-makemigrations current_state [flags]
+makemigrations current-state [flags]
 ```
 
 ## Command Flags
@@ -36,7 +36,7 @@ makemigrations current_state [flags]
 ### Basic Usage
 
 ```bash
-makemigrations current_state
+makemigrations current-state
 ```
 
 Output (YAML):
@@ -69,7 +69,7 @@ defaults:
 Use `diff` to find discrepancies between what the migrations produce and what the schema defines:
 
 ```bash
-makemigrations current_state > /tmp/migration_state.yaml
+makemigrations current-state > /tmp/migration_state.yaml
 diff /tmp/migration_state.yaml schema/schema.yaml
 ```
 
@@ -78,17 +78,17 @@ diff /tmp/migration_state.yaml schema/schema.yaml
 If `makemigrations makemigrations` keeps generating the same migration (e.g., redundant drop/add foreign key), compare the reconstructed state against your schema to see what field the diff engine thinks has changed:
 
 ```bash
-makemigrations current_state | grep -A5 "created_user_id"
+makemigrations current-state | grep -A5 "created_user_id"
 ```
 
 ### Piping to Other Tools
 
 ```bash
 # Count tables in migration state
-makemigrations current_state | grep "^    - name:" | wc -l
+makemigrations current-state | grep "^    - name:" | wc -l
 
 # Extract a specific table
-makemigrations current_state | yq '.tables[] | select(.name == "users")'
+makemigrations current-state | yq '.tables[] | select(.name == "users")'
 ```
 
 ## How It Works
@@ -106,5 +106,5 @@ The conversion in step 5 is the same `schemaStateToYAMLSchema()` function used b
 
 - [makemigrations Command](./makemigrations.md) — generate migrations from schema changes
 - [diff Command](./diff.md) — compare YAML schema against migration state
-- [dump_sql Command](./dump_sql.md) — preview SQL from YAML schema (no migration state)
+- [dump-sql Command](./dump-sql.md) — preview SQL from YAML schema (no migration state)
 - [migrate Command](./migrate.md) — apply, rollback, and inspect migrations

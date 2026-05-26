@@ -34,7 +34,8 @@ var (
 
 // dumpSQLCmd represents the dump_sql command
 var dumpSQLCmd = &cobra.Command{
-	Use:   "dump_sql",
+	Use:     "dump-sql",
+	Aliases: []string{"dump_sql"},
 	Short: "Dump schema as SQL to console",
 	Long: `Dump schema as SQL to the console.
 

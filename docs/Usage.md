@@ -407,12 +407,12 @@ func init() {
 
 Before applying anything, inspect the SQL that will be executed. There are two ways to do this.
 
-### Option 1 — dump_sql (schema preview, no migration state)
+### Option 1 — dump-sql (schema preview, no migration state)
 
-`dump_sql` shows the CREATE TABLE statements that your YAML schema would generate, without consulting the migration history at all:
+`dump-sql` shows the CREATE TABLE statements that your YAML schema would generate, without consulting the migration history at all:
 
 ```bash
-makemigrations dump_sql --database postgresql
+makemigrations dump-sql --database postgresql
 ```
 
 Output:
@@ -1032,9 +1032,9 @@ makemigrations migrate status           ← verify
 | `makemigrations makemigrations --dry-run` | Preview migration source without writing a file |
 | `makemigrations makemigrations --check` | CI mode: exit 1 if migrations are needed |
 | `makemigrations makemigrations --merge` | Generate a merge migration for concurrent branches |
-| `makemigrations current_state` | Show reconstructed schema from migration DAG as YAML |
-| `makemigrations dump_sql` | Show full CREATE TABLE SQL from the YAML schema |
-| `makemigrations dump_sql --verbose` | Include processing detail in the output |
+| `makemigrations current-state` | Show reconstructed schema from migration DAG as YAML |
+| `makemigrations dump-sql` | Show full CREATE TABLE SQL from the YAML schema |
+| `makemigrations dump-sql --verbose` | Include processing detail in the output |
 | `makemigrations migrate showsql` | Show SQL for all pending migrations |
 | `makemigrations migrate up` | Apply all pending migrations |
 | `makemigrations migrate up --to NAME` | Apply up to a named migration |
@@ -1055,6 +1055,6 @@ makemigrations migrate status           ← verify
 - [migrate Command](commands/migrate.md) — all runtime commands and flags
 - [diff Command](commands/diff.md) — compare YAML schema against migration state
 - [db-diff Command](commands/db-diff.md) — compare migration state against live database
-- [current_state Command](commands/current_state.md) — inspect reconstructed migration state
-- [dump_sql Command](commands/dump_sql.md) — schema inspection command
+- [current-state Command](commands/current-state.md) — inspect reconstructed migration state
+- [dump-sql Command](commands/dump-sql.md) — schema inspection command
 - [Configuration Guide](configuration.md) — full configuration reference

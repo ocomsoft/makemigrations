@@ -46,16 +46,19 @@ var rootCmd = &cobra.Command{
 	Long: `Generate database migrations from YAML schema files as typed Go code.
 
 Available commands:
-  init              Initialize migrations directory and create initial migration
-  makemigrations    Generate Go migration files from YAML schema changes
-  migrate           Run migrations in-process via the yaegi interpreter
-  db2schema         Extract database schema to YAML
-  struct2schema     Convert Go structs to YAML schema
-  dump_sql          Dump merged YAML schema as SQL
-  dump-data         Generate a migration that seeds table data using UpsertData
-  schema2diagram    Generate diagram from YAML schema
-  find_includes     Discover schema includes in Go modules
-  empty             Create a blank migration with no operations`,
+  init               Initialize migrations directory and create initial migration
+  makemigrations     Generate Go migration files from YAML schema changes
+  migrate            Run migrations in-process via the yaegi interpreter
+  diff               Show schema drift between YAML and migration state
+  db-diff            Compare live database schema against migration DAG state
+  current-state      Show the reconstructed schema state from existing migrations
+  db-to-schema       Extract database schema to YAML
+  struct-to-schema   Convert Go structs to YAML schema
+  dump-sql           Dump merged YAML schema as SQL
+  dump-data          Generate a migration that seeds table data using UpsertData
+  schema-to-diagram  Generate diagram from YAML schema
+  find-includes      Discover schema includes in Go modules
+  empty              Create a blank migration with no operations`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications

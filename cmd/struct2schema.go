@@ -38,7 +38,8 @@ var (
 
 // struct2schemaCmd represents the struct2schema command
 var struct2schemaCmd = &cobra.Command{
-	Use:   "struct2schema",
+	Use:     "struct-to-schema",
+	Aliases: []string{"struct2schema"},
 	Short: "Convert Go structs to YAML schema format",
 	Long: `Convert Go structs to YAML schema format compatible with makemigrations.
 

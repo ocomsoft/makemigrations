@@ -352,9 +352,8 @@ func (p *Parser) ParseAndValidate(content string) (*Schema, error) {
 		return nil, errors.NewValidationError("schema", err.Error())
 	}
 
-	if err := p.ValidateForeignKeyReferences(schema); err != nil {
-		return nil, errors.NewValidationError("schema", err.Error())
-	}
+	// FK validation is deferred to post-merge — individual schema files
+	// may reference tables defined in sibling schema files.
 
 	return schema, nil
 }
@@ -392,14 +391,13 @@ func (p *Parser) ParseSchemaFileWithContent(content, filePath string) (*Schema, 
 		return nil, fmt.Errorf("failed to process includes: %w", err)
 	}
 
-	// Validate the final merged schema
+	// Validate structure of the merged schema (includes resolved)
 	if err := p.ValidateSchemaStructure(processedSchema); err != nil {
 		return nil, errors.NewValidationError("merged_schema", err.Error())
 	}
 
-	if err := p.ValidateForeignKeyReferences(processedSchema); err != nil {
-		return nil, errors.NewValidationError("merged_schema", err.Error())
-	}
+	// FK validation is deferred to post-merge — this schema may reference
+	// tables from sibling schema files not yet loaded.
 
 	if p.verbose {
 		fmt.Printf("Successfully processed schema with includes: %d tables total\n",

@@ -218,56 +218,63 @@ func driverName(dbType string) string {
 // --- Runner wiring ---
 
 // buildRunner creates a fully-wired Runner from the app config and registry.
-func (a *App) buildRunner() (*Runner, error) {
+// It also returns the underlying *sql.DB so the caller can close it when done.
+func (a *App) buildRunner() (*Runner, *sql.DB, error) {
 	reg := a.registry
 	g, err := BuildGraph(reg)
 	if err != nil {
-		return nil, fmt.Errorf("building graph: %w", err)
+		return nil, nil, fmt.Errorf("building graph: %w", err)
 	}
 	db, err := a.openDB()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	p, err := BuildProviderFromType(a.config.DatabaseType)
 	if err != nil {
-		return nil, err
+		_ = db.Close()
+		return nil, nil, err
 	}
 	recorder := NewMigrationRecorder(db, p)
 	if err := recorder.EnsureTable(); err != nil {
-		return nil, err
+		_ = db.Close()
+		return nil, nil, err
 	}
-	return NewRunner(g, p, db, recorder), nil
+	return NewRunner(g, p, db, recorder), db, nil
 }
 
 func (a *App) runUp(to string, opts RunOptions) error {
-	r, err := a.buildRunner()
+	r, db, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 	return r.Up(to, opts)
 }
 
 func (a *App) runDown(steps int, to string, opts RunOptions) error {
-	r, err := a.buildRunner()
+	r, db, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 	return r.Down(steps, to, opts)
 }
 
 func (a *App) runStatus() error {
-	r, err := a.buildRunner()
+	r, db, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 	return r.Status()
 }
 
 func (a *App) runShowSQL() error {
-	r, err := a.buildRunner()
+	r, db, err := a.buildRunner()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 	return r.ShowSQL()
 }
 
@@ -282,6 +289,7 @@ func (a *App) runFake(name string) error {
 	if err != nil {
 		return err
 	}
+	defer func() { _ = db.Close() }()
 	p, err := BuildProviderFromType(a.config.DatabaseType)
 	if err != nil {
 		return err

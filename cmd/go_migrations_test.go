@@ -513,3 +513,36 @@ func TestSchemaStateToYAMLSchema_WithDefaults(t *testing.T) {
 		t.Errorf("expected empty MySQL defaults, got %v", result.Defaults.MySQL)
 	}
 }
+
+func TestParsePromptInput(t *testing.T) {
+	tests := []struct {
+		input     string
+		wantResp  yamlpkg.PromptResponse
+		wantScope promptScope
+	}{
+		{"1", yamlpkg.PromptGenerate, scopeOne},
+		{"2", yamlpkg.PromptReview, scopeOne},
+		{"3", yamlpkg.PromptOmit, scopeOne},
+		{"4", yamlpkg.PromptExit, scopeOne},
+		{"5", yamlpkg.PromptIgnoreErrors, scopeOne},
+		{"1a", yamlpkg.PromptGenerate, scopeAll},
+		{"1A", yamlpkg.PromptGenerate, scopeAll},
+		{"3a", yamlpkg.PromptOmit, scopeAll},
+		{"5a", yamlpkg.PromptIgnoreErrors, scopeAll},
+		{"1t", yamlpkg.PromptGenerate, scopeType},
+		{"1T", yamlpkg.PromptGenerate, scopeType},
+		{"2t", yamlpkg.PromptReview, scopeType},
+		{"3t", yamlpkg.PromptOmit, scopeType},
+		{"5t", yamlpkg.PromptIgnoreErrors, scopeType},
+		{"4a", yamlpkg.PromptExit, scopeOne},  // exit ignores scope
+		{"", yamlpkg.PromptGenerate, scopeOne}, // empty defaults to generate
+		{"x", yamlpkg.PromptGenerate, scopeOne},
+	}
+	for _, tt := range tests {
+		resp, scope := parsePromptInput(tt.input)
+		if resp != tt.wantResp || scope != tt.wantScope {
+			t.Errorf("parsePromptInput(%q) = (%d, %d), want (%d, %d)",
+				tt.input, resp, scope, tt.wantResp, tt.wantScope)
+		}
+	}
+}

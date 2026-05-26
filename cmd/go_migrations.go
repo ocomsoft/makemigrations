@@ -293,59 +293,107 @@ func printChangeList(changes []yamlpkg.Change) {
 // operation, interactively asks the user what to do. The returned map is keyed
 // by change index and holds the user's PromptResponse for that change.
 //
+// Suffixes control scope: bare number applies to this op only, "a" suffix
+// applies the choice to ALL remaining destructive ops, "t" suffix applies
+// to all remaining ops of the same ChangeType (e.g. all table_removed).
+//
 // If the user chooses PromptOmit the generated operation will have SchemaOnly: true
 // (schema state advances but no SQL is executed). If the user chooses PromptExit
 // an error is returned and migration generation is cancelled.
 func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptResponse, error) {
 	decisions := make(map[int]yamlpkg.PromptResponse)
-	generateAll := false
+	applyAll := yamlpkg.PromptResponse(0)
+	applyByType := make(map[yamlpkg.ChangeType]yamlpkg.PromptResponse)
 
 	for i, change := range diff.Changes {
 		if !yamlpkg.IsDestructiveOperation(change.Type) {
 			continue
 		}
-		if generateAll {
-			decisions[i] = yamlpkg.PromptGenerate
+		if applyAll != 0 {
+			decisions[i] = applyAll
+			continue
+		}
+		if resp, ok := applyByType[change.Type]; ok {
+			decisions[i] = resp
 			continue
 		}
 
 		if change.FieldName != "" {
-			fmt.Printf("\n⚠  Destructive operation detected: %s on %q (field: %q)\n", change.Type, change.TableName, change.FieldName)
+			fmt.Printf("\n⚠  Destructive: %s on %q (field: %q)\n", change.Type, change.TableName, change.FieldName)
 		} else {
-			fmt.Printf("\n⚠  Destructive operation detected: %s on %q\n", change.Type, change.TableName)
+			fmt.Printf("\n⚠  Destructive: %s on %q\n", change.Type, change.TableName)
 		}
 		fmt.Println("  1) Generate      — include operation in migration")
 		fmt.Println("  2) Review        — include with // REVIEW comment")
-		fmt.Println("  3) Omit          — skip operation; schema state still advances (SchemaOnly)")
+		fmt.Println("  3) Omit          — skip SQL; schema state still advances (SchemaOnly)")
 		fmt.Println("  4) Exit          — cancel migration generation")
-		fmt.Println("  5) All           — generate all remaining destructive ops without prompting")
-		fmt.Println("  6) IgnoreErrors  — include with IgnoreErrors: true (continue on failure)")
-		fmt.Print("Choice [1-6]: ")
+		fmt.Println("  5) IgnoreErrors  — include with IgnoreErrors: true (continue on failure)")
+		fmt.Println()
+		fmt.Println("  Suffix: a = apply to ALL remaining, t = apply to all of this TYPE")
+		fmt.Println("  e.g. 1a = generate all, 3t = omit all " + string(change.Type))
+		fmt.Print("Choice [1-5][a|t]: ")
 
 		var input string
 		if _, err := fmt.Scanln(&input); err != nil {
 			return nil, fmt.Errorf("reading input: %w", err)
 		}
+		input = strings.TrimSpace(input)
 
-		switch strings.TrimSpace(input) {
-		case "1":
-			decisions[i] = yamlpkg.PromptGenerate
-		case "2":
-			decisions[i] = yamlpkg.PromptReview
-		case "3":
-			decisions[i] = yamlpkg.PromptOmit
-		case "4":
+		resp, scope := parsePromptInput(input)
+		if resp == yamlpkg.PromptExit {
 			return nil, fmt.Errorf("migration generation cancelled by user")
-		case "5":
-			decisions[i] = yamlpkg.PromptGenerate
-			generateAll = true
-		case "6":
-			decisions[i] = yamlpkg.PromptIgnoreErrors
-		default:
-			decisions[i] = yamlpkg.PromptGenerate
+		}
+
+		decisions[i] = resp
+		switch scope {
+		case scopeAll:
+			applyAll = resp
+		case scopeType:
+			applyByType[change.Type] = resp
 		}
 	}
 	return decisions, nil
+}
+
+type promptScope int
+
+const (
+	scopeOne  promptScope = iota // apply to this operation only
+	scopeAll                     // apply to all remaining destructive ops
+	scopeType                    // apply to all remaining ops of the same ChangeType
+)
+
+// parsePromptInput parses a prompt input like "1", "3a", "5t" into a
+// PromptResponse and a scope.
+func parsePromptInput(input string) (yamlpkg.PromptResponse, promptScope) {
+	if len(input) == 0 {
+		return yamlpkg.PromptGenerate, scopeOne
+	}
+
+	scope := scopeOne
+	last := input[len(input)-1]
+	if last == 'a' || last == 'A' {
+		scope = scopeAll
+		input = input[:len(input)-1]
+	} else if last == 't' || last == 'T' {
+		scope = scopeType
+		input = input[:len(input)-1]
+	}
+
+	switch input {
+	case "1":
+		return yamlpkg.PromptGenerate, scope
+	case "2":
+		return yamlpkg.PromptReview, scope
+	case "3":
+		return yamlpkg.PromptOmit, scope
+	case "4":
+		return yamlpkg.PromptExit, scopeOne
+	case "5":
+		return yamlpkg.PromptIgnoreErrors, scope
+	default:
+		return yamlpkg.PromptGenerate, scopeOne
+	}
 }
 
 // queryDAG loads the migrations directory with the yaegi interpreter and

@@ -72,6 +72,10 @@ type Index struct {
 	Method string `json:"method,omitempty"`
 	// Where is a partial index predicate. Leave empty for a full index. Not supported by MySQL.
 	Where string `json:"where,omitempty"`
+	// FromFK marks indexes auto-generated for foreign key columns. These are
+	// managed automatically by AddForeignKey/DropForeignKey and excluded from
+	// schema diffs and generated migration code.
+	FromFK bool `json:"from_fk,omitempty"`
 }
 
 // ForeignKeyConstraint represents a FK constraint tracked in SchemaState.

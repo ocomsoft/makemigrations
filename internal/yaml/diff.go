@@ -653,9 +653,15 @@ func (de *DiffEngine) compareIndexes(oldTable, newTable *Table) []Change {
 	newIndexes := make(map[string]*Index)
 
 	for i := range oldTable.Indexes {
+		if oldTable.Indexes[i].FromFK {
+			continue
+		}
 		oldIndexes[oldTable.Indexes[i].Name] = &oldTable.Indexes[i]
 	}
 	for i := range newTable.Indexes {
+		if newTable.Indexes[i].FromFK {
+			continue
+		}
 		newIndexes[newTable.Indexes[i].Name] = &newTable.Indexes[i]
 	}
 

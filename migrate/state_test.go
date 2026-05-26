@@ -290,9 +290,14 @@ func TestSchemaState_AddDropForeignKey(t *testing.T) {
 		t.Fatalf("expected 1 FK, got %d", len(ts.ForeignKeys))
 	}
 
-	// Duplicate
-	if err := state.AddForeignKey("orders", fk); err == nil {
-		t.Fatal("expected error on duplicate FK")
+	// Duplicate is idempotent — updates in place
+	fk2 := fk
+	fk2.OnDelete = "RESTRICT"
+	if err := state.AddForeignKey("orders", fk2); err != nil {
+		t.Fatalf("expected idempotent AddForeignKey, got: %v", err)
+	}
+	if state.Tables["orders"].ForeignKeys[0].OnDelete != "RESTRICT" {
+		t.Error("expected duplicate AddForeignKey to update OnDelete")
 	}
 
 	// Drop
@@ -349,6 +354,118 @@ func TestSchemaState_AddForeignKeySyncsField(t *testing.T) {
 		}
 	}
 	t.Fatal("created_user_id field not found")
+}
+
+// TestSchemaState_AddForeignKeyCreatesFromFKIndex verifies that AddForeignKey
+// auto-creates an index with FromFK=true on the FK column.
+func TestSchemaState_AddForeignKeyCreatesFromFKIndex(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{
+		{Name: "id", Type: "uuid"},
+		{Name: "user_id", Type: "uuid"},
+	}, nil)
+
+	_ = state.AddForeignKey("orders", migrate.ForeignKeyConstraint{
+		Name:            "fk_orders_user_id",
+		FieldName:       "user_id",
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+	})
+
+	indexes := state.Tables["orders"].Indexes
+	if len(indexes) != 1 {
+		t.Fatalf("expected 1 auto-created index, got %d", len(indexes))
+	}
+	if indexes[0].Name != "idx_orders_user_id" {
+		t.Errorf("expected index name idx_orders_user_id, got %q", indexes[0].Name)
+	}
+	if !indexes[0].FromFK {
+		t.Error("expected FromFK=true on auto-created index")
+	}
+	if len(indexes[0].Fields) != 1 || indexes[0].Fields[0] != "user_id" {
+		t.Errorf("expected index on [user_id], got %v", indexes[0].Fields)
+	}
+}
+
+// TestSchemaState_AddForeignKeySkipsExistingIndex verifies that AddForeignKey
+// does not create a duplicate index if one already covers the FK column.
+func TestSchemaState_AddForeignKeySkipsExistingIndex(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{
+		{Name: "id", Type: "uuid"},
+		{Name: "user_id", Type: "uuid"},
+	}, []migrate.Index{
+		{Name: "idx_orders_user_id", Fields: []string{"user_id"}, Unique: true},
+	})
+
+	_ = state.AddForeignKey("orders", migrate.ForeignKeyConstraint{
+		Name:            "fk_orders_user_id",
+		FieldName:       "user_id",
+		ReferencedTable: "users",
+	})
+
+	if len(state.Tables["orders"].Indexes) != 1 {
+		t.Fatalf("expected existing index to be kept (no duplicate), got %d indexes", len(state.Tables["orders"].Indexes))
+	}
+	if state.Tables["orders"].Indexes[0].FromFK {
+		t.Error("existing user-defined index should not be marked FromFK")
+	}
+}
+
+// TestSchemaState_DropForeignKeyRemovesFromFKIndex verifies that DropForeignKey
+// removes the auto-created FromFK index.
+func TestSchemaState_DropForeignKeyRemovesFromFKIndex(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{
+		{Name: "id", Type: "uuid"},
+		{Name: "user_id", Type: "uuid"},
+	}, nil)
+
+	_ = state.AddForeignKey("orders", migrate.ForeignKeyConstraint{
+		Name:            "fk_orders_user_id",
+		FieldName:       "user_id",
+		ReferencedTable: "users",
+	})
+
+	// Verify index was created
+	if len(state.Tables["orders"].Indexes) != 1 {
+		t.Fatalf("expected 1 index after AddForeignKey, got %d", len(state.Tables["orders"].Indexes))
+	}
+
+	// Drop FK — should also remove the FromFK index
+	_ = state.DropForeignKey("orders", "fk_orders_user_id")
+	if len(state.Tables["orders"].Indexes) != 0 {
+		t.Fatalf("expected 0 indexes after DropForeignKey, got %d", len(state.Tables["orders"].Indexes))
+	}
+}
+
+// TestSchemaState_DropForeignKeyKeepsUserIndex verifies that DropForeignKey
+// does NOT remove a user-defined index (FromFK=false) on the FK column.
+func TestSchemaState_DropForeignKeyKeepsUserIndex(t *testing.T) {
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{
+		{Name: "id", Type: "uuid"},
+		{Name: "user_id", Type: "uuid"},
+	}, []migrate.Index{
+		{Name: "idx_orders_user_id", Fields: []string{"user_id"}, Unique: true},
+	})
+
+	_ = state.AddForeignKey("orders", migrate.ForeignKeyConstraint{
+		Name:            "fk_orders_user_id",
+		FieldName:       "user_id",
+		ReferencedTable: "users",
+	})
+
+	// The existing index prevented a FromFK index from being created
+	if len(state.Tables["orders"].Indexes) != 1 {
+		t.Fatalf("expected 1 index, got %d", len(state.Tables["orders"].Indexes))
+	}
+
+	// Drop FK — should NOT remove the user-defined index
+	_ = state.DropForeignKey("orders", "fk_orders_user_id")
+	if len(state.Tables["orders"].Indexes) != 1 {
+		t.Fatalf("expected user index to survive DropForeignKey, got %d indexes", len(state.Tables["orders"].Indexes))
+	}
 }
 
 // TestSchemaState_SetTypeMappings verifies that SetTypeMappings updates state.TypeMappings.

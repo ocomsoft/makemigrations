@@ -413,6 +413,9 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 			t.Fields = append(t.Fields, yf)
 		}
 		for _, idx := range ts.Indexes {
+			if idx.FromFK {
+				continue
+			}
 			t.Indexes = append(t.Indexes, yamlpkg.Index{
 				Name:   idx.Name,
 				Fields: idx.Fields,

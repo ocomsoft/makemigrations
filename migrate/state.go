@@ -201,15 +201,16 @@ func (s *SchemaState) DropIndex(tableName, indexName string) error {
 }
 
 // AddForeignKey appends a foreign key constraint to an existing table.
-// Returns error if the constraint name already exists.
+// If the constraint already exists it is updated in place (idempotent).
 func (s *SchemaState) AddForeignKey(tableName string, fk ForeignKeyConstraint) error {
 	t, exists := s.Tables[tableName]
 	if !exists {
 		return fmt.Errorf("table %q does not exist in schema state", tableName)
 	}
-	for _, existing := range t.ForeignKeys {
+	for i, existing := range t.ForeignKeys {
 		if existing.Name == fk.Name {
-			return fmt.Errorf("foreign key %q already exists in table %q", fk.Name, tableName)
+			t.ForeignKeys[i] = fk
+			return nil
 		}
 	}
 	t.ForeignKeys = append(t.ForeignKeys, fk)
@@ -221,10 +222,13 @@ func (s *SchemaState) AddForeignKey(tableName string, fk ForeignKeyConstraint) e
 			t.Fields[i].ForeignKey.OnUpdate = fk.OnUpdate
 		}
 	}
+	// Auto-create an index on the FK column if one doesn't already cover it.
+	s.ensureFKIndex(t, fk.FieldName)
 	return nil
 }
 
 // DropForeignKey removes a named foreign key constraint from an existing table.
+// Also removes the auto-generated FromFK index for the FK column, if present.
 func (s *SchemaState) DropForeignKey(tableName, constraintName string) error {
 	t, exists := s.Tables[tableName]
 	if !exists {
@@ -232,9 +236,36 @@ func (s *SchemaState) DropForeignKey(tableName, constraintName string) error {
 	}
 	for i, fk := range t.ForeignKeys {
 		if fk.Name == constraintName {
+			fieldName := fk.FieldName
 			t.ForeignKeys = append(t.ForeignKeys[:i], t.ForeignKeys[i+1:]...)
+			s.removeFKIndex(t, fieldName)
 			return nil
 		}
 	}
 	return fmt.Errorf("foreign key %q does not exist in table %q", constraintName, tableName)
+}
+
+// ensureFKIndex adds a FromFK index on the given field if no index already
+// covers that field as its first column.
+func (s *SchemaState) ensureFKIndex(t *TableState, fieldName string) {
+	for _, idx := range t.Indexes {
+		if len(idx.Fields) > 0 && idx.Fields[0] == fieldName {
+			return
+		}
+	}
+	t.Indexes = append(t.Indexes, Index{
+		Name:   fmt.Sprintf("idx_%s_%s", t.Name, fieldName),
+		Fields: []string{fieldName},
+		FromFK: true,
+	})
+}
+
+// removeFKIndex removes the FromFK-marked index for the given field, if any.
+func (s *SchemaState) removeFKIndex(t *TableState, fieldName string) {
+	for i, idx := range t.Indexes {
+		if idx.FromFK && len(idx.Fields) == 1 && idx.Fields[0] == fieldName {
+			t.Indexes = append(t.Indexes[:i], t.Indexes[i+1:]...)
+			return
+		}
+	}
 }

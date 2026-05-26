@@ -63,6 +63,68 @@ type Defaults struct {
 	AuroraDSQL map[string]string `yaml:"auroradsql"`
 }
 
+// ForProvider returns the defaults map for the given database type, or nil.
+func (d *Defaults) ForProvider(dbType DatabaseType) map[string]string {
+	switch dbType {
+	case DatabasePostgreSQL:
+		return d.PostgreSQL
+	case DatabaseMySQL:
+		return d.MySQL
+	case DatabaseSQLServer:
+		return d.SQLServer
+	case DatabaseSQLite:
+		return d.SQLite
+	case DatabaseRedshift:
+		return d.Redshift
+	case DatabaseClickHouse:
+		return d.ClickHouse
+	case DatabaseTiDB:
+		return d.TiDB
+	case DatabaseVertica:
+		return d.Vertica
+	case DatabaseYDB:
+		return d.YDB
+	case DatabaseTurso:
+		return d.Turso
+	case DatabaseStarRocks:
+		return d.StarRocks
+	case DatabaseAuroraDSQL:
+		return d.AuroraDSQL
+	default:
+		return nil
+	}
+}
+
+// SetForProvider sets the defaults map for the given database type.
+func (d *Defaults) SetForProvider(dbType DatabaseType, defaults map[string]string) {
+	switch dbType {
+	case DatabasePostgreSQL:
+		d.PostgreSQL = defaults
+	case DatabaseMySQL:
+		d.MySQL = defaults
+	case DatabaseSQLServer:
+		d.SQLServer = defaults
+	case DatabaseSQLite:
+		d.SQLite = defaults
+	case DatabaseRedshift:
+		d.Redshift = defaults
+	case DatabaseClickHouse:
+		d.ClickHouse = defaults
+	case DatabaseTiDB:
+		d.TiDB = defaults
+	case DatabaseVertica:
+		d.Vertica = defaults
+	case DatabaseYDB:
+		d.YDB = defaults
+	case DatabaseTurso:
+		d.Turso = defaults
+	case DatabaseStarRocks:
+		d.StarRocks = defaults
+	case DatabaseAuroraDSQL:
+		d.AuroraDSQL = defaults
+	}
+}
+
 // TypeMappings represents custom SQL type overrides per database.
 // Values are SQL type strings. For parameterised types use Go template
 // syntax: "DECIMAL({{.Precision}},{{.Scale}})" or "VARCHAR({{.Length}})".

@@ -433,16 +433,7 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 	// Populate the Defaults section so that defaults changes are detected on
 	// subsequent diff runs (the diff engine compares schema.Defaults).
 	if len(state.Defaults) > 0 {
-		switch dbType {
-		case "postgresql":
-			schema.Defaults.PostgreSQL = state.Defaults
-		case "mysql":
-			schema.Defaults.MySQL = state.Defaults
-		case "sqlserver":
-			schema.Defaults.SQLServer = state.Defaults
-		case "sqlite":
-			schema.Defaults.SQLite = state.Defaults
-		}
+		schema.Defaults.SetForProvider(types.DatabaseType(dbType), state.Defaults)
 	}
 	// Populate TypeMappings so that type mapping changes are detected on subsequent diff runs.
 	if len(state.TypeMappings) > 0 {
@@ -482,18 +473,7 @@ func getDefaultsForDB(schema *yamlpkg.Schema, dbType string) map[string]string {
 	if schema == nil {
 		return nil
 	}
-	switch dbType {
-	case "postgresql":
-		return schema.Defaults.PostgreSQL
-	case "mysql":
-		return schema.Defaults.MySQL
-	case "sqlserver":
-		return schema.Defaults.SQLServer
-	case "sqlite":
-		return schema.Defaults.SQLite
-	default:
-		return nil
-	}
+	return schema.Defaults.ForProvider(types.DatabaseType(dbType))
 }
 
 // getTypeMappingsForDB returns the type mappings for the given database type from a schema.

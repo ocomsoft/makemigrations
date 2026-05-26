@@ -139,6 +139,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "UUID"
 	case "json", "jsonb":
 		return "String" // ClickHouse doesn't have native JSON, store as String
+	case "bytes":
+		return "String"
 	default:
 		return "String"
 	}

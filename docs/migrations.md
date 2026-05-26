@@ -161,6 +161,7 @@ The `Type` string maps to the provider's SQL dialect. Common values:
 | `"date"` | `DATE` | `DATE` | `TEXT` | |
 | `"uuid"` | `UUID` | `CHAR(36)` | `TEXT` | |
 | `"json"` | `JSONB` | `JSON` | `TEXT` | |
+| `"bytes"` | `BYTEA` | `BLOB` | `BLOB` | Binary data |
 | `"foreign_key"` | `INTEGER` + FK | `INTEGER` + FK | `INTEGER` + FK | Pair with `ForeignKey` |
 
 ### ForeignKey

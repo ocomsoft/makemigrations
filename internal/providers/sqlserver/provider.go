@@ -138,6 +138,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "UNIQUEIDENTIFIER"
 	case "json", "jsonb":
 		return "NVARCHAR(MAX)"
+	case "bytes":
+		return "VARBINARY(MAX)"
 	default:
 		return "NVARCHAR(MAX)"
 	}

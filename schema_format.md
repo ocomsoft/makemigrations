@@ -182,6 +182,7 @@ tables:
 | TimeField | time | TIME | |
 | UUIDField | uuid | UUID | |
 | JSONField | jsonb | JSONB | |
+| BinaryField | bytes | BYTEA | PostgreSQL: BYTEA, MySQL: BLOB, SQLite: BLOB, SQL Server: VARBINARY(MAX) |
 | EmailField | varchar | VARCHAR(255) | Treated as varchar with validation |
 | URLField | varchar | VARCHAR(255) | Treated as varchar with validation |
 | ForeignKey | foreign_key | INTEGER/UUID | Actual type determined by referenced table's PK |

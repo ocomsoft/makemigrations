@@ -140,6 +140,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "VARCHAR(36)"
 	case "json", "jsonb":
 		return "JSON" // StarRocks has native JSON support
+	case "bytes":
+		return "VARBINARY"
 	default:
 		return "STRING"
 	}

@@ -143,6 +143,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "CHAR(36)"
 	case "json", "jsonb":
 		return "JSON"
+	case "bytes":
+		return "BLOB"
 	default:
 		return "TEXT"
 	}

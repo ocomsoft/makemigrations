@@ -137,6 +137,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "UUID" // Aurora DSQL has native UUID support
 	case "json", "jsonb":
 		return "JSONB" // Aurora DSQL supports JSONB
+	case "bytes":
+		return "BYTEA"
 	default:
 		return "TEXT"
 	}

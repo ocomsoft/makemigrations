@@ -142,6 +142,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "CHAR(36)" // Same as MySQL
 	case "json", "jsonb":
 		return "JSON" // TiDB supports JSON natively
+	case "bytes":
+		return "BLOB"
 	default:
 		return "TEXT"
 	}

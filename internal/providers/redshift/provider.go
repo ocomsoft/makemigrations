@@ -140,6 +140,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "VARCHAR(36)" // Redshift doesn't have native UUID type
 	case "json", "jsonb":
 		return "SUPER" // Redshift's native JSON type
+	case "bytes":
+		return "VARBINARY(65535)"
 	default:
 		return "VARCHAR(65535)"
 	}

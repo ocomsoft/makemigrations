@@ -130,6 +130,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		}
 	case "uuid", "jsonb":
 		return "TEXT"
+	case "bytes":
+		return "BLOB"
 	default:
 		return "TEXT"
 	}

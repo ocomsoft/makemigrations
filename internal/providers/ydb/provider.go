@@ -134,6 +134,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "String" // Store UUID as string
 	case "json", "jsonb":
 		return "Json" // YDB has native Json type
+	case "bytes":
+		return "String"
 	default:
 		return "String"
 	}

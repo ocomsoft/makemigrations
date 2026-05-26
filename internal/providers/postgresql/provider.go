@@ -149,6 +149,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "UUID"
 	case "json", "jsonb":
 		return "JSONB"
+	case "bytes":
+		return "BYTEA"
 	case "foreign_key":
 		// Foreign keys default to UUID for PostgreSQL
 		// The actual type will be determined in convertField based on the referenced table

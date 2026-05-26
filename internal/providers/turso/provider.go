@@ -136,6 +136,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "TEXT"
 	case "json", "jsonb":
 		return "TEXT" // SQLite stores JSON as TEXT
+	case "bytes":
+		return "BLOB"
 	default:
 		return "TEXT"
 	}

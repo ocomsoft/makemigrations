@@ -139,6 +139,8 @@ func (p *Provider) ConvertFieldType(field *types.Field) string {
 		return "VARCHAR(36)" // Vertica doesn't have native UUID
 	case "json", "jsonb":
 		return "LONG VARCHAR" // Vertica doesn't have native JSON, use LONG VARCHAR
+	case "bytes":
+		return "LONG VARBINARY"
 	default:
 		return "VARCHAR(65000)"
 	}

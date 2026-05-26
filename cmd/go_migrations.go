@@ -290,12 +290,10 @@ func printChangeList(changes []yamlpkg.Change) {
 }
 
 // promptGoMigDecisions iterates through diff.Changes and, for each destructive
-// operation, interactively asks the user what to do. The returned map is keyed
-// by change index and holds the user's PromptResponse for that change.
+// operation, shows a bubbletea selector for the user to choose an action and
+// scope. The returned map is keyed by change index.
 //
-// Suffixes control scope: bare number applies to this op only, "a" suffix
-// applies the choice to ALL remaining destructive ops, "t" suffix applies
-// to all remaining ops of the same ChangeType (e.g. all table_removed).
+// Scope is toggled with Tab: "This only" → "All remaining" → "All of this type".
 //
 // If the user chooses PromptOmit the generated operation will have SchemaOnly: true
 // (schema state advances but no SQL is executed). If the user chooses PromptExit
@@ -318,28 +316,17 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 			continue
 		}
 
+		var title string
 		if change.FieldName != "" {
-			fmt.Printf("\n⚠  Destructive: %s on %q (field: %q)\n", change.Type, change.TableName, change.FieldName)
+			title = fmt.Sprintf("Destructive: %s on %q (field: %q)", change.Type, change.TableName, change.FieldName)
 		} else {
-			fmt.Printf("\n⚠  Destructive: %s on %q\n", change.Type, change.TableName)
+			title = fmt.Sprintf("Destructive: %s on %q", change.Type, change.TableName)
 		}
-		fmt.Println("  1) Generate      — include operation in migration")
-		fmt.Println("  2) Review        — include with // REVIEW comment")
-		fmt.Println("  3) Omit          — skip SQL; schema state still advances (SchemaOnly)")
-		fmt.Println("  4) Exit          — cancel migration generation")
-		fmt.Println("  5) IgnoreErrors  — include with IgnoreErrors: true (continue on failure)")
-		fmt.Println()
-		fmt.Println("  Suffix: a = apply to ALL remaining, t = apply to all of this TYPE")
-		fmt.Println("  e.g. 1a = generate all, 3t = omit all " + string(change.Type))
-		fmt.Print("Choice [1-5][a|t]: ")
 
-		var input string
-		if _, err := fmt.Scanln(&input); err != nil {
-			return nil, fmt.Errorf("reading input: %w", err)
+		resp, scope, err := runDestructivePrompt(title, change.Type)
+		if err != nil {
+			return nil, err
 		}
-		input = strings.TrimSpace(input)
-
-		resp, scope := parsePromptInput(input)
 		if resp == yamlpkg.PromptExit {
 			return nil, fmt.Errorf("migration generation cancelled by user")
 		}
@@ -364,7 +351,7 @@ const (
 )
 
 // parsePromptInput parses a prompt input like "1", "3a", "5t" into a
-// PromptResponse and a scope.
+// PromptResponse and a scope. Used as fallback for non-interactive environments.
 func parsePromptInput(input string) (yamlpkg.PromptResponse, promptScope) {
 	if len(input) == 0 {
 		return yamlpkg.PromptGenerate, scopeOne

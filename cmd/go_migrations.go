@@ -199,6 +199,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	}
 
 	if goMigCheck {
+		printChangeList(diff.Changes)
 		return fmt.Errorf("migrations needed: %d changes detected", len(diff.Changes))
 	}
 
@@ -237,6 +238,55 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	}
 	fmt.Printf("Created %s\n", outPath)
 	return nil
+}
+
+// printChangeList prints a human-readable summary of schema changes grouped by type.
+func printChangeList(changes []yamlpkg.Change) {
+	type entry struct {
+		table string
+		field string
+		desc  string
+	}
+	groups := make(map[yamlpkg.ChangeType][]entry)
+	for _, c := range changes {
+		groups[c.Type] = append(groups[c.Type], entry{c.TableName, c.FieldName, c.Description})
+	}
+
+	labels := []struct {
+		ct    yamlpkg.ChangeType
+		label string
+	}{
+		{yamlpkg.ChangeTypeTableAdded, "Tables added"},
+		{yamlpkg.ChangeTypeTableRemoved, "Tables removed"},
+		{yamlpkg.ChangeTypeTableRenamed, "Tables renamed"},
+		{yamlpkg.ChangeTypeFieldAdded, "Fields added"},
+		{yamlpkg.ChangeTypeFieldRemoved, "Fields removed"},
+		{yamlpkg.ChangeTypeFieldRenamed, "Fields renamed"},
+		{yamlpkg.ChangeTypeFieldModified, "Fields modified"},
+		{yamlpkg.ChangeTypeIndexAdded, "Indexes added"},
+		{yamlpkg.ChangeTypeIndexRemoved, "Indexes removed"},
+		{yamlpkg.ChangeTypeForeignKeyAdded, "Foreign keys added"},
+		{yamlpkg.ChangeTypeForeignKeyRemoved, "Foreign keys removed"},
+		{yamlpkg.ChangeTypeDefaultsModified, "Defaults modified"},
+		{yamlpkg.ChangeTypeTypeMappingsModified, "Type mappings modified"},
+	}
+
+	fmt.Println()
+	for _, l := range labels {
+		entries, ok := groups[l.ct]
+		if !ok {
+			continue
+		}
+		fmt.Printf("  %s (%d):\n", l.label, len(entries))
+		for _, e := range entries {
+			if e.field != "" {
+				fmt.Printf("    - %s.%s\n", e.table, e.field)
+			} else {
+				fmt.Printf("    - %s\n", e.table)
+			}
+		}
+	}
+	fmt.Println()
 }
 
 // promptGoMigDecisions iterates through diff.Changes and, for each destructive

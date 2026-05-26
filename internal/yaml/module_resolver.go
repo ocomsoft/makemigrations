@@ -28,7 +28,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 )
 
@@ -72,9 +71,9 @@ func (mr *ModuleResolver) resolveWithGoList(modulePath string) (string, error) {
 		cmd.Dir = wd
 	}
 
-	// Pin GOTOOLCHAIN to the running binary so Go doesn't try to download a
-	// toolchain to satisfy a partial "go X.Y" directive in go.work/go.mod.
-	cmd.Env = append(os.Environ(), "GOTOOLCHAIN="+runtime.Version())
+	//// Pin GOTOOLCHAIN to the running binary so Go doesn't try to download a
+	//// toolchain to satisfy a partial "go X.Y" directive in go.work/go.mod.
+	//cmd.Env = append(os.Environ(), "GOTOOLCHAIN="+runtime.Version())
 
 	output, err := cmd.Output()
 	if err != nil {

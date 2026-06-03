@@ -190,3 +190,16 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 		t.Errorf("expected empty string for no-change alter, got: %q", got)
 	}
 }
+
+func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "id", Type: "uuid", PrimaryKey: true}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("users", &field)
+	if !strings.Contains(got, "PRIMARY KEY") {
+		t.Errorf("GenerateAddColumn() with PrimaryKey=true should contain PRIMARY KEY, got: %s", got)
+	}
+	if !strings.Contains(got, `"id"`) {
+		t.Errorf("GenerateAddColumn() should contain quoted field name, got: %s", got)
+	}
+}

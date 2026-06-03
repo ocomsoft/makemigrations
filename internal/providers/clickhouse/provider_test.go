@@ -382,3 +382,17 @@ func TestProvider_GenerateJunctionTable(t *testing.T) {
 		t.Errorf("expected no NOT NULL for ClickHouse, got:\n%s", got)
 	}
 }
+
+func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "id", Type: "uuid", PrimaryKey: true}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("users", &field)
+	// ClickHouse does not support inline PRIMARY KEY on ADD COLUMN; should emit a warning comment
+	if !strings.Contains(got, "does not support adding PRIMARY KEY") {
+		t.Errorf("GenerateAddColumn() with PrimaryKey=true should contain warning comment, got: %s", got)
+	}
+	if !strings.Contains(got, "ALTER TABLE") {
+		t.Errorf("GenerateAddColumn() should still contain ALTER TABLE statement, got: %s", got)
+	}
+}

@@ -189,7 +189,16 @@ func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) strin
 		fieldDef += " DEFAULT " + field.Default
 	}
 
-	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
+	sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
+
+	// YDB PRIMARY KEY is defined at table level, not inline on columns.
+	// Adding a PK column via ALTER TABLE ADD COLUMN requires recreating the table.
+	if field.PrimaryKey {
+		sql = fmt.Sprintf("-- YDB does not support adding PRIMARY KEY columns via ALTER TABLE. Recreate the table to add %s as a PRIMARY KEY column.\n%s",
+			p.QuoteName(field.Name), sql)
+	}
+
+	return sql
 }
 
 // GenerateDropColumn generates ALTER TABLE DROP COLUMN statement

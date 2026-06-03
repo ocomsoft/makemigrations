@@ -192,3 +192,16 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		}
 	}
 }
+
+func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "id", Type: "uuid", PrimaryKey: true}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("users", &field)
+	if !strings.Contains(got, "PRIMARY KEY") {
+		t.Errorf("GenerateAddColumn() with PrimaryKey=true should contain PRIMARY KEY, got: %s", got)
+	}
+	if !strings.Contains(got, `"id"`) {
+		t.Errorf("GenerateAddColumn() should contain quoted field name, got: %s", got)
+	}
+}

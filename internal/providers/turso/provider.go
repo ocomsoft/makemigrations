@@ -192,6 +192,10 @@ func (p *Provider) GenerateDropTableCascade(tableName string) string {
 func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) string {
 	fieldDef := fmt.Sprintf("%s %s", p.QuoteName(field.Name), p.ConvertFieldType(field))
 
+	if field.PrimaryKey {
+		fieldDef += " PRIMARY KEY"
+	}
+
 	if field.AutoCreate && field.Type == "timestamp" {
 		fieldDef += " DEFAULT CURRENT_TIMESTAMP"
 	} else if field.Default != "" {

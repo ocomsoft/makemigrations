@@ -402,12 +402,10 @@ func TestGenerateCreateTable_WithIndexes(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Verify the CREATE TABLE statement is present
 	if !strings.Contains(result, "CREATE TABLE") {
 		t.Errorf("expected CREATE TABLE in output, got: %s", result)
 	}
 
-	// Verify regular index
 	if !strings.Contains(result, "CREATE INDEX") {
 		t.Errorf("expected CREATE INDEX in output, got: %s", result)
 	}
@@ -415,11 +413,23 @@ func TestGenerateCreateTable_WithIndexes(t *testing.T) {
 		t.Errorf("expected idx_orders_customer index name in output, got: %s", result)
 	}
 
-	// Verify unique index
 	if !strings.Contains(result, "CREATE UNIQUE INDEX") {
 		t.Errorf("expected CREATE UNIQUE INDEX in output, got: %s", result)
 	}
 	if !strings.Contains(result, "idx_orders_email_status") {
 		t.Errorf("expected idx_orders_email_status index name in output, got: %s", result)
+	}
+}
+
+func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "id", Type: "uuid", PrimaryKey: true}
+	field.SetNullable(false)
+	got := p.GenerateAddColumn("users", &field)
+	if !strings.Contains(got, "PRIMARY KEY") {
+		t.Errorf("GenerateAddColumn() with PrimaryKey=true should contain PRIMARY KEY, got: %s", got)
+	}
+	if !strings.Contains(got, `"id"`) {
+		t.Errorf("GenerateAddColumn() should contain quoted field name, got: %s", got)
 	}
 }

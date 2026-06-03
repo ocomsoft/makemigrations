@@ -33,7 +33,7 @@ import (
 
 func TestProvider_GenerateForeignKeyConstraint(t *testing.T) {
 	p := New()
-	got := p.GenerateForeignKeyConstraint("users", "org_id", "organizations", "cascade")
+	got := p.GenerateForeignKeyConstraint("users", "org_id", "organizations", "", "cascade", "")
 	if !strings.Contains(got, "FOREIGN KEY") {
 		t.Errorf("expected FOREIGN KEY in:\n%s", got)
 	}

@@ -93,10 +93,10 @@ func toTypesField(f Field) *types.Field {
 		AutoUpdate: f.AutoUpdate,
 	}
 	if f.ForeignKey != nil {
-		// types.ForeignKey only has Table and OnDelete (no OnUpdate).
 		tf.ForeignKey = &types.ForeignKey{
 			Table:    f.ForeignKey.Table,
 			OnDelete: f.ForeignKey.OnDelete,
+			OnUpdate: f.ForeignKey.OnUpdate,
 		}
 	}
 	if f.ManyToMany != nil {
@@ -686,7 +686,8 @@ func (op *AddForeignKey) Describe() string {
 //   - DO_NOTHING  → NO ACTION
 func (op *AddForeignKey) Up(p providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {
 	onDelete := normalizeOnDelete(op.OnDelete)
-	return p.GenerateForeignKeyConstraint(op.Table, op.FieldName, op.ReferencedTable, onDelete), nil
+	onUpdate := normalizeOnDelete(op.OnUpdate)
+	return p.GenerateForeignKeyConstraint(op.Table, op.FieldName, op.ReferencedTable, op.ConstraintName, onDelete, onUpdate), nil
 }
 
 // Down generates the ALTER TABLE ... DROP CONSTRAINT SQL to remove the FK.
@@ -748,7 +749,7 @@ func (op *DropForeignKey) Down(p providers.Provider, state *SchemaState, _ map[s
 	}
 	for _, fk := range ts.ForeignKeys {
 		if fk.Name == op.ConstraintName {
-			return p.GenerateForeignKeyConstraint(op.Table, fk.FieldName, fk.ReferencedTable, fk.OnDelete), nil
+			return p.GenerateForeignKeyConstraint(op.Table, fk.FieldName, fk.ReferencedTable, fk.Name, fk.OnDelete, fk.OnUpdate), nil
 		}
 	}
 	return "", fmt.Errorf("foreign key %q not found in table %q state", op.ConstraintName, op.Table)

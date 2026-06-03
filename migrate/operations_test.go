@@ -563,3 +563,111 @@ func TestDropForeignKey_UpDown(t *testing.T) {
 		t.Fatal("expected 0 FKs after Mutate")
 	}
 }
+
+func TestAddForeignKey_OnUpdate(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	op := &migrate.AddForeignKey{
+		Table:           "orders",
+		FieldName:       "user_id",
+		ConstraintName:  "fk_orders_user_id",
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+		OnUpdate:        "SET NULL",
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if !strings.Contains(upSQL, "ON DELETE CASCADE") {
+		t.Errorf("expected ON DELETE CASCADE in SQL, got: %s", upSQL)
+	}
+	if !strings.Contains(upSQL, "ON UPDATE SET NULL") {
+		t.Errorf("expected ON UPDATE SET NULL in SQL, got: %s", upSQL)
+	}
+}
+
+func TestAddForeignKey_ConstraintNameUsed(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	customName := "my_custom_constraint"
+	op := &migrate.AddForeignKey{
+		Table:           "orders",
+		FieldName:       "user_id",
+		ConstraintName:  customName,
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if !strings.Contains(upSQL, `"my_custom_constraint"`) {
+		t.Errorf("expected custom constraint name in SQL, got: %s", upSQL)
+	}
+}
+
+func TestAddForeignKey_OnUpdateNormalization(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	_ = state.AddTable("users", []migrate.Field{{Name: "id", Type: "integer", PrimaryKey: true}}, nil)
+
+	// Test Django-style SET_NULL normalization for OnUpdate
+	op := &migrate.AddForeignKey{
+		Table:           "orders",
+		FieldName:       "user_id",
+		ConstraintName:  "fk_orders_user_id",
+		ReferencedTable: "users",
+		OnDelete:        "CASCADE",
+		OnUpdate:        "SET_NULL",
+	}
+
+	upSQL, err := op.Up(p, state, nil)
+	if err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+	if !strings.Contains(upSQL, "ON UPDATE SET NULL") {
+		t.Errorf("expected normalized ON UPDATE SET NULL in SQL, got: %s", upSQL)
+	}
+}
+
+func TestDropForeignKey_Down_WithOnUpdate(t *testing.T) {
+	p := postgresql.New()
+	state := migrate.NewSchemaState()
+	_ = state.AddTable("orders", []migrate.Field{{Name: "id", Type: "integer"}}, nil)
+	fk := migrate.ForeignKeyConstraint{
+		Name: "fk_orders_user_id", FieldName: "user_id",
+		ReferencedTable: "users", OnDelete: "CASCADE", OnUpdate: "SET NULL",
+	}
+	_ = state.AddForeignKey("orders", fk)
+
+	op := &migrate.DropForeignKey{
+		Table:          "orders",
+		ConstraintName: "fk_orders_user_id",
+	}
+
+	// Down should reconstruct the FK with both OnDelete and OnUpdate
+	downSQL, err := op.Down(p, state, nil)
+	if err != nil {
+		t.Fatalf("Down: %v", err)
+	}
+	if !strings.Contains(downSQL, "ON DELETE CASCADE") {
+		t.Errorf("expected ON DELETE CASCADE in Down SQL, got: %s", downSQL)
+	}
+	if !strings.Contains(downSQL, "ON UPDATE SET NULL") {
+		t.Errorf("expected ON UPDATE SET NULL in Down SQL, got: %s", downSQL)
+	}
+	// Down should use the stored constraint name
+	if !strings.Contains(downSQL, `"fk_orders_user_id"`) {
+		t.Errorf("expected stored constraint name fk_orders_user_id in Down SQL, got: %s", downSQL)
+	}
+}

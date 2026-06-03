@@ -256,7 +256,7 @@ func TestProvider_GenerateCreateTable(t *testing.T) {
 func TestProvider_GenerateForeignKeyConstraint(t *testing.T) {
 	provider := New()
 
-	result := provider.GenerateForeignKeyConstraint("posts", "user_id", "users", "CASCADE")
+	result := provider.GenerateForeignKeyConstraint("posts", "user_id", "users", "", "CASCADE", "")
 	expected := `ALTER TABLE "posts" ADD CONSTRAINT "fk_posts_user_id" FOREIGN KEY ("user_id") REFERENCES "users" ON DELETE CASCADE;`
 
 	if result != expected {

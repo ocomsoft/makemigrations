@@ -342,14 +342,20 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return strings.Join(stmts, "\n"), nil
 }
 
-func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
-	constraintName := fmt.Sprintf("fk_%s_%s", tableName, fieldName)
+func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
+	if constraintName == "" {
+		constraintName = fmt.Sprintf("fk_%s_%s", tableName, fieldName)
+	}
 	onDeleteClause := ""
 	if onDelete != "" {
 		onDeleteClause = fmt.Sprintf(" ON DELETE %s", strings.ToUpper(onDelete))
 	}
-	return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s%s;",
-		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause)
+	onUpdateClause := ""
+	if onUpdate != "" {
+		onUpdateClause = fmt.Sprintf(" ON UPDATE %s", strings.ToUpper(onUpdate))
+	}
+	return fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s%s%s;",
+		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause, onUpdateClause)
 }
 
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
@@ -419,7 +425,7 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	for _, table := range schema.Tables {
 		for _, field := range table.Fields {
 			if field.Type == "foreign_key" && field.ForeignKey != nil {
-				constraint := p.GenerateForeignKeyConstraint(table.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				constraint := p.GenerateForeignKeyConstraint(table.Name, field.Name, field.ForeignKey.Table, "", field.ForeignKey.OnDelete, field.ForeignKey.OnUpdate)
 				if constraint != "" {
 					constraints = append(constraints, constraint)
 				}
@@ -430,7 +436,7 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	for _, junctionTable := range junctionTables {
 		for _, field := range junctionTable.Fields {
 			if field.Type == "foreign_key" && field.ForeignKey != nil {
-				constraint := p.GenerateForeignKeyConstraint(junctionTable.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				constraint := p.GenerateForeignKeyConstraint(junctionTable.Name, field.Name, field.ForeignKey.Table, "", field.ForeignKey.OnDelete, field.ForeignKey.OnUpdate)
 				if constraint != "" {
 					constraints = append(constraints, constraint)
 				}

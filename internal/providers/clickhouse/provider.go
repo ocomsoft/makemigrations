@@ -336,7 +336,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return stmt, nil
 }
 
-func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
+func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	// ClickHouse doesn't support foreign keys
 	return fmt.Sprintf("-- ClickHouse doesn't support foreign key constraints for %s.%s -> %s;", tableName, fieldName, referencedTable)
 }

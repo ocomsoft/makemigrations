@@ -326,7 +326,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return "", nil
 }
 
-func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
+func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	// SQLite doesn't support ALTER TABLE ADD CONSTRAINT for foreign keys
 	// FKs must be defined inline in CREATE TABLE
 	return ""
@@ -398,7 +398,7 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	for _, table := range schema.Tables {
 		for _, field := range table.Fields {
 			if field.Type == "foreign_key" && field.ForeignKey != nil {
-				constraint := p.GenerateForeignKeyConstraint(table.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				constraint := p.GenerateForeignKeyConstraint(table.Name, field.Name, field.ForeignKey.Table, "", field.ForeignKey.OnDelete, field.ForeignKey.OnUpdate)
 				if constraint != "" {
 					constraints = append(constraints, constraint)
 				}
@@ -409,7 +409,7 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 	for _, junctionTable := range junctionTables {
 		for _, field := range junctionTable.Fields {
 			if field.Type == "foreign_key" && field.ForeignKey != nil {
-				constraint := p.GenerateForeignKeyConstraint(junctionTable.Name, field.Name, field.ForeignKey.Table, field.ForeignKey.OnDelete)
+				constraint := p.GenerateForeignKeyConstraint(junctionTable.Name, field.Name, field.ForeignKey.Table, "", field.ForeignKey.OnDelete, field.ForeignKey.OnUpdate)
 				if constraint != "" {
 					constraints = append(constraints, constraint)
 				}

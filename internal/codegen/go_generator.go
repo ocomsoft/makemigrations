@@ -405,6 +405,9 @@ func (g *GoGenerator) generateAddForeignKey(change yaml.Change) (string, error) 
 	b.WriteString(fmt.Sprintf("\t\t\t\tConstraintName: %q,\n", constraintName))
 	b.WriteString(fmt.Sprintf("\t\t\t\tReferencedTable: %q,\n", field.ForeignKey.Table))
 	b.WriteString(fmt.Sprintf("\t\t\t\tOnDelete: %q,\n", onDelete))
+	if field.ForeignKey.OnUpdate != "" {
+		b.WriteString(fmt.Sprintf("\t\t\t\tOnUpdate: %q,\n", field.ForeignKey.OnUpdate))
+	}
 	b.WriteString("\t\t\t\tIgnoreErrors:    true,\n")
 	b.WriteString("\t\t\t},\n")
 	return b.String(), nil
@@ -506,6 +509,9 @@ func generateFieldLiteral(f yaml.Field) string {
 		fkParts := []string{fmt.Sprintf("Table: %q", f.ForeignKey.Table)}
 		if f.ForeignKey.OnDelete != "" {
 			fkParts = append(fkParts, fmt.Sprintf("OnDelete: %q", f.ForeignKey.OnDelete))
+		}
+		if f.ForeignKey.OnUpdate != "" {
+			fkParts = append(fkParts, fmt.Sprintf("OnUpdate: %q", f.ForeignKey.OnUpdate))
 		}
 		parts = append(parts, fmt.Sprintf("ForeignKey: &m.ForeignKey{%s}", strings.Join(fkParts, ", ")))
 	}

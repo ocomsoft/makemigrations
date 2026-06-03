@@ -202,6 +202,7 @@ type Field struct {
 type ForeignKey struct {
 	Table    string `yaml:"table"`
 	OnDelete string `yaml:"on_delete"`
+	OnUpdate string `yaml:"on_update,omitempty"`
 }
 
 // ManyToMany represents a many-to-many relationship

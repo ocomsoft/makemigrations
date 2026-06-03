@@ -314,7 +314,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET %s;", tbl, col, newType), nil
 }
 
-func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string {
+func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	return fmt.Sprintf("-- YDB doesn't support foreign key constraints for %s.%s -> %s;", tableName, fieldName, referencedTable)
 }
 

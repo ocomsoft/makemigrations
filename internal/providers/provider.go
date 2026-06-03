@@ -47,7 +47,7 @@ type Provider interface {
 	GenerateDropIndex(indexName, tableName string) string
 
 	// Foreign Key Operations
-	GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, onDelete string) string
+	GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string
 	GenerateDropForeignKeyConstraint(tableName, constraintName string) string
 	GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error)
 	InferForeignKeyType(referencedTable string, schema *types.Schema) string

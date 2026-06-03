@@ -134,12 +134,55 @@ func TestProvider_GenerateAlterColumn_NoChange(t *testing.T) {
 
 func TestProvider_GenerateForeignKeyConstraint(t *testing.T) {
 	p := New()
-	got := p.GenerateForeignKeyConstraint("users", "org_id", "organizations", "cascade")
+	got := p.GenerateForeignKeyConstraint("users", "org_id", "organizations", "", "cascade", "")
 	if !strings.Contains(got, "FOREIGN KEY") {
 		t.Errorf("expected FOREIGN KEY in:\n%s", got)
 	}
 	if !strings.Contains(got, "ON DELETE CASCADE") {
 		t.Errorf("expected ON DELETE CASCADE in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateForeignKeyConstraint_OnUpdate(t *testing.T) {
+	p := New()
+	got := p.GenerateForeignKeyConstraint("orders", "user_id", "users", "", "CASCADE", "CASCADE")
+	if !strings.Contains(got, "ON DELETE CASCADE") {
+		t.Errorf("expected ON DELETE CASCADE in:\n%s", got)
+	}
+	if !strings.Contains(got, "ON UPDATE CASCADE") {
+		t.Errorf("expected ON UPDATE CASCADE in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateForeignKeyConstraint_CustomConstraintName(t *testing.T) {
+	p := New()
+	got := p.GenerateForeignKeyConstraint("orders", "user_id", "users", "my_custom_fk", "CASCADE", "")
+	if !strings.Contains(got, `"my_custom_fk"`) {
+		t.Errorf("expected custom constraint name my_custom_fk in:\n%s", got)
+	}
+	// Should NOT contain the auto-generated name
+	if strings.Contains(got, "fk_orders_user_id") {
+		t.Errorf("should use custom constraint name, not auto-generated, in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateForeignKeyConstraint_FallbackConstraintName(t *testing.T) {
+	p := New()
+	got := p.GenerateForeignKeyConstraint("orders", "user_id", "users", "", "CASCADE", "")
+	// Should fall back to auto-generated name when constraintName is empty
+	if !strings.Contains(got, "fk_orders_user_id") {
+		t.Errorf("expected auto-generated constraint name fk_orders_user_id in:\n%s", got)
+	}
+}
+
+func TestProvider_GenerateForeignKeyConstraint_OnUpdateOnly(t *testing.T) {
+	p := New()
+	got := p.GenerateForeignKeyConstraint("orders", "user_id", "users", "", "", "SET NULL")
+	if strings.Contains(got, "ON DELETE") {
+		t.Errorf("should not contain ON DELETE when onDelete is empty, got:\n%s", got)
+	}
+	if !strings.Contains(got, "ON UPDATE SET NULL") {
+		t.Errorf("expected ON UPDATE SET NULL in:\n%s", got)
 	}
 }
 

@@ -2,6 +2,8 @@ package struct2schema
 
 import (
 	"testing"
+
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // TestNewGenerator verifies generator creation.
@@ -514,10 +516,10 @@ func TestGenerateSchemaDefaults(t *testing.T) {
 		t.Fatalf("GenerateSchema: %v", err)
 	}
 
-	if schema.Defaults.PostgreSQL == nil {
+	if schema.Defaults.ForProvider(types.DatabasePostgreSQL) == nil {
 		t.Error("PostgreSQL defaults should be populated")
 	}
-	if schema.Defaults.MySQL == nil {
+	if schema.Defaults.ForProvider(types.DatabaseMySQL) == nil {
 		t.Error("MySQL defaults should be populated")
 	}
 }

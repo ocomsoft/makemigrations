@@ -468,36 +468,17 @@ func schemaStateToYAMLSchema(state *migrate.SchemaState, dbType string) *yamlpkg
 	// Populate the Defaults section so that defaults changes are detected on
 	// subsequent diff runs (the diff engine compares schema.Defaults).
 	if len(state.Defaults) > 0 {
+		if schema.Defaults == nil {
+			schema.Defaults = make(yamlpkg.Defaults)
+		}
 		schema.Defaults.SetForProvider(types.DatabaseType(dbType), state.Defaults)
 	}
 	// Populate TypeMappings so that type mapping changes are detected on subsequent diff runs.
 	if len(state.TypeMappings) > 0 {
-		switch dbType {
-		case "postgresql":
-			schema.TypeMappings.PostgreSQL = state.TypeMappings
-		case "mysql":
-			schema.TypeMappings.MySQL = state.TypeMappings
-		case "sqlserver":
-			schema.TypeMappings.SQLServer = state.TypeMappings
-		case "sqlite":
-			schema.TypeMappings.SQLite = state.TypeMappings
-		case "redshift":
-			schema.TypeMappings.Redshift = state.TypeMappings
-		case "clickhouse":
-			schema.TypeMappings.ClickHouse = state.TypeMappings
-		case "tidb":
-			schema.TypeMappings.TiDB = state.TypeMappings
-		case "vertica":
-			schema.TypeMappings.Vertica = state.TypeMappings
-		case "ydb":
-			schema.TypeMappings.YDB = state.TypeMappings
-		case "turso":
-			schema.TypeMappings.Turso = state.TypeMappings
-		case "starrocks":
-			schema.TypeMappings.StarRocks = state.TypeMappings
-		case "auroradsql":
-			schema.TypeMappings.AuroraDSQL = state.TypeMappings
+		if schema.TypeMappings == nil {
+			schema.TypeMappings = make(yamlpkg.TypeMappings)
 		}
+		schema.TypeMappings.SetForProvider(types.DatabaseType(dbType), state.TypeMappings)
 	}
 	return schema
 }

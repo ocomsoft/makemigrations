@@ -416,15 +416,17 @@ func isSQLExpression(value string) bool {
 
 // convertDefaultValue converts a default value to PostgreSQL-specific SQL.
 // Resolution order:
-//  1. Look up symbolic key in schema.Defaults.PostgreSQL (if mapping is present).
+//  1. Look up symbolic key in schema.Defaults for PostgreSQL (if mapping is present).
 //  2. If the value is already a SQL expression (function call, keyword, etc.), use it as-is.
 //  3. If the value is numeric, use it as-is.
 //  4. Otherwise, wrap it in single quotes as a string literal.
 func (p *Provider) convertDefaultValue(schema *types.Schema, defaultValue string) string {
 	// Look up the default value in the PostgreSQL defaults mapping
-	if schema != nil && schema.Defaults.PostgreSQL != nil {
-		if sqlDefault, exists := schema.Defaults.PostgreSQL[defaultValue]; exists {
-			return sqlDefault
+	if schema != nil {
+		if pgDefaults := schema.Defaults.ForProvider(types.DatabasePostgreSQL); pgDefaults != nil {
+			if sqlDefault, exists := pgDefaults[defaultValue]; exists {
+				return sqlDefault
+			}
 		}
 	}
 
@@ -630,7 +632,7 @@ func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, er
 			MigrationVersion: version.GetVersion(),
 		},
 		Defaults: types.Defaults{
-			PostgreSQL: map[string]string{
+			types.DatabasePostgreSQL: {
 				"blank":    "''",
 				"now":      "CURRENT_TIMESTAMP",
 				"new_uuid": "gen_random_uuid()",

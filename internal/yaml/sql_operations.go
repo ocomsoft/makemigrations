@@ -424,17 +424,8 @@ func (sc *SQLConverter) convertDefaultValue(schema *Schema, defaultValue string)
 	}
 
 	// Get the appropriate defaults mapping for the database type
-	var defaults map[string]string
-	switch sc.databaseType {
-	case DatabasePostgreSQL:
-		defaults = schema.Defaults.PostgreSQL
-	case DatabaseMySQL:
-		defaults = schema.Defaults.MySQL
-	case DatabaseSQLServer:
-		defaults = schema.Defaults.SQLServer
-	case DatabaseSQLite:
-		defaults = schema.Defaults.SQLite
-	default:
+	defaults := schema.Defaults.ForProvider(sc.databaseType)
+	if defaults == nil {
 		return "", fmt.Errorf("unsupported database type: %s", sc.databaseType)
 	}
 

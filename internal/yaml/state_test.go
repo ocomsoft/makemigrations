@@ -37,7 +37,7 @@ func TestSaveAndLoadSchemaSnapshot(t *testing.T) {
 	schema := &Schema{
 		Database: Database{Name: "test_app", Version: "1.0.0"},
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{"Now": "CURRENT_TIMESTAMP"},
+			DatabasePostgreSQL: {"Now": "CURRENT_TIMESTAMP"},
 		},
 		Tables: []Table{
 			{
@@ -193,16 +193,16 @@ func TestCreateInitialSnapshot(t *testing.T) {
 	}
 
 	// Should have defaults for all database types
-	if len(schema.Defaults.PostgreSQL) == 0 {
+	if len(schema.Defaults.ForProvider(DatabasePostgreSQL)) == 0 {
 		t.Error("Expected PostgreSQL defaults in initial snapshot")
 	}
-	if len(schema.Defaults.MySQL) == 0 {
+	if len(schema.Defaults.ForProvider(DatabaseMySQL)) == 0 {
 		t.Error("Expected MySQL defaults in initial snapshot")
 	}
-	if len(schema.Defaults.SQLServer) == 0 {
+	if len(schema.Defaults.ForProvider(DatabaseSQLServer)) == 0 {
 		t.Error("Expected SQLServer defaults in initial snapshot")
 	}
-	if len(schema.Defaults.SQLite) == 0 {
+	if len(schema.Defaults.ForProvider(DatabaseSQLite)) == 0 {
 		t.Error("Expected SQLite defaults in initial snapshot")
 	}
 }

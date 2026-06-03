@@ -33,7 +33,7 @@ func TestConvertDefaultValue(t *testing.T) {
 	// Test schema with defaults for all database types
 	schema := &types.Schema{
 		Defaults: types.Defaults{
-			PostgreSQL: map[string]string{
+			types.DatabasePostgreSQL: {
 				"now":      "CURRENT_TIMESTAMP",
 				"today":    "CURRENT_DATE",
 				"new_uuid": "gen_random_uuid()",
@@ -45,7 +45,7 @@ func TestConvertDefaultValue(t *testing.T) {
 				"array":    "'[]'::jsonb",
 				"object":   "'{}'::jsonb",
 			},
-			MySQL: map[string]string{
+			types.DatabaseMySQL: {
 				"now":      "CURRENT_TIMESTAMP",
 				"today":    "(CURDATE())",
 				"new_uuid": "(UUID())",
@@ -57,7 +57,7 @@ func TestConvertDefaultValue(t *testing.T) {
 				"array":    "('[]')",
 				"object":   "('{}')",
 			},
-			SQLServer: map[string]string{
+			types.DatabaseSQLServer: {
 				"now":      "GETDATE()",
 				"today":    "CAST(GETDATE() AS DATE)",
 				"new_uuid": "NEWID()",
@@ -69,7 +69,7 @@ func TestConvertDefaultValue(t *testing.T) {
 				"array":    "'[]'",
 				"object":   "'{}'",
 			},
-			SQLite: map[string]string{
+			types.DatabaseSQLite: {
 				"now":      "CURRENT_TIMESTAMP",
 				"today":    "CURRENT_DATE",
 				"new_uuid": "''",
@@ -177,7 +177,7 @@ func TestConvertDefaultValueWithNilSchema(t *testing.T) {
 func TestConvertDefaultValueWithEmptyDefaults(t *testing.T) {
 	emptySchema := &types.Schema{
 		Defaults: types.Defaults{
-			PostgreSQL: map[string]string{},
+			types.DatabasePostgreSQL: {},
 		},
 	}
 

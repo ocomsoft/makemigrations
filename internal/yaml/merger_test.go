@@ -34,7 +34,7 @@ func TestMergeSchemas(t *testing.T) {
 	schema1 := &Schema{
 		Database: Database{Name: "app", Version: "1.0.0"},
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{"Now": "CURRENT_TIMESTAMP"},
+			DatabasePostgreSQL: {"Now": "CURRENT_TIMESTAMP"},
 		},
 		Tables: []Table{
 			{
@@ -50,7 +50,7 @@ func TestMergeSchemas(t *testing.T) {
 	schema2 := &Schema{
 		Database: Database{Name: "app", Version: "1.0.0"},
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{"Today": "CURRENT_DATE"},
+			DatabasePostgreSQL: {"Today": "CURRENT_DATE"},
 		},
 		Tables: []Table{
 			{
@@ -99,8 +99,8 @@ func TestMergeSchemas(t *testing.T) {
 	}
 
 	// Validate defaults were merged
-	if len(merged.Defaults.PostgreSQL) != 2 {
-		t.Errorf("Expected 2 PostgreSQL defaults, got %d", len(merged.Defaults.PostgreSQL))
+	if len(merged.Defaults.ForProvider(DatabasePostgreSQL)) != 2 {
+		t.Errorf("Expected 2 PostgreSQL defaults, got %d", len(merged.Defaults.ForProvider(DatabasePostgreSQL)))
 	}
 }
 
@@ -214,7 +214,7 @@ func TestMergeTypeMappings(t *testing.T) {
 	schema1 := &Schema{
 		Database: Database{Name: "app", Version: "1.0.0"},
 		TypeMappings: TypeMappings{
-			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+			DatabasePostgreSQL: {"float": "DOUBLE PRECISION"},
 		},
 		Tables: []Table{
 			{Name: "users", Fields: []Field{{Name: "id", Type: "serial", PrimaryKey: true}}},
@@ -224,8 +224,8 @@ func TestMergeTypeMappings(t *testing.T) {
 	schema2 := &Schema{
 		Database: Database{Name: "app", Version: "1.0.0"},
 		TypeMappings: TypeMappings{
-			PostgreSQL: map[string]string{"text": "CITEXT"},
-			MySQL:      map[string]string{"float": "DOUBLE"},
+			DatabasePostgreSQL: {"text": "CITEXT"},
+			DatabaseMySQL:      {"float": "DOUBLE"},
 		},
 		Tables: []Table{
 			{Name: "posts", Fields: []Field{{Name: "id", Type: "serial", PrimaryKey: true}}},
@@ -237,23 +237,25 @@ func TestMergeTypeMappings(t *testing.T) {
 		t.Fatalf("Failed to merge schemas: %v", err)
 	}
 
+	pgMappings := merged.TypeMappings.ForProvider(DatabasePostgreSQL)
 	// PostgreSQL should have both mappings merged
-	if len(merged.TypeMappings.PostgreSQL) != 2 {
-		t.Errorf("Expected 2 PostgreSQL type mappings, got %d", len(merged.TypeMappings.PostgreSQL))
+	if len(pgMappings) != 2 {
+		t.Errorf("Expected 2 PostgreSQL type mappings, got %d", len(pgMappings))
 	}
-	if merged.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
-		t.Errorf("Expected PostgreSQL float mapping 'DOUBLE PRECISION', got %q", merged.TypeMappings.PostgreSQL["float"])
+	if pgMappings["float"] != "DOUBLE PRECISION" {
+		t.Errorf("Expected PostgreSQL float mapping 'DOUBLE PRECISION', got %q", pgMappings["float"])
 	}
-	if merged.TypeMappings.PostgreSQL["text"] != "CITEXT" {
-		t.Errorf("Expected PostgreSQL text mapping 'CITEXT', got %q", merged.TypeMappings.PostgreSQL["text"])
+	if pgMappings["text"] != "CITEXT" {
+		t.Errorf("Expected PostgreSQL text mapping 'CITEXT', got %q", pgMappings["text"])
 	}
 
+	myMappings := merged.TypeMappings.ForProvider(DatabaseMySQL)
 	// MySQL should have its mapping
-	if len(merged.TypeMappings.MySQL) != 1 {
-		t.Errorf("Expected 1 MySQL type mapping, got %d", len(merged.TypeMappings.MySQL))
+	if len(myMappings) != 1 {
+		t.Errorf("Expected 1 MySQL type mapping, got %d", len(myMappings))
 	}
-	if merged.TypeMappings.MySQL["float"] != "DOUBLE" {
-		t.Errorf("Expected MySQL float mapping 'DOUBLE', got %q", merged.TypeMappings.MySQL["float"])
+	if myMappings["float"] != "DOUBLE" {
+		t.Errorf("Expected MySQL float mapping 'DOUBLE', got %q", myMappings["float"])
 	}
 }
 
@@ -269,7 +271,7 @@ func TestIncludeProcessor_MergeSchemas_PreservesTypeMappings(t *testing.T) {
 	main := &Schema{
 		Database: Database{Name: "corecalc", Version: "1.0.0"},
 		TypeMappings: TypeMappings{
-			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+			DatabasePostgreSQL: {"float": "DOUBLE PRECISION"},
 		},
 		Tables: []Table{
 			{Name: "core_data_file", Fields: []Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
@@ -295,11 +297,12 @@ func TestIncludeProcessor_MergeSchemas_PreservesTypeMappings(t *testing.T) {
 		t.Fatalf("mergeSchemas: %v", err)
 	}
 
-	if len(merged.TypeMappings.PostgreSQL) == 0 {
+	pgMappings := merged.TypeMappings.ForProvider(DatabasePostgreSQL)
+	if len(pgMappings) == 0 {
 		t.Fatal("TypeMappings lost in IncludeProcessor.mergeSchemas — regression: main schema TypeMappings were dropped")
 	}
-	if merged.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
-		t.Errorf("expected float→DOUBLE PRECISION, got %q", merged.TypeMappings.PostgreSQL["float"])
+	if pgMappings["float"] != "DOUBLE PRECISION" {
+		t.Errorf("expected float→DOUBLE PRECISION, got %q", pgMappings["float"])
 	}
 }
 

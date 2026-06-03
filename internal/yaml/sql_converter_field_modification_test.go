@@ -207,7 +207,7 @@ func TestGenerateFieldModificationSQL(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{
+					DatabasePostgreSQL: {
 						"active":  "'active'",
 						"pending": "'pending'",
 					},
@@ -223,7 +223,7 @@ func TestGenerateFieldModificationSQL(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{
+					DatabasePostgreSQL: {
 						"active":  "'active'",
 						"pending": "'pending'",
 					},

@@ -39,24 +39,14 @@ func ConvertDefaultValue(schema *types.Schema, databaseType string, defaultValue
 	}
 
 	// Get the appropriate defaults mapping for the database type
-	var defaults map[string]string
-	switch databaseType {
-	case "postgresql":
-		defaults = schema.Defaults.PostgreSQL
-	case "mysql":
-		defaults = schema.Defaults.MySQL
-	case "sqlserver":
-		defaults = schema.Defaults.SQLServer
-	case "sqlite":
-		defaults = schema.Defaults.SQLite
-	case "ydb":
+	dbType := types.DatabaseType(databaseType)
+	defaults := schema.Defaults.ForProvider(dbType)
+	if defaults == nil && databaseType == "ydb" {
 		// YDB (Yandex Database) - use PostgreSQL defaults as fallback since YDB is SQL-based
 		// but has limited default value support
-		defaults = schema.Defaults.PostgreSQL
-		if defaults == nil {
-			return HandleFallbackDefault(defaultValue)
-		}
-	default:
+		defaults = schema.Defaults.ForProvider(types.DatabasePostgreSQL)
+	}
+	if defaults == nil {
 		return HandleFallbackDefault(defaultValue)
 	}
 

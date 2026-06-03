@@ -34,7 +34,7 @@ func TestConvertSchema(t *testing.T) {
 	schema := &Schema{
 		Database: Database{Name: "test", Version: "1.0"},
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{
+			DatabasePostgreSQL: {
 				"Now": "CURRENT_TIMESTAMP",
 			},
 		},
@@ -160,7 +160,7 @@ func TestConvertFieldTypeMySQL(t *testing.T) {
 func TestConvertDefaultValue(t *testing.T) {
 	schema := &Schema{
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{
+			DatabasePostgreSQL: {
 				"Now":   "CURRENT_TIMESTAMP",
 				"Today": "CURRENT_DATE",
 				"null":  "null",
@@ -342,7 +342,7 @@ func TestConvertTableWithForeignKey(t *testing.T) {
 
 	schema := &Schema{
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{},
+			DatabasePostgreSQL: {},
 		},
 		Tables: []Table{
 			{

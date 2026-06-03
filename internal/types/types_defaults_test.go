@@ -26,24 +26,24 @@ tables:
 	if err := yaml.Unmarshal([]byte(input), &s); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if got := s.Defaults.PostgreSQL["uuid"]; got != "uuid_generate_v4()" {
+	if got := s.Defaults[DatabasePostgreSQL]["uuid"]; got != "uuid_generate_v4()" {
 		t.Errorf("postgresql uuid = %q, want %q", got, "uuid_generate_v4()")
 	}
-	if got := s.Defaults.PostgreSQL["timestamp"]; got != "now()" {
+	if got := s.Defaults[DatabasePostgreSQL]["timestamp"]; got != "now()" {
 		t.Errorf("postgresql timestamp = %q, want %q", got, "now()")
 	}
-	if got := s.Defaults.MySQL["uuid"]; got != "UUID()" {
+	if got := s.Defaults[DatabaseMySQL]["uuid"]; got != "UUID()" {
 		t.Errorf("mysql uuid = %q, want %q", got, "UUID()")
 	}
-	if s.Defaults.SQLite != nil {
-		t.Errorf("sqlite should be nil, got %v", s.Defaults.SQLite)
+	if s.Defaults[DatabaseSQLite] != nil {
+		t.Errorf("sqlite should be nil, got %v", s.Defaults[DatabaseSQLite])
 	}
 }
 
 func TestDefaults_ForProvider(t *testing.T) {
 	d := Defaults{
-		PostgreSQL: map[string]string{"uuid": "uuid_generate_v4()"},
-		MySQL:      map[string]string{"uuid": "UUID()"},
+		DatabasePostgreSQL: map[string]string{"uuid": "uuid_generate_v4()"},
+		DatabaseMySQL:      map[string]string{"uuid": "UUID()"},
 	}
 
 	// Test known providers return correct maps
@@ -65,92 +65,69 @@ func TestDefaults_ForProvider(t *testing.T) {
 
 func TestDefaults_ForProvider_AllProviders(t *testing.T) {
 	// Verify all 12 providers are handled by ForProvider
-	allProviders := []struct {
-		dbType DatabaseType
-		setter func(d *Defaults, m map[string]string)
-	}{
-		{DatabasePostgreSQL, func(d *Defaults, m map[string]string) { d.PostgreSQL = m }},
-		{DatabaseMySQL, func(d *Defaults, m map[string]string) { d.MySQL = m }},
-		{DatabaseSQLServer, func(d *Defaults, m map[string]string) { d.SQLServer = m }},
-		{DatabaseSQLite, func(d *Defaults, m map[string]string) { d.SQLite = m }},
-		{DatabaseRedshift, func(d *Defaults, m map[string]string) { d.Redshift = m }},
-		{DatabaseClickHouse, func(d *Defaults, m map[string]string) { d.ClickHouse = m }},
-		{DatabaseTiDB, func(d *Defaults, m map[string]string) { d.TiDB = m }},
-		{DatabaseVertica, func(d *Defaults, m map[string]string) { d.Vertica = m }},
-		{DatabaseYDB, func(d *Defaults, m map[string]string) { d.YDB = m }},
-		{DatabaseTurso, func(d *Defaults, m map[string]string) { d.Turso = m }},
-		{DatabaseStarRocks, func(d *Defaults, m map[string]string) { d.StarRocks = m }},
-		{DatabaseAuroraDSQL, func(d *Defaults, m map[string]string) { d.AuroraDSQL = m }},
+	allProviders := []DatabaseType{
+		DatabasePostgreSQL, DatabaseMySQL, DatabaseSQLServer, DatabaseSQLite,
+		DatabaseRedshift, DatabaseClickHouse, DatabaseTiDB, DatabaseVertica,
+		DatabaseYDB, DatabaseTurso, DatabaseStarRocks, DatabaseAuroraDSQL,
 	}
 
-	for _, tc := range allProviders {
-		t.Run(string(tc.dbType), func(t *testing.T) {
-			d := Defaults{}
-			expected := map[string]string{"key": "value_" + string(tc.dbType)}
-			tc.setter(&d, expected)
+	for _, dbType := range allProviders {
+		t.Run(string(dbType), func(t *testing.T) {
+			d := make(Defaults)
+			expected := map[string]string{"key": "value_" + string(dbType)}
+			d[dbType] = expected
 
-			got := d.ForProvider(tc.dbType)
+			got := d.ForProvider(dbType)
 			if got == nil {
-				t.Fatalf("ForProvider(%s) returned nil", tc.dbType)
+				t.Fatalf("ForProvider(%s) returned nil", dbType)
 			}
 			if got["key"] != expected["key"] {
-				t.Errorf("ForProvider(%s)[key] = %q, want %q", tc.dbType, got["key"], expected["key"])
+				t.Errorf("ForProvider(%s)[key] = %q, want %q", dbType, got["key"], expected["key"])
 			}
 		})
 	}
 }
 
 func TestDefaults_SetForProvider(t *testing.T) {
-	// Verify SetForProvider sets the correct field for all 12 providers
-	allProviders := []struct {
-		dbType DatabaseType
-		getter func(d *Defaults) map[string]string
-	}{
-		{DatabasePostgreSQL, func(d *Defaults) map[string]string { return d.PostgreSQL }},
-		{DatabaseMySQL, func(d *Defaults) map[string]string { return d.MySQL }},
-		{DatabaseSQLServer, func(d *Defaults) map[string]string { return d.SQLServer }},
-		{DatabaseSQLite, func(d *Defaults) map[string]string { return d.SQLite }},
-		{DatabaseRedshift, func(d *Defaults) map[string]string { return d.Redshift }},
-		{DatabaseClickHouse, func(d *Defaults) map[string]string { return d.ClickHouse }},
-		{DatabaseTiDB, func(d *Defaults) map[string]string { return d.TiDB }},
-		{DatabaseVertica, func(d *Defaults) map[string]string { return d.Vertica }},
-		{DatabaseYDB, func(d *Defaults) map[string]string { return d.YDB }},
-		{DatabaseTurso, func(d *Defaults) map[string]string { return d.Turso }},
-		{DatabaseStarRocks, func(d *Defaults) map[string]string { return d.StarRocks }},
-		{DatabaseAuroraDSQL, func(d *Defaults) map[string]string { return d.AuroraDSQL }},
+	// Verify SetForProvider sets the correct value for all 12 providers
+	allProviders := []DatabaseType{
+		DatabasePostgreSQL, DatabaseMySQL, DatabaseSQLServer, DatabaseSQLite,
+		DatabaseRedshift, DatabaseClickHouse, DatabaseTiDB, DatabaseVertica,
+		DatabaseYDB, DatabaseTurso, DatabaseStarRocks, DatabaseAuroraDSQL,
 	}
 
-	for _, tc := range allProviders {
-		t.Run(string(tc.dbType), func(t *testing.T) {
-			d := Defaults{}
-			expected := map[string]string{"key": "value_" + string(tc.dbType)}
-			d.SetForProvider(tc.dbType, expected)
+	for _, dbType := range allProviders {
+		t.Run(string(dbType), func(t *testing.T) {
+			d := make(Defaults)
+			expected := map[string]string{"key": "value_" + string(dbType)}
+			d.SetForProvider(dbType, expected)
 
-			got := tc.getter(&d)
+			got := d.ForProvider(dbType)
 			if got == nil {
-				t.Fatalf("SetForProvider(%s) did not set the field", tc.dbType)
+				t.Fatalf("SetForProvider(%s) did not set the field", dbType)
 			}
 			if got["key"] != expected["key"] {
-				t.Errorf("SetForProvider(%s) field[key] = %q, want %q", tc.dbType, got["key"], expected["key"])
+				t.Errorf("SetForProvider(%s) field[key] = %q, want %q", dbType, got["key"], expected["key"])
 			}
 		})
 	}
 }
 
 func TestDefaults_SetForProvider_Unknown(t *testing.T) {
-	// SetForProvider with unknown type should be a no-op
-	d := Defaults{}
+	// SetForProvider with unknown type stores the value under the unknown key
+	d := make(Defaults)
 	d.SetForProvider(DatabaseType("unknown"), map[string]string{"key": "value"})
 
-	// Verify nothing was set
-	if d.PostgreSQL != nil || d.MySQL != nil || d.SQLServer != nil || d.SQLite != nil {
-		t.Error("SetForProvider(unknown) should not set any field")
+	// With map-based Defaults, unknown keys are stored but ForProvider for
+	// known providers should return nil
+	if d.ForProvider(DatabasePostgreSQL) != nil || d.ForProvider(DatabaseMySQL) != nil {
+		t.Error("SetForProvider(unknown) should not affect known providers")
 	}
 }
 
 func TestDefaults_ForProvider_SetForProvider_Roundtrip(t *testing.T) {
 	// Verify that SetForProvider + ForProvider round-trips correctly
-	d := Defaults{}
+	d := make(Defaults)
 	expected := map[string]string{"uuid": "gen_random_uuid()", "timestamp": "now()"}
 	d.SetForProvider(DatabasePostgreSQL, expected)
 

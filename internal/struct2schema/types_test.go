@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ocomsoft/makemigrations/internal/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -417,24 +418,24 @@ func TestCreateDefaultsForAllDBs(t *testing.T) {
 
 	defaults := tm.CreateDefaultsForAllDBs()
 
-	if defaults.PostgreSQL == nil {
+	if defaults.ForProvider(types.DatabasePostgreSQL) == nil {
 		t.Error("PostgreSQL defaults should not be nil")
 	}
-	if defaults.MySQL == nil {
+	if defaults.ForProvider(types.DatabaseMySQL) == nil {
 		t.Error("MySQL defaults should not be nil")
 	}
-	if defaults.SQLServer == nil {
+	if defaults.ForProvider(types.DatabaseSQLServer) == nil {
 		t.Error("SQLServer defaults should not be nil")
 	}
-	if defaults.SQLite == nil {
+	if defaults.ForProvider(types.DatabaseSQLite) == nil {
 		t.Error("SQLite defaults should not be nil")
 	}
 
 	// Spot-check some values
-	if got := defaults.PostgreSQL["new_uuid"]; got != "gen_random_uuid()" {
+	if got := defaults.ForProvider(types.DatabasePostgreSQL)["new_uuid"]; got != "gen_random_uuid()" {
 		t.Errorf("PostgreSQL new_uuid = %q, want %q", got, "gen_random_uuid()")
 	}
-	if got := defaults.MySQL["false"]; got != "0" {
+	if got := defaults.ForProvider(types.DatabaseMySQL)["false"]; got != "0" {
 		t.Errorf("MySQL false = %q, want %q", got, "0")
 	}
 }

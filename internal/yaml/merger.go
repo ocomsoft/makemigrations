@@ -86,57 +86,16 @@ func (m *Merger) MergeSchemas(schemas []*Schema) (*Schema, error) {
 // mergeDefaults merges default value mappings from multiple schemas.
 // Later schemas override earlier ones for the same key.
 func (m *Merger) mergeDefaults(schemas []*Schema) Defaults {
-	merged := Defaults{
-		PostgreSQL: make(map[string]string),
-		MySQL:      make(map[string]string),
-		SQLServer:  make(map[string]string),
-		SQLite:     make(map[string]string),
-		Redshift:   make(map[string]string),
-		ClickHouse: make(map[string]string),
-		TiDB:       make(map[string]string),
-		Vertica:    make(map[string]string),
-		YDB:        make(map[string]string),
-		Turso:      make(map[string]string),
-		StarRocks:  make(map[string]string),
-		AuroraDSQL: make(map[string]string),
-	}
+	merged := make(Defaults)
 
 	for _, schema := range schemas {
-		for key, value := range schema.Defaults.PostgreSQL {
-			merged.PostgreSQL[key] = value
-		}
-		for key, value := range schema.Defaults.MySQL {
-			merged.MySQL[key] = value
-		}
-		for key, value := range schema.Defaults.SQLServer {
-			merged.SQLServer[key] = value
-		}
-		for key, value := range schema.Defaults.SQLite {
-			merged.SQLite[key] = value
-		}
-		for key, value := range schema.Defaults.Redshift {
-			merged.Redshift[key] = value
-		}
-		for key, value := range schema.Defaults.ClickHouse {
-			merged.ClickHouse[key] = value
-		}
-		for key, value := range schema.Defaults.TiDB {
-			merged.TiDB[key] = value
-		}
-		for key, value := range schema.Defaults.Vertica {
-			merged.Vertica[key] = value
-		}
-		for key, value := range schema.Defaults.YDB {
-			merged.YDB[key] = value
-		}
-		for key, value := range schema.Defaults.Turso {
-			merged.Turso[key] = value
-		}
-		for key, value := range schema.Defaults.StarRocks {
-			merged.StarRocks[key] = value
-		}
-		for key, value := range schema.Defaults.AuroraDSQL {
-			merged.AuroraDSQL[key] = value
+		for dbType, providerDefaults := range schema.Defaults {
+			if merged[dbType] == nil {
+				merged[dbType] = make(map[string]string)
+			}
+			for key, value := range providerDefaults {
+				merged[dbType][key] = value
+			}
 		}
 	}
 
@@ -146,57 +105,16 @@ func (m *Merger) mergeDefaults(schemas []*Schema) Defaults {
 // mergeTypeMappings merges type mapping overrides from multiple schemas.
 // Later schemas override earlier ones for the same key.
 func (m *Merger) mergeTypeMappings(schemas []*Schema) TypeMappings {
-	merged := TypeMappings{
-		PostgreSQL: make(map[string]string),
-		MySQL:      make(map[string]string),
-		SQLServer:  make(map[string]string),
-		SQLite:     make(map[string]string),
-		Redshift:   make(map[string]string),
-		ClickHouse: make(map[string]string),
-		TiDB:       make(map[string]string),
-		Vertica:    make(map[string]string),
-		YDB:        make(map[string]string),
-		Turso:      make(map[string]string),
-		StarRocks:  make(map[string]string),
-		AuroraDSQL: make(map[string]string),
-	}
+	merged := make(TypeMappings)
 
 	for _, schema := range schemas {
-		for key, value := range schema.TypeMappings.PostgreSQL {
-			merged.PostgreSQL[key] = value
-		}
-		for key, value := range schema.TypeMappings.MySQL {
-			merged.MySQL[key] = value
-		}
-		for key, value := range schema.TypeMappings.SQLServer {
-			merged.SQLServer[key] = value
-		}
-		for key, value := range schema.TypeMappings.SQLite {
-			merged.SQLite[key] = value
-		}
-		for key, value := range schema.TypeMappings.Redshift {
-			merged.Redshift[key] = value
-		}
-		for key, value := range schema.TypeMappings.ClickHouse {
-			merged.ClickHouse[key] = value
-		}
-		for key, value := range schema.TypeMappings.TiDB {
-			merged.TiDB[key] = value
-		}
-		for key, value := range schema.TypeMappings.Vertica {
-			merged.Vertica[key] = value
-		}
-		for key, value := range schema.TypeMappings.YDB {
-			merged.YDB[key] = value
-		}
-		for key, value := range schema.TypeMappings.Turso {
-			merged.Turso[key] = value
-		}
-		for key, value := range schema.TypeMappings.StarRocks {
-			merged.StarRocks[key] = value
-		}
-		for key, value := range schema.TypeMappings.AuroraDSQL {
-			merged.AuroraDSQL[key] = value
+		for dbType, providerMappings := range schema.TypeMappings {
+			if merged[dbType] == nil {
+				merged[dbType] = make(map[string]string)
+			}
+			for key, value := range providerMappings {
+				merged[dbType][key] = value
+			}
 		}
 	}
 

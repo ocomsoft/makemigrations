@@ -159,7 +159,7 @@ func (sm *StateManager) CreateInitialSnapshot(databaseName string, migrationsDir
 			MigrationVersion: version.GetVersion(),
 		},
 		Defaults: Defaults{
-			PostgreSQL: map[string]string{
+			DatabasePostgreSQL: {
 				"blank":        "''",
 				"array":        "'[]'::jsonb",
 				"object":       "'{}'::jsonb",
@@ -172,7 +172,7 @@ func (sm *StateManager) CreateInitialSnapshot(databaseName string, migrationsDir
 				"null":         "null",
 				"true":         "true",
 			},
-			MySQL: map[string]string{
+			DatabaseMySQL: {
 				"blank":        "''",
 				"array":        "('[]')",
 				"object":       "('{}')",
@@ -185,7 +185,7 @@ func (sm *StateManager) CreateInitialSnapshot(databaseName string, migrationsDir
 				"null":         "null",
 				"true":         "1",
 			},
-			SQLServer: map[string]string{
+			DatabaseSQLServer: {
 				"blank":        "''",
 				"array":        "'[]'",
 				"object":       "'{}'",
@@ -198,7 +198,7 @@ func (sm *StateManager) CreateInitialSnapshot(databaseName string, migrationsDir
 				"null":         "null",
 				"true":         "1",
 			},
-			SQLite: map[string]string{
+			DatabaseSQLite: {
 				"blank":        "''",
 				"array":        "'[]'",
 				"object":       "'{}'",

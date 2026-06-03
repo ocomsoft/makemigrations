@@ -413,17 +413,7 @@ func (p *Parser) GetDefaultValue(schema *Schema, dbType DatabaseType, defaultKey
 		return "", fmt.Errorf("unsupported database type: %s", dbType)
 	}
 
-	var defaults map[string]string
-	switch dbType {
-	case DatabasePostgreSQL:
-		defaults = schema.Defaults.PostgreSQL
-	case DatabaseMySQL:
-		defaults = schema.Defaults.MySQL
-	case DatabaseSQLServer:
-		defaults = schema.Defaults.SQLServer
-	case DatabaseSQLite:
-		defaults = schema.Defaults.SQLite
-	}
+	defaults := schema.Defaults.ForProvider(dbType)
 
 	if defaults == nil {
 		return "", fmt.Errorf("no defaults defined for database type: %s", dbType)

@@ -47,132 +47,64 @@ type Database struct {
 	MigrationVersion string `yaml:"migration_version,omitempty"`
 }
 
-// Defaults represents default value mappings per database type
-type Defaults struct {
-	PostgreSQL map[string]string `yaml:"postgresql"`
-	SQLServer  map[string]string `yaml:"sqlserver"`
-	MySQL      map[string]string `yaml:"mysql"`
-	SQLite     map[string]string `yaml:"sqlite"`
-	Redshift   map[string]string `yaml:"redshift"`
-	ClickHouse map[string]string `yaml:"clickhouse"`
-	TiDB       map[string]string `yaml:"tidb"`
-	Vertica    map[string]string `yaml:"vertica"`
-	YDB        map[string]string `yaml:"ydb"`
-	Turso      map[string]string `yaml:"turso"`
-	StarRocks  map[string]string `yaml:"starrocks"`
-	AuroraDSQL map[string]string `yaml:"auroradsql"`
+// Defaults represents default value mappings per database type.
+// It is a map from DatabaseType to a map of symbolic default keys to SQL expressions.
+type Defaults map[DatabaseType]map[string]string
+
+// UnmarshalYAML implements custom YAML unmarshaling so that YAML keys
+// (lowercase strings like "postgresql") are converted to DatabaseType keys.
+func (d *Defaults) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw map[string]map[string]string
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	*d = make(Defaults, len(raw))
+	for k, v := range raw {
+		(*d)[DatabaseType(k)] = v
+	}
+	return nil
 }
 
 // ForProvider returns the defaults map for the given database type, or nil.
-func (d *Defaults) ForProvider(dbType DatabaseType) map[string]string {
-	switch dbType {
-	case DatabasePostgreSQL:
-		return d.PostgreSQL
-	case DatabaseMySQL:
-		return d.MySQL
-	case DatabaseSQLServer:
-		return d.SQLServer
-	case DatabaseSQLite:
-		return d.SQLite
-	case DatabaseRedshift:
-		return d.Redshift
-	case DatabaseClickHouse:
-		return d.ClickHouse
-	case DatabaseTiDB:
-		return d.TiDB
-	case DatabaseVertica:
-		return d.Vertica
-	case DatabaseYDB:
-		return d.YDB
-	case DatabaseTurso:
-		return d.Turso
-	case DatabaseStarRocks:
-		return d.StarRocks
-	case DatabaseAuroraDSQL:
-		return d.AuroraDSQL
-	default:
-		return nil
-	}
+func (d Defaults) ForProvider(dbType DatabaseType) map[string]string {
+	return d[dbType]
 }
 
 // SetForProvider sets the defaults map for the given database type.
-func (d *Defaults) SetForProvider(dbType DatabaseType, defaults map[string]string) {
-	switch dbType {
-	case DatabasePostgreSQL:
-		d.PostgreSQL = defaults
-	case DatabaseMySQL:
-		d.MySQL = defaults
-	case DatabaseSQLServer:
-		d.SQLServer = defaults
-	case DatabaseSQLite:
-		d.SQLite = defaults
-	case DatabaseRedshift:
-		d.Redshift = defaults
-	case DatabaseClickHouse:
-		d.ClickHouse = defaults
-	case DatabaseTiDB:
-		d.TiDB = defaults
-	case DatabaseVertica:
-		d.Vertica = defaults
-	case DatabaseYDB:
-		d.YDB = defaults
-	case DatabaseTurso:
-		d.Turso = defaults
-	case DatabaseStarRocks:
-		d.StarRocks = defaults
-	case DatabaseAuroraDSQL:
-		d.AuroraDSQL = defaults
-	}
+// The receiver must be a non-nil map (use make(Defaults) or Defaults{} first).
+func (d Defaults) SetForProvider(dbType DatabaseType, defaults map[string]string) {
+	d[dbType] = defaults
 }
 
 // TypeMappings represents custom SQL type overrides per database.
 // Values are SQL type strings. For parameterised types use Go template
 // syntax: "DECIMAL({{.Precision}},{{.Scale}})" or "VARCHAR({{.Length}})".
-type TypeMappings struct {
-	PostgreSQL map[string]string `yaml:"postgresql"`
-	MySQL      map[string]string `yaml:"mysql"`
-	SQLServer  map[string]string `yaml:"sqlserver"`
-	SQLite     map[string]string `yaml:"sqlite"`
-	Redshift   map[string]string `yaml:"redshift"`
-	ClickHouse map[string]string `yaml:"clickhouse"`
-	TiDB       map[string]string `yaml:"tidb"`
-	Vertica    map[string]string `yaml:"vertica"`
-	YDB        map[string]string `yaml:"ydb"`
-	Turso      map[string]string `yaml:"turso"`
-	StarRocks  map[string]string `yaml:"starrocks"`
-	AuroraDSQL map[string]string `yaml:"auroradsql"`
+// It is a map from DatabaseType to a map of abstract type names to SQL type strings.
+type TypeMappings map[DatabaseType]map[string]string
+
+// UnmarshalYAML implements custom YAML unmarshaling so that YAML keys
+// (lowercase strings like "postgresql") are converted to DatabaseType keys.
+func (tm *TypeMappings) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw map[string]map[string]string
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	*tm = make(TypeMappings, len(raw))
+	for k, v := range raw {
+		(*tm)[DatabaseType(k)] = v
+	}
+	return nil
 }
 
 // ForProvider returns the type mapping overrides for the given database type, or nil.
-func (tm *TypeMappings) ForProvider(dbType DatabaseType) map[string]string {
-	switch dbType {
-	case DatabasePostgreSQL:
-		return tm.PostgreSQL
-	case DatabaseMySQL:
-		return tm.MySQL
-	case DatabaseSQLServer:
-		return tm.SQLServer
-	case DatabaseSQLite:
-		return tm.SQLite
-	case DatabaseRedshift:
-		return tm.Redshift
-	case DatabaseClickHouse:
-		return tm.ClickHouse
-	case DatabaseTiDB:
-		return tm.TiDB
-	case DatabaseVertica:
-		return tm.Vertica
-	case DatabaseYDB:
-		return tm.YDB
-	case DatabaseTurso:
-		return tm.Turso
-	case DatabaseStarRocks:
-		return tm.StarRocks
-	case DatabaseAuroraDSQL:
-		return tm.AuroraDSQL
-	default:
-		return nil
-	}
+func (tm TypeMappings) ForProvider(dbType DatabaseType) map[string]string {
+	return tm[dbType]
+}
+
+// SetForProvider sets the type mappings for the given database type.
+// The receiver must be a non-nil map (use make(TypeMappings) or TypeMappings{} first).
+func (tm TypeMappings) SetForProvider(dbType DatabaseType, mappings map[string]string) {
+	tm[dbType] = mappings
 }
 
 // Table represents a database table definition

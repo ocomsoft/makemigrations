@@ -180,10 +180,10 @@ func TestSafeTypeChangeSQL(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{},
-					MySQL:      map[string]string{},
-					SQLServer:  map[string]string{},
-					SQLite:     map[string]string{},
+					DatabasePostgreSQL: {},
+					DatabaseMySQL:      {},
+					DatabaseSQLServer:  {},
+					DatabaseSQLite:     {},
 				},
 			}
 
@@ -196,10 +196,10 @@ func TestSafeTypeChangeSQL(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{},
-					MySQL:      map[string]string{},
-					SQLServer:  map[string]string{},
-					SQLite:     map[string]string{},
+					DatabasePostgreSQL: {},
+					DatabaseMySQL:      {},
+					DatabaseSQLServer:  {},
+					DatabaseSQLite:     {},
 				},
 			}
 
@@ -323,7 +323,7 @@ func TestFieldModificationWithSafeTypeChanges(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{},
+					DatabasePostgreSQL: {},
 				},
 			}
 
@@ -336,7 +336,7 @@ func TestFieldModificationWithSafeTypeChanges(t *testing.T) {
 					},
 				},
 				Defaults: Defaults{
-					PostgreSQL: map[string]string{},
+					DatabasePostgreSQL: {},
 				},
 			}
 

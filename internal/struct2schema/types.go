@@ -359,7 +359,7 @@ func (tm *TypeMapper) GetDefaults() map[string]string {
 // CreateDefaultsForAllDBs creates default mappings for all supported databases
 func (tm *TypeMapper) CreateDefaultsForAllDBs() types.Defaults {
 	return types.Defaults{
-		PostgreSQL: map[string]string{
+		types.DatabasePostgreSQL: {
 			"blank":        "''",
 			"array":        "'[]'::jsonb",
 			"object":       "'{}'::jsonb",
@@ -372,7 +372,7 @@ func (tm *TypeMapper) CreateDefaultsForAllDBs() types.Defaults {
 			"null":         "null",
 			"true":         "true",
 		},
-		MySQL: map[string]string{
+		types.DatabaseMySQL: {
 			"blank":        "''",
 			"array":        "('[]')",
 			"object":       "('{}')",
@@ -385,7 +385,7 @@ func (tm *TypeMapper) CreateDefaultsForAllDBs() types.Defaults {
 			"null":         "null",
 			"true":         "1",
 		},
-		SQLServer: map[string]string{
+		types.DatabaseSQLServer: {
 			"blank":        "''",
 			"array":        "'[]'",
 			"object":       "'{}'",
@@ -398,7 +398,7 @@ func (tm *TypeMapper) CreateDefaultsForAllDBs() types.Defaults {
 			"null":         "null",
 			"true":         "1",
 		},
-		SQLite: map[string]string{
+		types.DatabaseSQLite: {
 			"blank":        "''",
 			"array":        "'[]'",
 			"object":       "'{}'",

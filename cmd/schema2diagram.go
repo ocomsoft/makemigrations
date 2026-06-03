@@ -312,7 +312,8 @@ func generateOverviewSection(md *strings.Builder, schema *types.Schema) {
 	md.WriteString(fmt.Sprintf("| **Foreign Key Relationships** | %d |\n\n", totalForeignKeys))
 
 	// Database defaults
-	if len(schema.Defaults.PostgreSQL) > 0 {
+	pgDefaults := schema.Defaults.ForProvider(types.DatabasePostgreSQL)
+	if len(pgDefaults) > 0 {
 		md.WriteString("### Default Values\n\n")
 		md.WriteString("The schema defines the following default value mappings:\n\n")
 		md.WriteString("| Default Key | PostgreSQL Value |\n")
@@ -320,13 +321,13 @@ func generateOverviewSection(md *strings.Builder, schema *types.Schema) {
 
 		// Sort defaults for consistent output
 		var defaultKeys []string
-		for key := range schema.Defaults.PostgreSQL {
+		for key := range pgDefaults {
 			defaultKeys = append(defaultKeys, key)
 		}
 		sort.Strings(defaultKeys)
 
 		for _, key := range defaultKeys {
-			value := schema.Defaults.PostgreSQL[key]
+			value := pgDefaults[key]
 			md.WriteString(fmt.Sprintf("| `%s` | `%s` |\n", key, value))
 		}
 		md.WriteString("\n")

@@ -48,7 +48,7 @@ func TestTypeMappingsSurvivedMergeAndDiffDetection(t *testing.T) {
 	schema1 := &yamlpkg.Schema{
 		Database: yamlpkg.Database{Name: "corecalc", Version: "1.0.0"},
 		TypeMappings: yamlpkg.TypeMappings{
-			PostgreSQL: map[string]string{"float": "DOUBLE PRECISION"},
+			yamlpkg.DatabasePostgreSQL: {"float": "DOUBLE PRECISION"},
 		},
 		Tables: []yamlpkg.Table{
 			{Name: "core_data_file", Fields: []yamlpkg.Field{{Name: "id", Type: "uuid", PrimaryKey: true}}},
@@ -451,11 +451,11 @@ func TestSchemaStateToYAMLSchema_TypeMappings(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil schema")
 	}
-	if result.TypeMappings.PostgreSQL["float"] != "DOUBLE PRECISION" {
+	if result.TypeMappings.ForProvider(yamlpkg.DatabasePostgreSQL)["float"] != "DOUBLE PRECISION" {
 		t.Errorf("expected DOUBLE PRECISION in PostgreSQL TypeMappings, got %q",
-			result.TypeMappings.PostgreSQL["float"])
+			result.TypeMappings.ForProvider(yamlpkg.DatabasePostgreSQL)["float"])
 	}
-	if len(result.TypeMappings.MySQL) > 0 {
+	if len(result.TypeMappings.ForProvider(yamlpkg.DatabaseMySQL)) > 0 {
 		t.Error("MySQL TypeMappings should be empty")
 	}
 }
@@ -465,16 +465,19 @@ func TestSchemaStateToYAMLSchema_TypeMappings_MySQL(t *testing.T) {
 	state.SetTypeMappings(map[string]string{"text": "LONGTEXT"})
 
 	result := schemaStateToYAMLSchema(state, "mysql")
-	if result.TypeMappings.MySQL["text"] != "LONGTEXT" {
-		t.Errorf("expected LONGTEXT in MySQL TypeMappings, got %q", result.TypeMappings.MySQL["text"])
+	if result.TypeMappings.ForProvider(yamlpkg.DatabaseMySQL)["text"] != "LONGTEXT" {
+		t.Errorf("expected LONGTEXT in MySQL TypeMappings, got %q", result.TypeMappings.ForProvider(yamlpkg.DatabaseMySQL)["text"])
 	}
 }
 
 // TestGetTypeMappingsForDB verifies the helper returns the correct provider map.
 func TestGetTypeMappingsForDB(t *testing.T) {
-	schema := &yamlpkg.Schema{}
-	schema.TypeMappings.PostgreSQL = map[string]string{"float": "DOUBLE PRECISION"}
-	schema.TypeMappings.MySQL = map[string]string{"text": "LONGTEXT"}
+	schema := &yamlpkg.Schema{
+		TypeMappings: yamlpkg.TypeMappings{
+			yamlpkg.DatabasePostgreSQL: {"float": "DOUBLE PRECISION"},
+			yamlpkg.DatabaseMySQL:      {"text": "LONGTEXT"},
+		},
+	}
 
 	pg := getTypeMappingsForDB(schema, "postgresql")
 	if pg["float"] != "DOUBLE PRECISION" {
@@ -502,15 +505,15 @@ func TestSchemaStateToYAMLSchema_WithDefaults(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
-	if result.Defaults.PostgreSQL["uuid"] != "uuid_generate_v4()" {
-		t.Errorf("expected uuid default in PostgreSQL slot, got %q", result.Defaults.PostgreSQL["uuid"])
+	if result.Defaults.ForProvider(yamlpkg.DatabasePostgreSQL)["uuid"] != "uuid_generate_v4()" {
+		t.Errorf("expected uuid default in PostgreSQL slot, got %q", result.Defaults.ForProvider(yamlpkg.DatabasePostgreSQL)["uuid"])
 	}
-	if result.Defaults.PostgreSQL["now"] != "CURRENT_TIMESTAMP" {
-		t.Errorf("expected now default in PostgreSQL slot, got %q", result.Defaults.PostgreSQL["now"])
+	if result.Defaults.ForProvider(yamlpkg.DatabasePostgreSQL)["now"] != "CURRENT_TIMESTAMP" {
+		t.Errorf("expected now default in PostgreSQL slot, got %q", result.Defaults.ForProvider(yamlpkg.DatabasePostgreSQL)["now"])
 	}
 	// Other DB types should be empty
-	if len(result.Defaults.MySQL) != 0 {
-		t.Errorf("expected empty MySQL defaults, got %v", result.Defaults.MySQL)
+	if len(result.Defaults.ForProvider(yamlpkg.DatabaseMySQL)) != 0 {
+		t.Errorf("expected empty MySQL defaults, got %v", result.Defaults.ForProvider(yamlpkg.DatabaseMySQL))
 	}
 }
 

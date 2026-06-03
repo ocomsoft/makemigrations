@@ -142,8 +142,8 @@ func TestProvider_GenerateAlterColumn_MultipleChanges(t *testing.T) {
 	if !strings.Contains(got, "NOT NULL") {
 		t.Errorf("expected NOT NULL in:\n%s", got)
 	}
-	if !strings.Contains(got, "DEFAULT '0'") {
-		t.Errorf("expected DEFAULT '0' in:\n%s", got)
+	if !strings.Contains(got, "DEFAULT 0") {
+		t.Errorf("expected DEFAULT 0 in:\n%s", got)
 	}
 }
 

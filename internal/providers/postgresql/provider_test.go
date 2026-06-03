@@ -433,3 +433,73 @@ func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
 		t.Errorf("GenerateAddColumn() should contain quoted field name, got: %s", got)
 	}
 }
+
+func TestProvider_GenerateAlterColumn_SQLExpressionDefaultNotQuoted(t *testing.T) {
+	p := New()
+
+	tests := []struct {
+		name       string
+		newDefault string
+		wantSQL    string
+	}{
+		{
+			name:       "function call gen_random_uuid()",
+			newDefault: "gen_random_uuid()",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
+		},
+		{
+			name:       "function call uuid_generate_v4()",
+			newDefault: "uuid_generate_v4()",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT uuid_generate_v4();`,
+		},
+		{
+			name:       "CURRENT_TIMESTAMP keyword",
+			newDefault: "CURRENT_TIMESTAMP",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT CURRENT_TIMESTAMP;`,
+		},
+		{
+			name:       "now() function",
+			newDefault: "now()",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT now();`,
+		},
+		{
+			name:       "type cast expression",
+			newDefault: "'{}'::jsonb",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT '{}'::jsonb;`,
+		},
+		{
+			name:       "NULL literal",
+			newDefault: "NULL",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT NULL;`,
+		},
+		{
+			name:       "boolean true",
+			newDefault: "true",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT true;`,
+		},
+		{
+			name:       "numeric value",
+			newDefault: "42",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT 42;`,
+		},
+		{
+			name:       "plain string is quoted",
+			newDefault: "hello",
+			wantSQL:    `ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT 'hello';`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			old := &types.Field{Name: "id", Type: "uuid", Default: "old_value"}
+			nw := &types.Field{Name: "id", Type: "uuid", Default: tt.newDefault}
+			got, err := p.GenerateAlterColumn("users", old, nw)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.wantSQL {
+				t.Errorf("got:\n%s\nwant:\n%s", got, tt.wantSQL)
+			}
+		})
+	}
+}

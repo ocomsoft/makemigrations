@@ -68,31 +68,75 @@ func ConvertDefaultValue(schema *types.Schema, databaseType string, defaultValue
 	return HandleFallbackDefault(defaultValue)
 }
 
-// HandleFallbackDefault handles cases where no schema mapping exists
+// IsSQLExpression returns true when the value is already a valid SQL expression
+// that should be emitted verbatim rather than wrapped in single quotes.
+// This covers:
+//   - Single-quoted string literals already in SQL form: 'value', '[]'::jsonb
+//   - SQL function calls: gen_random_uuid(), uuid_generate_v4()
+//   - Type cast expressions: '{}'::jsonb
+//   - SQL keywords (all-uppercase, letters and underscores): CURRENT_TIMESTAMP
+//   - NULL/null, TRUE/true, FALSE/false literals
+func IsSQLExpression(value string) bool {
+	if value == "" {
+		return false
+	}
+	// Already-quoted SQL string literal
+	if strings.HasPrefix(value, "'") {
+		return true
+	}
+	// SQL function call or expression containing parentheses
+	if strings.Contains(value, "(") {
+		return true
+	}
+	// Type cast expression (e.g. '[]'::jsonb)
+	if strings.Contains(value, "::") {
+		return true
+	}
+	// SQL null / boolean literals
+	lower := strings.ToLower(value)
+	if lower == "null" || lower == "true" || lower == "false" {
+		return true
+	}
+	// SQL keyword: all uppercase ASCII letters and underscores (e.g. CURRENT_TIMESTAMP)
+	if len(value) > 1 {
+		allUpper := true
+		for _, ch := range value {
+			if (ch < 'A' || ch > 'Z') && ch != '_' {
+				allUpper = false
+				break
+			}
+		}
+		if allUpper {
+			return true
+		}
+	}
+	return false
+}
+
+// FormatDefaultValue formats a default value for use in SQL DDL.
+// SQL expressions, numeric values, and boolean/null literals are returned verbatim.
+// All other values are wrapped in single quotes as string literals.
+func FormatDefaultValue(value string) string {
+	if IsSQLExpression(value) {
+		return value
+	}
+	// Numeric value
+	if _, err := strconv.ParseFloat(value, 64); err == nil {
+		return value
+	}
+	// Otherwise treat as a plain string literal
+	return fmt.Sprintf("'%s'", value)
+}
+
+// HandleFallbackDefault handles cases where no schema mapping exists.
+// It normalises NULL to uppercase and delegates to FormatDefaultValue for
+// expression detection and proper formatting.
 func HandleFallbackDefault(defaultValue string) string {
-	// Check if it's an already-resolved SQL expression/function call (e.g. uuid_generate_v4()).
-	// These are passed through as-is to avoid wrapping a function call in string quotes.
-	if strings.Contains(defaultValue, "(") {
-		return defaultValue
-	}
-
-	// Check if it's a numeric value
-	if _, err := strconv.ParseFloat(defaultValue, 64); err == nil {
-		return defaultValue // Return numeric values as-is
-	}
-
-	// Check for boolean values
-	if defaultValue == "true" || defaultValue == "false" {
-		return defaultValue // Most databases accept true/false
-	}
-
-	// Check for NULL
-	if defaultValue == "null" || defaultValue == "NULL" {
+	// Normalise null to uppercase SQL keyword
+	if strings.ToLower(defaultValue) == "null" {
 		return "NULL"
 	}
-
-	// Otherwise treat as string literal
-	return fmt.Sprintf("'%s'", defaultValue)
+	return FormatDefaultValue(defaultValue)
 }
 
 // SafeConstraintName returns a PostgreSQL-safe constraint name (max 63 chars).

@@ -329,7 +329,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 
 	stmt := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s", tbl, col, newType)
 	if newField.Default != "" {
-		stmt += fmt.Sprintf(" DEFAULT '%s'", newField.Default)
+		stmt += fmt.Sprintf(" DEFAULT %s", utils.FormatDefaultValue(newField.Default))
 	}
 	stmt += ";"
 

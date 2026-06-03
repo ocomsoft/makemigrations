@@ -476,8 +476,8 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 				tbl, col))
 		} else {
 			stmts = append(stmts, fmt.Sprintf(
-				"ALTER TABLE %s ALTER COLUMN %s SET DEFAULT '%s';",
-				tbl, col, newField.Default))
+				"ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;",
+				tbl, col, p.convertDefaultValue(nil, newField.Default)))
 		}
 	}
 

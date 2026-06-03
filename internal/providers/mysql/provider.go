@@ -346,7 +346,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 		stmt += " NOT NULL"
 	}
 	if newField.Default != "" {
-		stmt += fmt.Sprintf(" DEFAULT '%s'", newField.Default)
+		stmt += fmt.Sprintf(" DEFAULT %s", utils.FormatDefaultValue(newField.Default))
 	}
 	stmt += ";"
 

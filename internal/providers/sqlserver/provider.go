@@ -348,8 +348,8 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 		}
 		if newField.Default != "" {
 			constraintName := fmt.Sprintf("DF_%s_%s", tableName, newField.Name)
-			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s DEFAULT '%s' FOR %s;",
-				tbl, p.QuoteName(constraintName), newField.Default, col))
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s DEFAULT %s FOR %s;",
+				tbl, p.QuoteName(constraintName), utils.FormatDefaultValue(newField.Default), col))
 		}
 	}
 

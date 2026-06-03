@@ -319,7 +319,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 		if newField.Default == "" {
 			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;", tbl, col))
 		} else {
-			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT '%s';", tbl, col, newField.Default))
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", tbl, col, utils.FormatDefaultValue(newField.Default)))
 		}
 	}
 	return strings.Join(stmts, "\n"), nil

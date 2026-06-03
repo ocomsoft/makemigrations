@@ -202,6 +202,71 @@ func TestConvertDefaultValueWithEmptyDefaults(t *testing.T) {
 	}
 }
 
+func TestIsSQLExpression(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"empty string", "", false},
+		{"function call", "gen_random_uuid()", true},
+		{"function call with schema", "uuid_generate_v4()", true},
+		{"now function", "now()", true},
+		{"uppercase keyword", "CURRENT_TIMESTAMP", true},
+		{"uppercase keyword with underscore", "CURRENT_DATE", true},
+		{"already quoted string", "'hello'", true},
+		{"type cast", "'{}'::jsonb", true},
+		{"null lowercase", "null", true},
+		{"NULL uppercase", "NULL", true},
+		{"true", "true", true},
+		{"false", "false", true},
+		{"TRUE uppercase", "TRUE", true},
+		{"FALSE uppercase", "FALSE", true},
+		{"plain string", "hello", false},
+		{"plain string with spaces", "hello world", false},
+		{"numeric string", "42", false},
+		{"single char", "x", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsSQLExpression(tt.input)
+			if result != tt.expected {
+				t.Errorf("IsSQLExpression(%q) = %v; want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFormatDefaultValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"function call not quoted", "gen_random_uuid()", "gen_random_uuid()"},
+		{"CURRENT_TIMESTAMP not quoted", "CURRENT_TIMESTAMP", "CURRENT_TIMESTAMP"},
+		{"now() not quoted", "now()", "now()"},
+		{"type cast not quoted", "'{}'::jsonb", "'{}'::jsonb"},
+		{"null not quoted", "null", "null"},
+		{"true not quoted", "true", "true"},
+		{"false not quoted", "false", "false"},
+		{"numeric not quoted", "42", "42"},
+		{"float not quoted", "3.14", "3.14"},
+		{"plain string quoted", "hello", "'hello'"},
+		{"empty string quoted", "", "''"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatDefaultValue(tt.input)
+			if result != tt.expected {
+				t.Errorf("FormatDefaultValue(%q) = %s; want %s", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestHandleFallbackDefault(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -370,3 +370,56 @@ func TestGenerateCreateIndex_WithWhere(t *testing.T) {
 		t.Errorf("expected WHERE clause in SQL, got: %s", sql)
 	}
 }
+
+// TestGenerateCreateTable_WithIndexes verifies that GenerateCreateTable emits
+// CREATE INDEX statements for indexes defined on the table.
+func TestGenerateCreateTable_WithIndexes(t *testing.T) {
+	p := New()
+	schema := &types.Schema{}
+	table := &types.Table{
+		Name: "orders",
+		Fields: []types.Field{
+			{Name: "id", Type: "integer", PrimaryKey: true},
+			{Name: "customer_id", Type: "integer"},
+			{Name: "email", Type: "varchar"},
+			{Name: "status", Type: "varchar"},
+		},
+		Indexes: []types.Index{
+			{
+				Name:   "idx_orders_customer",
+				Fields: []string{"customer_id"},
+			},
+			{
+				Name:   "idx_orders_email_status",
+				Fields: []string{"email", "status"},
+				Unique: true,
+			},
+		},
+	}
+
+	result, err := p.GenerateCreateTable(schema, table)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the CREATE TABLE statement is present
+	if !strings.Contains(result, "CREATE TABLE") {
+		t.Errorf("expected CREATE TABLE in output, got: %s", result)
+	}
+
+	// Verify regular index
+	if !strings.Contains(result, "CREATE INDEX") {
+		t.Errorf("expected CREATE INDEX in output, got: %s", result)
+	}
+	if !strings.Contains(result, "idx_orders_customer") {
+		t.Errorf("expected idx_orders_customer index name in output, got: %s", result)
+	}
+
+	// Verify unique index
+	if !strings.Contains(result, "CREATE UNIQUE INDEX") {
+		t.Errorf("expected CREATE UNIQUE INDEX in output, got: %s", result)
+	}
+	if !strings.Contains(result, "idx_orders_email_status") {
+		t.Errorf("expected idx_orders_email_status index name in output, got: %s", result)
+	}
+}

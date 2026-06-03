@@ -244,6 +244,11 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	}
 
 	sql.WriteString(");")
+	for i := range table.Indexes {
+		sql.WriteString("\n")
+		sql.WriteString(p.GenerateCreateIndex(&table.Indexes[i], table.Name))
+	}
+
 	return sql.String(), nil
 }
 

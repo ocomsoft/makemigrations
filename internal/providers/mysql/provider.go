@@ -278,6 +278,11 @@ func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table)
 	}
 
 	sql.WriteString(") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;")
+	for i := range table.Indexes {
+		sql.WriteString("\n")
+		sql.WriteString(p.GenerateCreateIndex(&table.Indexes[i], table.Name))
+	}
+
 	return sql.String(), nil
 }
 

@@ -124,6 +124,7 @@ func stateToSchema(state *SchemaState) *types.Schema {
 				Unique: idx.Unique,
 				Method: idx.Method,
 				Where:  idx.Where,
+				FromFK: idx.FromFK,
 			})
 		}
 		s.Tables = append(s.Tables, *t)

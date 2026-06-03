@@ -357,6 +357,9 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: PostgreSQL does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
+
 	// Generate primary key constraint if needed
 	var constraint string
 	if field.PrimaryKey {
@@ -480,6 +483,22 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 				tbl, col, p.convertDefaultValue(nil, newField.Default)))
 		}
 	}
+
+	// AutoCreate change — manages DEFAULT CURRENT_TIMESTAMP for timestamp fields
+	if oldField.AutoCreate != newField.AutoCreate {
+		if newField.AutoCreate && newField.Type == "timestamp" {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s SET DEFAULT CURRENT_TIMESTAMP;",
+				tbl, col))
+		} else if !newField.AutoCreate && oldField.AutoCreate {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;",
+				tbl, col))
+		}
+	}
+
+	// AutoUpdate: PostgreSQL does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
 
 	return strings.Join(stmts, "\n"), nil
 }

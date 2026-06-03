@@ -308,6 +308,9 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: SQL Server does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
+
 	// Generate primary key constraint if needed
 	var constraint string
 	if field.PrimaryKey {
@@ -321,7 +324,9 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() &&
+		oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate {
 		return "", nil
 	}
 
@@ -352,6 +357,21 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 				tbl, p.QuoteName(constraintName), utils.FormatDefaultValue(newField.Default), col))
 		}
 	}
+
+	// AutoCreate change — manages DEFAULT GETDATE() for timestamp fields
+	if oldField.AutoCreate != newField.AutoCreate {
+		constraintName := fmt.Sprintf("DF_%s_%s", tableName, newField.Name)
+		if newField.AutoCreate && newField.Type == "timestamp" {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT %s DEFAULT GETDATE() FOR %s;",
+				tbl, p.QuoteName(constraintName), col))
+		} else if !newField.AutoCreate && oldField.AutoCreate {
+			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT IF EXISTS %s;",
+				tbl, p.QuoteName(constraintName)))
+		}
+	}
+
+	// AutoUpdate: SQL Server does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
 
 	return strings.Join(stmts, "\n"), nil
 }

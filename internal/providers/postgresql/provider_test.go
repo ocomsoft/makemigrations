@@ -546,3 +546,53 @@ func TestProvider_GenerateAlterColumn_SQLExpressionDefaultNotQuoted(t *testing.T
 		})
 	}
 }
+
+// --- AutoCreate in AlterField tests ---
+
+func TestProvider_GenerateAlterColumn_AutoCreate_Added(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "created_at", Type: "timestamp"}
+	newField := &types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty SQL for AutoCreate change")
+	}
+	if !strings.Contains(got, "SET DEFAULT CURRENT_TIMESTAMP") {
+		t.Errorf("expected SET DEFAULT CURRENT_TIMESTAMP in: %s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AutoCreate_Removed(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+	newField := &types.Field{Name: "created_at", Type: "timestamp"}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty SQL for AutoCreate removal")
+	}
+	if !strings.Contains(got, "DROP DEFAULT") {
+		t.Errorf("expected DROP DEFAULT in: %s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AutoCreate_NoChange(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+	newField := &types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty SQL when nothing changed, got: %s", got)
+	}
+}

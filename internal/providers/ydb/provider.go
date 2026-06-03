@@ -291,6 +291,8 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: YDB does not support ON UPDATE natively.
+
 	return def.String(), nil
 }
 
@@ -299,13 +301,16 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() &&
+		oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate {
 		return "", nil
 	}
 
 	// YDB only supports changing the column type
-	if oldField.IsNullable() != newField.IsNullable() || oldField.Default != newField.Default {
-		return "", fmt.Errorf("YDB only supports column type changes; nullability and default changes require table recreation")
+	if oldField.IsNullable() != newField.IsNullable() || oldField.Default != newField.Default ||
+		oldField.AutoCreate != newField.AutoCreate {
+		return "", fmt.Errorf("YDB only supports column type changes; nullability, default, and AutoCreate changes require table recreation")
 	}
 
 	tbl := p.QuoteName(tableName)

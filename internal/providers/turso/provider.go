@@ -282,10 +282,16 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" NOT NULL")
 	}
 
-	if field.Default != "" {
+	// Handle auto_create for timestamp fields
+	if field.AutoCreate && field.Type == "timestamp" {
+		def.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+	} else if field.Default != "" {
 		defaultValue := utils.ConvertDefaultValue(schema, "turso", field.Default)
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
+
+	// AutoUpdate: Turso (libSQL/SQLite) does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
 
 	return def.String(), nil
 }
@@ -295,7 +301,9 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() &&
+		oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate {
 		return "", nil
 	}
 

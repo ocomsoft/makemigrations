@@ -303,6 +303,9 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: SQLite does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
+
 	// Generate primary key constraint if needed
 	var constraint string
 	if field.PrimaryKey {

@@ -191,9 +191,13 @@ func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) strin
 	fieldDef := fmt.Sprintf("%s %s", p.QuoteName(field.Name), p.ConvertFieldType(field))
 
 	// ClickHouse ADD COLUMN syntax
-	if field.Default != "" {
+	if field.AutoCreate && field.Type == "timestamp" {
+		fieldDef += " DEFAULT now()"
+	} else if field.Default != "" {
 		fieldDef += fmt.Sprintf(" DEFAULT %s", field.Default)
 	}
+
+	// AutoUpdate: ClickHouse does not support ON UPDATE natively.
 
 	sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
 
@@ -310,6 +314,8 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: ClickHouse does not support ON UPDATE natively.
+
 	return def.String(), nil
 }
 
@@ -319,8 +325,9 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	// ClickHouse has no NOT NULL concept, so only check type and default
-	if oldType == newType && oldField.Default == newField.Default {
+	// ClickHouse has no NOT NULL concept, so only check type, default, and AutoCreate
+	if oldType == newType && oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate {
 		return "", nil
 	}
 
@@ -328,9 +335,15 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	col := p.QuoteName(newField.Name)
 
 	stmt := fmt.Sprintf("ALTER TABLE %s MODIFY COLUMN %s %s", tbl, col, newType)
-	if newField.Default != "" {
+	// AutoCreate: set DEFAULT now() for timestamp fields
+	if newField.AutoCreate && newField.Type == "timestamp" {
+		stmt += " DEFAULT now()"
+	} else if newField.Default != "" {
 		stmt += fmt.Sprintf(" DEFAULT %s", utils.FormatDefaultValue(newField.Default))
 	}
+
+	// AutoUpdate: ClickHouse does not support ON UPDATE natively.
+
 	stmt += ";"
 
 	return stmt, nil

@@ -199,6 +199,11 @@ func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) strin
 		fieldDef += " DEFAULT " + field.Default
 	}
 
+	// AutoUpdate: StarRocks supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if field.AutoUpdate && field.Type == "timestamp" {
+		fieldDef += " ON UPDATE CURRENT_TIMESTAMP"
+	}
+
 	sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
 
 	// StarRocks PRIMARY KEY is defined at table level, not inline on columns.
@@ -311,10 +316,18 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" NOT NULL")
 	}
 
-	if field.Default != "" {
+	// Handle auto_create for timestamp fields
+	if field.AutoCreate && field.Type == "timestamp" {
+		def.WriteString(" DEFAULT CURRENT_TIMESTAMP")
+	} else if field.Default != "" {
 		// Convert default value using the schema's defaults mapping
 		defaultValue := utils.ConvertDefaultValue(schema, "starrocks", field.Default)
 		def.WriteString(" DEFAULT " + defaultValue)
+	}
+
+	// AutoUpdate: StarRocks supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if field.AutoUpdate && field.Type == "timestamp" {
+		def.WriteString(" ON UPDATE CURRENT_TIMESTAMP")
 	}
 
 	return def.String(), nil
@@ -325,7 +338,10 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() &&
+		oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate &&
+		oldField.AutoUpdate == newField.AutoUpdate {
 		return "", nil
 	}
 
@@ -336,9 +352,18 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	if !newField.IsNullable() {
 		stmt += " NOT NULL"
 	}
-	if newField.Default != "" {
+	// AutoCreate: set DEFAULT CURRENT_TIMESTAMP for timestamp fields
+	if newField.AutoCreate && newField.Type == "timestamp" {
+		stmt += " DEFAULT CURRENT_TIMESTAMP"
+	} else if newField.Default != "" {
 		stmt += fmt.Sprintf(" DEFAULT %s", utils.FormatDefaultValue(newField.Default))
 	}
+
+	// AutoUpdate: StarRocks supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if newField.AutoUpdate && newField.Type == "timestamp" {
+		stmt += " ON UPDATE CURRENT_TIMESTAMP"
+	}
+
 	stmt += ";"
 
 	return stmt, nil

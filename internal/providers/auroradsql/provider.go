@@ -291,6 +291,9 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: Aurora DSQL does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
+
 	var constraint string
 	if field.PrimaryKey {
 		constraint = fmt.Sprintf("PRIMARY KEY (%s)", p.QuoteName(field.Name))
@@ -322,6 +325,23 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 			stmts = append(stmts, fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s;", tbl, col, utils.FormatDefaultValue(newField.Default)))
 		}
 	}
+
+	// AutoCreate change — manages DEFAULT CURRENT_TIMESTAMP for timestamp fields
+	if oldField.AutoCreate != newField.AutoCreate {
+		if newField.AutoCreate && newField.Type == "timestamp" {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s SET DEFAULT CURRENT_TIMESTAMP;",
+				tbl, col))
+		} else if !newField.AutoCreate && oldField.AutoCreate {
+			stmts = append(stmts, fmt.Sprintf(
+				"ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT;",
+				tbl, col))
+		}
+	}
+
+	// AutoUpdate: Aurora DSQL does not support ON UPDATE natively.
+	// A trigger is required to auto-update timestamp columns on row modification.
+
 	return strings.Join(stmts, "\n"), nil
 }
 

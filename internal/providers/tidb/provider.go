@@ -214,6 +214,11 @@ func (p *Provider) GenerateAddColumn(tableName string, field *types.Field) strin
 		fieldDef += " DEFAULT " + field.Default
 	}
 
+	// AutoUpdate: TiDB supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if field.AutoUpdate && field.Type == "timestamp" {
+		fieldDef += " ON UPDATE CURRENT_TIMESTAMP"
+	}
+
 	return fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s;", p.QuoteName(tableName), fieldDef)
 }
 
@@ -308,6 +313,11 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 		def.WriteString(" DEFAULT " + defaultValue)
 	}
 
+	// AutoUpdate: TiDB supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if field.AutoUpdate && field.Type == "timestamp" {
+		def.WriteString(" ON UPDATE CURRENT_TIMESTAMP")
+	}
+
 	// Generate primary key constraint if needed
 	var constraint string
 	if field.PrimaryKey {
@@ -323,7 +333,10 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
 
-	if oldType == newType && oldField.IsNullable() == newField.IsNullable() && oldField.Default == newField.Default {
+	if oldType == newType && oldField.IsNullable() == newField.IsNullable() &&
+		oldField.Default == newField.Default &&
+		oldField.AutoCreate == newField.AutoCreate &&
+		oldField.AutoUpdate == newField.AutoUpdate {
 		return "", nil
 	}
 
@@ -334,9 +347,18 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	if !newField.IsNullable() {
 		stmt += " NOT NULL"
 	}
-	if newField.Default != "" {
+	// AutoCreate: set DEFAULT CURRENT_TIMESTAMP for timestamp fields
+	if newField.AutoCreate && newField.Type == "timestamp" {
+		stmt += " DEFAULT CURRENT_TIMESTAMP"
+	} else if newField.Default != "" {
 		stmt += fmt.Sprintf(" DEFAULT %s", utils.FormatDefaultValue(newField.Default))
 	}
+
+	// AutoUpdate: TiDB supports ON UPDATE CURRENT_TIMESTAMP natively (MySQL-compatible)
+	if newField.AutoUpdate && newField.Type == "timestamp" {
+		stmt += " ON UPDATE CURRENT_TIMESTAMP"
+	}
+
 	stmt += ";"
 
 	return stmt, nil

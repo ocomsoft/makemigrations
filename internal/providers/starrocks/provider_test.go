@@ -179,3 +179,94 @@ func TestProvider_GenerateAddColumn_PrimaryKey(t *testing.T) {
 		t.Errorf("GenerateAddColumn() should still contain ALTER TABLE statement, got: %s", got)
 	}
 }
+
+// --- AutoUpdate and AutoCreate tests ---
+
+func TestProvider_ConvertField_AutoCreate(t *testing.T) {
+	p := New()
+	schema := &types.Schema{}
+	field := types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+	field.SetNullable(false)
+
+	def, err := p.convertField(schema, &field)
+	if err != nil {
+		t.Fatalf("convertField() error: %v", err)
+	}
+	if !strings.Contains(def, "DEFAULT CURRENT_TIMESTAMP") {
+		t.Errorf("expected DEFAULT CURRENT_TIMESTAMP in: %s", def)
+	}
+}
+
+func TestProvider_ConvertField_AutoUpdate(t *testing.T) {
+	p := New()
+	schema := &types.Schema{}
+	field := types.Field{Name: "updated_at", Type: "timestamp", AutoCreate: true, AutoUpdate: true}
+	field.SetNullable(false)
+
+	def, err := p.convertField(schema, &field)
+	if err != nil {
+		t.Fatalf("convertField() error: %v", err)
+	}
+	if !strings.Contains(def, "ON UPDATE CURRENT_TIMESTAMP") {
+		t.Errorf("expected ON UPDATE CURRENT_TIMESTAMP in: %s", def)
+	}
+}
+
+func TestProvider_GenerateAddColumn_AutoUpdate(t *testing.T) {
+	p := New()
+	field := types.Field{Name: "updated_at", Type: "timestamp", AutoCreate: true, AutoUpdate: true}
+	field.SetNullable(false)
+
+	got := p.GenerateAddColumn("users", &field)
+	if !strings.Contains(got, "ON UPDATE CURRENT_TIMESTAMP") {
+		t.Errorf("expected ON UPDATE CURRENT_TIMESTAMP in: %s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AutoCreate_Change(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "created_at", Type: "timestamp"}
+	newField := &types.Field{Name: "created_at", Type: "timestamp", AutoCreate: true}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty SQL for AutoCreate change")
+	}
+	if !strings.Contains(got, "DEFAULT CURRENT_TIMESTAMP") {
+		t.Errorf("expected DEFAULT CURRENT_TIMESTAMP in: %s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_AutoUpdate_Change(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "updated_at", Type: "timestamp"}
+	newField := &types.Field{Name: "updated_at", Type: "timestamp", AutoUpdate: true}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got == "" {
+		t.Fatal("expected non-empty SQL for AutoUpdate change")
+	}
+	if !strings.Contains(got, "ON UPDATE CURRENT_TIMESTAMP") {
+		t.Errorf("expected ON UPDATE CURRENT_TIMESTAMP in: %s", got)
+	}
+}
+
+func TestProvider_GenerateAlterColumn_NoChange_WithAutoFlags(t *testing.T) {
+	p := New()
+	oldField := &types.Field{Name: "updated_at", Type: "timestamp", AutoCreate: true, AutoUpdate: true}
+	newField := &types.Field{Name: "updated_at", Type: "timestamp", AutoCreate: true, AutoUpdate: true}
+
+	got, err := p.GenerateAlterColumn("users", oldField, newField)
+	if err != nil {
+		t.Fatalf("GenerateAlterColumn() error: %v", err)
+	}
+	if got != "" {
+		t.Errorf("expected empty SQL when nothing changed, got: %s", got)
+	}
+}

@@ -141,6 +141,25 @@ func TestRunSQL_TypeName(t *testing.T) {
 	}
 }
 
+func TestRunSQL_Describe(t *testing.T) {
+	short := &migrate.RunSQL{ForwardSQL: "SELECT 1"}
+	if got := short.Describe(); got != "Run SQL: SELECT 1" {
+		t.Errorf("short SQL: expected %q, got %q", "Run SQL: SELECT 1", got)
+	}
+
+	long := &migrate.RunSQL{ForwardSQL: strings.Repeat("x", 100)}
+	got := long.Describe()
+	if !strings.HasPrefix(got, "Run SQL: ") {
+		t.Errorf("long SQL should start with 'Run SQL: ', got %q", got)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("long SQL should be truncated with …, got %q", got)
+	}
+	if len(got) > 100 {
+		t.Errorf("long SQL describe should be truncated, got length %d", len(got))
+	}
+}
+
 func TestDropField_Down_ReconstructsFromState(t *testing.T) {
 	p := sqlite.New()
 	state := migrate.NewSchemaState()

@@ -787,7 +787,14 @@ func (op *RunSQL) TableName() string { return "" }
 func (op *RunSQL) IsDestructive() bool { return false }
 
 // Describe returns a human-readable description of this operation.
-func (op *RunSQL) Describe() string { return "Run SQL" }
+// Includes a truncated preview of the SQL to aid debugging.
+func (op *RunSQL) Describe() string {
+	sql := op.ForwardSQL
+	if len(sql) > 80 {
+		sql = sql[:80] + "…"
+	}
+	return fmt.Sprintf("Run SQL: %s", sql)
+}
 
 // Up returns the ForwardSQL string, or empty string when SchemaOnly is set.
 func (op *RunSQL) Up(_ providers.Provider, _ *SchemaState, _ map[string]string) (string, error) {

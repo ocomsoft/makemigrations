@@ -210,17 +210,17 @@ func (r *Runner) ShowSQL() error {
 			continue
 		}
 		r.printf("-- %s\n", mig.Name)
-		for _, op := range mig.Operations {
+		for i, op := range mig.Operations {
 			r.provider.SetTypeMappings(state.TypeMappings)
 			sqlStr, err := op.Up(r.provider, state, state.Defaults)
 			if err != nil {
-				return fmt.Errorf("generating SQL for %q: %w", mig.Name, err)
+				return fmt.Errorf("%s operation %d/%d [%s]: %w", mig.Name, i+1, len(mig.Operations), op.Describe(), err)
 			}
 			if sqlStr != "" {
 				r.printf("%s\n\n", sqlStr)
 			}
 			if err := op.Mutate(state); err != nil {
-				return fmt.Errorf("mutating state for %q: %w", mig.Name, err)
+				return fmt.Errorf("%s operation %d/%d [%s]: mutating state: %w", mig.Name, i+1, len(mig.Operations), op.Describe(), err)
 			}
 		}
 	}
@@ -242,20 +242,20 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 	}
 	defer func() { _ = tx.Rollback() }() // no-op if already committed
 
-	for _, op := range mig.Operations {
+	for i, op := range mig.Operations {
 		r.provider.SetTypeMappings(state.TypeMappings)
 		sqlStr, err := op.Up(r.provider, state, state.Defaults)
 		if err != nil {
-			return fmt.Errorf("generating SQL for operation %q: %w", op.Describe(), err)
+			return fmt.Errorf("operation %d/%d [%s]: generating SQL: %w", i+1, len(mig.Operations), op.Describe(), err)
 		}
 		skipped := false
 		if sqlStr != "" {
 			if execErr := execWithSavepoint(tx, sqlStr, canIgnoreError(op, opts)); execErr != nil {
 				if shouldIgnoreError(op, opts, r.provider, execErr) {
-					r.printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
+					r.printf("[WARNING] op %d/%d %s — %v, skipping\n", i+1, len(mig.Operations), op.Describe(), execErr)
 					skipped = true
 				} else {
-					return fmt.Errorf("executing SQL %q: %w", sqlStr, execErr)
+					return fmt.Errorf("operation %d/%d [%s]: %w\n  SQL: %s", i+1, len(mig.Operations), op.Describe(), execErr, sqlStr)
 				}
 			}
 		}
@@ -263,7 +263,7 @@ func (r *Runner) applyMigration(mig *Migration, state *SchemaState, opts RunOpti
 		// was never in the schema state either, so Mutate would fail.
 		if !skipped {
 			if err := op.Mutate(state); err != nil {
-				return fmt.Errorf("mutating state: %w", err)
+				return fmt.Errorf("operation %d/%d [%s]: mutating state: %w", i+1, len(mig.Operations), op.Describe(), err)
 			}
 		}
 	}
@@ -301,26 +301,26 @@ func (r *Runner) rollbackMigration(mig *Migration, state *SchemaState, opts RunO
 		}
 	}
 
-	for i := len(mig.Operations) - 1; i >= 0; i-- {
+	total := len(mig.Operations)
+	for i := total - 1; i >= 0; i-- {
 		op := mig.Operations[i]
+		opNum := total - i
 		r.provider.SetTypeMappings(state.TypeMappings)
 		sqlStr, err := op.Down(r.provider, state, state.Defaults)
 		if err != nil {
-			return fmt.Errorf("generating down SQL for %q: %w", op.Describe(), err)
+			return fmt.Errorf("operation %d/%d [%s]: generating down SQL: %w", opNum, total, op.Describe(), err)
 		}
 		if sqlStr != "" {
 			mayIgnore := canIgnoreError(op, opts) || isDropOp(op) || isCreateOp(op)
 			if execErr := execWithSavepoint(tx, sqlStr, mayIgnore); execErr != nil {
 				if shouldIgnoreError(op, opts, r.provider, execErr) {
-					r.printf("[WARNING] %s — %v, skipping\n", op.Describe(), execErr)
+					r.printf("[WARNING] op %d/%d %s — %v, skipping\n", opNum, total, op.Describe(), execErr)
 				} else if isDropOp(op) && r.provider.IsAlreadyExistsError(execErr) {
-					// Drop ops' Down SQL re-creates objects; skip if object already exists.
-					r.printf("[WARNING] %s — object already exists in database, skipping\n", op.Describe())
+					r.printf("[WARNING] op %d/%d %s — object already exists in database, skipping\n", opNum, total, op.Describe())
 				} else if isCreateOp(op) && r.provider.IsNotFoundError(execErr) {
-					// Create ops' Down SQL drops objects; skip if object doesn't exist.
-					r.printf("[WARNING] %s — object does not exist in database, skipping\n", op.Describe())
+					r.printf("[WARNING] op %d/%d %s — object does not exist in database, skipping\n", opNum, total, op.Describe())
 				} else {
-					return fmt.Errorf("executing down SQL %q: %w", sqlStr, execErr)
+					return fmt.Errorf("operation %d/%d [%s]: %w\n  SQL: %s", opNum, total, op.Describe(), execErr, sqlStr)
 				}
 			}
 		}

@@ -1,7 +1,7 @@
 {
-  "name": "go-makemigrations",
+  "name": "go-morphic",
   "version": "1.0.0",
-  "description": "Guides Claude through database schema changes in Go projects using makemigrations. Auto-triggers on schema work to enforce the correct workflow: edit schema.yaml, generate migrations, avoid raw SQL.",
+  "description": "Guides Claude through database schema changes in Go projects using morphic. Auto-triggers on schema work to enforce the correct workflow: edit schema.yaml, generate migrations, avoid raw SQL.",
   "author": {
     "name": "Ocom",
     "url": "https://git.o.ocom.com.au"

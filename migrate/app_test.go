@@ -629,10 +629,10 @@ func TestApp_Run_Up_WarnOnMissingDrop(t *testing.T) {
 	if err != nil {
 		t.Fatalf("opening seed db: %v", err)
 	}
-	if _, err := seedDB.Exec(`CREATE TABLE makemigrations_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
+	if _, err := seedDB.Exec(`CREATE TABLE morphic_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
 		t.Fatalf("creating history table: %v", err)
 	}
-	if _, err := seedDB.Exec(`INSERT INTO makemigrations_history (name) VALUES ('0001_initial')`); err != nil {
+	if _, err := seedDB.Exec(`INSERT INTO morphic_history (name) VALUES ('0001_initial')`); err != nil {
 		t.Fatalf("recording initial: %v", err)
 	}
 	// Intentionally do NOT create the "widgets" table, so the drop in 0002 fails.
@@ -721,10 +721,10 @@ func TestApp_Run_Up_IgnoreErrors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("opening seed db: %v", err)
 	}
-	if _, err := seedDB.Exec(`CREATE TABLE makemigrations_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
+	if _, err := seedDB.Exec(`CREATE TABLE morphic_history (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, applied_at DATETIME DEFAULT CURRENT_TIMESTAMP)`); err != nil {
 		t.Fatalf("creating history table: %v", err)
 	}
-	if _, err := seedDB.Exec(`INSERT INTO makemigrations_history (name) VALUES ('0001_initial')`); err != nil {
+	if _, err := seedDB.Exec(`INSERT INTO morphic_history (name) VALUES ('0001_initial')`); err != nil {
 		t.Fatalf("recording initial: %v", err)
 	}
 	_ = seedDB.Close()

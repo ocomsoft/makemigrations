@@ -31,7 +31,7 @@ import (
 	"github.com/ocomsoft/morphic/internal/providers"
 )
 
-// MigrationRecorder manages the makemigrations_history table.
+// MigrationRecorder manages the morphic_history table.
 // It records which migrations have been applied to the database.
 type MigrationRecorder struct {
 	db       *sql.DB
@@ -44,19 +44,19 @@ func NewMigrationRecorder(db *sql.DB, p providers.Provider) *MigrationRecorder {
 	return &MigrationRecorder{db: db, provider: p}
 }
 
-// EnsureTable creates the makemigrations_history table if it does not exist.
+// EnsureTable creates the morphic_history table if it does not exist.
 // The DDL is supplied by the provider so it is correct for the target database.
 func (r *MigrationRecorder) EnsureTable() error {
 	_, err := r.db.Exec(r.provider.HistoryTableDDL())
 	if err != nil {
-		return fmt.Errorf("creating makemigrations_history table: %w", err)
+		return fmt.Errorf("creating morphic_history table: %w", err)
 	}
 	return nil
 }
 
 // GetApplied returns a set of migration names that have been applied.
 func (r *MigrationRecorder) GetApplied() (map[string]bool, error) {
-	rows, err := r.db.Query("SELECT name FROM makemigrations_history")
+	rows, err := r.db.Query("SELECT name FROM morphic_history")
 	if err != nil {
 		return nil, fmt.Errorf("querying applied migrations: %w", err)
 	}
@@ -75,7 +75,7 @@ func (r *MigrationRecorder) GetApplied() (map[string]bool, error) {
 
 // RecordApplied inserts a migration name into the history table.
 func (r *MigrationRecorder) RecordApplied(name string) error {
-	query := "INSERT INTO makemigrations_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
+	query := "INSERT INTO morphic_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
 	_, err := r.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as applied: %w", name, err)
@@ -87,7 +87,7 @@ func (r *MigrationRecorder) RecordApplied(name string) error {
 // existing transaction, so the history record is committed or rolled back
 // atomically with the migration SQL.
 func (r *MigrationRecorder) RecordAppliedTx(tx *sql.Tx, name string) error {
-	query := "INSERT INTO makemigrations_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
+	query := "INSERT INTO morphic_history (name) VALUES (" + r.provider.Placeholder(1) + ")"
 	_, err := tx.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as applied: %w", name, err)
@@ -97,7 +97,7 @@ func (r *MigrationRecorder) RecordAppliedTx(tx *sql.Tx, name string) error {
 
 // RecordRolledBack removes a migration name from the history table.
 func (r *MigrationRecorder) RecordRolledBack(name string) error {
-	query := "DELETE FROM makemigrations_history WHERE name = " + r.provider.Placeholder(1)
+	query := "DELETE FROM morphic_history WHERE name = " + r.provider.Placeholder(1)
 	_, err := r.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as rolled back: %w", name, err)
@@ -109,7 +109,7 @@ func (r *MigrationRecorder) RecordRolledBack(name string) error {
 // existing transaction, so the history deletion is committed or rolled back
 // atomically with the rollback SQL.
 func (r *MigrationRecorder) RecordRolledBackTx(tx *sql.Tx, name string) error {
-	query := "DELETE FROM makemigrations_history WHERE name = " + r.provider.Placeholder(1)
+	query := "DELETE FROM morphic_history WHERE name = " + r.provider.Placeholder(1)
 	_, err := tx.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("recording migration %q as rolled back: %w", name, err)

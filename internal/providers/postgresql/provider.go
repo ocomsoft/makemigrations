@@ -81,9 +81,9 @@ func (p *Provider) Placeholder(n int) string {
 }
 
 // HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
-// makemigrations_history migration-tracking table, using this provider's SQL dialect.
+// morphic_history migration-tracking table, using this provider's SQL dialect.
 func (p *Provider) HistoryTableDDL() string {
-	return `CREATE TABLE IF NOT EXISTS makemigrations_history (
+	return `CREATE TABLE IF NOT EXISTS morphic_history (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

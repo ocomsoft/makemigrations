@@ -734,7 +734,7 @@ func TestRunner_Up_WarnOnMissingDrop_SkipsIfNotFound(t *testing.T) {
 	}
 
 	// Reset history so we can attempt again
-	if _, err := db.Exec("DELETE FROM makemigrations_history"); err != nil {
+	if _, err := db.Exec("DELETE FROM morphic_history"); err != nil {
 		t.Fatalf("resetting history: %v", err)
 	}
 

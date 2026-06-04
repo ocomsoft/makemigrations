@@ -63,7 +63,7 @@ type Provider interface {
 	// Examples: PostgreSQL uses $1, SQL Server uses @p1, most others use ?.
 	Placeholder(n int) string
 	// HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
-	// makemigrations_history migration-tracking table using this provider's SQL dialect.
+	// morphic_history migration-tracking table using this provider's SQL dialect.
 	HistoryTableDDL() string
 	// IsNotFoundError returns true when err indicates that a DROP operation
 	// targeted an object that does not exist in the database.

@@ -129,8 +129,8 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 		dbType = types.DatabasePostgreSQL
 	}
 
-	// Build connection string from command-line flags
-	connectionString = buildConnectionString(dbType)
+	// Build connection string from command-line flags, falling back to config default_url
+	connectionString = buildConnectionString(dbType, cfg.Database.DefaultURL)
 
 	if verbose {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
@@ -204,11 +204,16 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// buildConnectionString builds a database connection string from command-line flags
-func buildConnectionString(dbType types.DatabaseType) string {
+// buildConnectionString builds a database connection string from command-line flags.
+// defaultURL is used as fallback when no flags or DATABASE_URL env var are set.
+func buildConnectionString(dbType types.DatabaseType, defaultURL ...string) string {
+	var fallback string
+	if len(defaultURL) > 0 {
+		fallback = defaultURL[0]
+	}
 	switch dbType {
 	case types.DatabasePostgreSQL:
-		return buildPostgreSQLConnectionString()
+		return buildPostgreSQLConnectionString(fallback)
 	default:
 		// For unsupported databases, return empty string (will be caught later)
 		return ""
@@ -216,11 +221,16 @@ func buildConnectionString(dbType types.DatabaseType) string {
 }
 
 // buildPostgreSQLConnectionString builds PostgreSQL connection string from
-// command flags or the DATABASE_URL environment variable. If no flags are
-// provided, DATABASE_URL is used as-is.
-func buildPostgreSQLConnectionString() string {
+// command flags, the DATABASE_URL environment variable, or the provided
+// defaultURL fallback. If no flags are provided, DATABASE_URL is checked
+// first, then defaultURL.
+func buildPostgreSQLConnectionString(defaultURL string) string {
 	if envURL := os.Getenv("DATABASE_URL"); envURL != "" && host == "" && database == "" && username == "" {
 		return envURL
+	}
+
+	if defaultURL != "" && host == "" && database == "" && username == "" {
+		return defaultURL
 	}
 
 	connHost := host

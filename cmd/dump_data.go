@@ -155,7 +155,7 @@ func runDumpData(_ *cobra.Command, args []string) error {
 	}
 
 	// Open DB connection.
-	dsn := buildDumpDataDSN(dbType)
+	dsn := buildDumpDataDSN(dbType, cfg.Database.DefaultURL)
 	driverName := driverForDBType(dbType)
 
 	if dumpDataVerbose {
@@ -280,15 +280,19 @@ func pksFromState(state *migrate.SchemaState, table string) []string {
 }
 
 // buildDumpDataDSN builds the DSN from --dsn flag, the DATABASE_URL environment
-// variable, or from individual connection flags. Each DB type uses the
-// appropriate format.
-func buildDumpDataDSN(dbType string) string {
+// variable, the config's default_url, or from individual connection flags.
+// Each DB type uses the appropriate format.
+func buildDumpDataDSN(dbType string, defaultURL string) string {
 	if dumpDataDSN != "" {
 		return dumpDataDSN
 	}
 
 	if url := os.Getenv("DATABASE_URL"); url != "" {
 		return url
+	}
+
+	if defaultURL != "" {
+		return defaultURL
 	}
 
 	switch strings.ToLower(dbType) {

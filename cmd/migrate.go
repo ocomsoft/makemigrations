@@ -55,7 +55,7 @@ supports are available:
 	SilenceErrors:      true,
 	RunE: func(_ *cobra.Command, args []string) error {
 		cfg := config.LoadOrDefault(configFile)
-		return ExecuteMigrate(cfg.Migration.Directory, args)
+		return ExecuteMigrate(cfg.Migration.Directory, cfg.Database.DefaultURL, args)
 	},
 }
 
@@ -64,15 +64,16 @@ func init() {
 }
 
 // ExecuteMigrate loads migrationsDir with the yaegi interpreter and runs the
-// embedded migrate.App with the provided args.
-func ExecuteMigrate(migrationsDir string, args []string) error {
+// embedded migrate.App with the provided args. defaultURL is used as the
+// fallback database URL when the DATABASE_URL env var is not set.
+func ExecuteMigrate(migrationsDir string, defaultURL string, args []string) error {
 	reg, err := interp.LoadRegistry(migrationsDir)
 	if err != nil {
 		return fmt.Errorf("loading migrations: %w", err)
 	}
 	app := migrate.NewAppWithRegistry(migrate.Config{
 		DatabaseType: migrate.EnvOr("DB_TYPE", "postgresql"),
-		DatabaseURL:  migrate.EnvOr("DATABASE_URL", ""),
+		DatabaseURL:  migrate.EnvOr("DATABASE_URL", defaultURL),
 	}, reg)
 	return app.Run(args)
 }

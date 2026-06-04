@@ -12,6 +12,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Database.Type != "postgresql" {
 		t.Errorf("expected database type 'postgresql', got %q", cfg.Database.Type)
 	}
+	if cfg.Database.DefaultURL != "" {
+		t.Errorf("expected default_url to be empty by default, got %q", cfg.Database.DefaultURL)
+	}
 	if cfg.Migration.Directory != "migrations" {
 		t.Errorf("expected migration directory 'migrations', got %q", cfg.Migration.Directory)
 	}
@@ -37,6 +40,7 @@ func TestLoadValidConfigFile(t *testing.T) {
 
 	content := `database:
   type: mysql
+  default_url: "host=localhost port=3306 dbname=testdb user=root"
 migration:
   directory: db/migrations
 output:
@@ -54,6 +58,9 @@ output:
 
 	if cfg.Database.Type != "mysql" {
 		t.Errorf("expected database type 'mysql', got %q", cfg.Database.Type)
+	}
+	if cfg.Database.DefaultURL != "host=localhost port=3306 dbname=testdb user=root" {
+		t.Errorf("expected default_url 'host=localhost port=3306 dbname=testdb user=root', got %q", cfg.Database.DefaultURL)
 	}
 	if cfg.Migration.Directory != "db/migrations" {
 		t.Errorf("expected migration directory 'db/migrations', got %q", cfg.Migration.Directory)
@@ -202,7 +209,10 @@ func TestSaveAndReload(t *testing.T) {
 	cfgPath := filepath.Join(tmpDir, "subdir", "config.yaml")
 
 	original := &Config{
-		Database: DatabaseConfig{Type: "mysql"},
+		Database: DatabaseConfig{
+			Type:       "mysql",
+			DefaultURL: "host=localhost port=3306 dbname=testdb user=root",
+		},
 		Migration: MigrationConfig{Directory: "my_migrations"},
 		Output: OutputConfig{
 			Verbose:      true,
@@ -239,6 +249,9 @@ func TestSaveAndReload(t *testing.T) {
 
 	if loaded.Database.Type != original.Database.Type {
 		t.Errorf("round-trip database type: expected %q, got %q", original.Database.Type, loaded.Database.Type)
+	}
+	if loaded.Database.DefaultURL != original.Database.DefaultURL {
+		t.Errorf("round-trip default_url: expected %q, got %q", original.Database.DefaultURL, loaded.Database.DefaultURL)
 	}
 	if loaded.Migration.Directory != original.Migration.Directory {
 		t.Errorf("round-trip migration directory: expected %q, got %q", original.Migration.Directory, loaded.Migration.Directory)
@@ -300,6 +313,76 @@ func TestLoadLegacyConfigFallback(t *testing.T) {
 
 	if cfg.Database.Type != "sqlite" {
 		t.Errorf("expected legacy fallback to load database type 'sqlite', got %q", cfg.Database.Type)
+	}
+}
+
+func TestLoadDefaultURLFromFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `database:
+  type: postgresql
+  default_url: "host=dbhost port=5432 dbname=myapp user=app sslmode=disable"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	expected := "host=dbhost port=5432 dbname=myapp user=app sslmode=disable"
+	if cfg.Database.DefaultURL != expected {
+		t.Errorf("expected default_url %q, got %q", expected, cfg.Database.DefaultURL)
+	}
+}
+
+func TestLoadDefaultURLEmptyByDefault(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+
+	// Config without default_url should leave it empty
+	content := `database:
+  type: postgresql
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.Database.DefaultURL != "" {
+		t.Errorf("expected default_url to be empty when not set, got %q", cfg.Database.DefaultURL)
+	}
+}
+
+func TestLoadDefaultURLEnvOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+
+	content := `database:
+  type: postgresql
+  default_url: "host=filehost dbname=filedb"
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	// Env var should override the file value
+	t.Setenv("MORPHIC_DATABASE_DEFAULT_URL", "host=envhost dbname=envdb")
+
+	cfg, err := Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if cfg.Database.DefaultURL != "host=envhost dbname=envdb" {
+		t.Errorf("expected env override for default_url, got %q", cfg.Database.DefaultURL)
 	}
 }
 

@@ -47,7 +47,8 @@ type Config struct {
 
 // DatabaseConfig contains database-related settings
 type DatabaseConfig struct {
-	Type string `yaml:"type" mapstructure:"type"` // postgresql, mysql, sqlserver, sqlite
+	Type       string `yaml:"type" mapstructure:"type"`              // postgresql, mysql, sqlserver, sqlite
+	DefaultURL string `yaml:"default_url" mapstructure:"default_url"` // Fallback database URL when DATABASE_URL env var is not set
 }
 
 // MigrationConfig contains migration-related settings
@@ -176,6 +177,7 @@ func (c *Config) Save(path string) error {
 // setDefaults sets default values in viper
 func setDefaults(v *viper.Viper, cfg *Config) {
 	v.SetDefault("database.type", cfg.Database.Type)
+	v.SetDefault("database.default_url", cfg.Database.DefaultURL)
 	v.SetDefault("migration.directory", cfg.Migration.Directory)
 	v.SetDefault("output.verbose", cfg.Output.Verbose)
 	v.SetDefault("output.color_enabled", cfg.Output.ColorEnabled)

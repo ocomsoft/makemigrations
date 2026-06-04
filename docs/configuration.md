@@ -6,7 +6,7 @@ This guide covers all configuration options for morphic, including config files,
 
 Configuration is loaded in the following priority order (highest to lowest):
 
-1. **Command line flags** (e.g., `--silent`, `--verbose`)
+1. **Command line flags** (e.g., `--verbose`)
 2. **Environment variables** (prefixed with `MORPHIC_`)
 3. **Configuration file** (`migrations/morphic.config.yaml`)
 4. **Default values**
@@ -24,7 +24,7 @@ migrations/morphic.config.yaml
 You can specify a custom config file location:
 
 ```bash
-morphic --config /path/to/custom-config.yaml morphic
+morphic --config /path/to/custom-config.yaml makemigrations
 ```
 
 ### Complete Configuration Example
@@ -41,6 +41,7 @@ morphic --config /path/to/custom-config.yaml morphic
 # Database connection and behavior settings
 database:
   type: postgresql                    # postgresql, mysql, sqlserver, sqlite
+  default_url: ""                     # Fallback database URL when DATABASE_URL env var is not set
 
 # Migration generation and execution settings
 migration:
@@ -56,11 +57,12 @@ output:
 
 ### Database Section
 
-Controls database SQL generation behavior.
+Controls database SQL generation behavior and connection defaults.
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `type` | string | `postgresql` | Target database type |
+| `default_url` | string | `""` | Fallback database URL when `DATABASE_URL` env var is not set |
 
 **Supported Database Types:**
 - `postgresql` - PostgreSQL 9.6+
@@ -68,9 +70,21 @@ Controls database SQL generation behavior.
 - `sqlserver` - SQL Server 2016+
 - `sqlite` - SQLite 3.8+
 
-**Environment Variable Example:**
+**Database URL Precedence:**
+
+When connecting to a database (e.g., `morphic migrate`, `morphic db-to-schema`, `morphic dump-data`), the URL is resolved in this order:
+
+1. Command-line flags (`--host`, `--port`, `--database`, etc.) or `--dsn`
+2. `DATABASE_URL` environment variable
+3. `database.default_url` from config file
+4. Built from individual flag defaults (localhost, default port, etc.)
+
+This allows you to set a project-level database URL in config while still overriding it per-environment via the `DATABASE_URL` env var.
+
+**Environment Variable Examples:**
 ```bash
 export MORPHIC_DATABASE_TYPE=mysql
+export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 ```
 
 ### Migration Section
@@ -103,37 +117,6 @@ export MORPHIC_OUTPUT_COLOR_ENABLED=false
 
 ## Environment Variables
 
-### Database Connection Variables
-
-These variables configure database connections for `goose` commands:
-
-```bash
-# PostgreSQL
-export MORPHIC_DB_HOST=localhost
-export MORPHIC_DB_PORT=5432
-export MORPHIC_DB_USER=postgres
-export MORPHIC_DB_PASSWORD=password
-export MORPHIC_DB_NAME=myapp
-export MORPHIC_DB_SSLMODE=disable
-
-# MySQL
-export MORPHIC_DB_HOST=localhost
-export MORPHIC_DB_PORT=3306
-export MORPHIC_DB_USER=root
-export MORPHIC_DB_PASSWORD=password
-export MORPHIC_DB_NAME=myapp
-
-# SQLite
-export MORPHIC_DB_PATH=./database.db
-
-# SQL Server
-export MORPHIC_DB_HOST=localhost
-export MORPHIC_DB_PORT=1433
-export MORPHIC_DB_USER=sa
-export MORPHIC_DB_PASSWORD=password
-export MORPHIC_DB_NAME=myapp
-```
-
 ### Configuration Override Variables
 
 All config file settings can be overridden with environment variables:
@@ -141,10 +124,22 @@ All config file settings can be overridden with environment variables:
 ```bash
 # Format: MORPHIC_SECTION_SETTING
 export MORPHIC_DATABASE_TYPE=mysql
+export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 export MORPHIC_MIGRATION_DIRECTORY=db/migrations
 export MORPHIC_OUTPUT_VERBOSE=true
 export MORPHIC_OUTPUT_COLOR_ENABLED=false
 ```
+
+### Database Connection Variables
+
+The `DATABASE_URL` environment variable is used by `morphic migrate`, `morphic db-to-schema`, `morphic dump-data`, and `morphic db-diff` to connect to the database:
+
+```bash
+# PostgreSQL
+export DATABASE_URL="host=localhost port=5432 dbname=myapp user=postgres sslmode=disable"
+```
+
+If `DATABASE_URL` is not set, morphic falls back to `database.default_url` from the config file.
 
 ## Command Line Flags
 
@@ -182,6 +177,7 @@ Available on migration commands:
 ```yaml
 database:
   type: postgresql
+  default_url: "host=localhost port=5432 dbname=myapp_dev user=dev sslmode=disable"
 
 output:
   verbose: true
@@ -199,10 +195,10 @@ output:
 **Usage in CI:**
 ```bash
 # Check if migrations are needed (exits with code 1 if true)
-morphic generate --check
+morphic makemigrations --check
 
 # Generate migrations in CI
-morphic generate --name "automated_$(date +%Y%m%d)"
+morphic makemigrations --name "automated_$(date +%Y%m%d)"
 ```
 
 ## Validation and Debugging
@@ -211,17 +207,17 @@ morphic generate --name "automated_$(date +%Y%m%d)"
 
 ```bash
 # Show current configuration (including overrides)
-morphic --config migrations/morphic.config.yaml --verbose morphic --dry-run
+morphic --config migrations/morphic.config.yaml --verbose makemigrations --dry-run
 
 # Test environment variable overrides
-MORPHIC_OUTPUT_VERBOSE=true morphic generate --dry-run
+MORPHIC_OUTPUT_VERBOSE=true morphic makemigrations --dry-run
 ```
 
 ### Debug Configuration Loading
 
 ```bash
 # Enable verbose output to see config loading
-morphic --verbose morphic --dry-run
+morphic --verbose makemigrations --dry-run
 
 # Check environment variables
 env | grep MORPHIC_
@@ -251,11 +247,10 @@ env | grep MORPHIC_
 3. **Database connection issues:**
    ```bash
    # Test connection variables
-   echo "Host: $MORPHIC_DB_HOST"
-   echo "User: $MORPHIC_DB_USER"
+   echo "DATABASE_URL: $DATABASE_URL"
    
-   # Test with goose status
-   morphic goose status
+   # Test with migrate status
+   morphic migrate status
    ```
 
 ## Security Considerations
@@ -265,19 +260,20 @@ env | grep MORPHIC_
 **Never commit sensitive data to config files:**
 
 ```yaml
-# ❌ DON'T DO THIS
+# DON'T DO THIS
 database:
-  password: my-secret-password      # Don't commit passwords
+  default_url: "host=prod port=5432 dbname=myapp user=admin password=secret"
 
-# ✅ DO THIS  
+# DO THIS - use environment variables for secrets
 database:
-  type: postgresql                  # Use environment variables for secrets
+  type: postgresql
+  default_url: ""                   # Set DATABASE_URL env var instead
 ```
 
 **Use environment variables for secrets:**
 ```bash
-export MORPHIC_DB_PASSWORD=$(vault kv get -field=password secret/db)
-export MORPHIC_DB_PASSWORD=$(cat /run/secrets/db_password)
+export DATABASE_URL=$(vault kv get -field=url secret/db)
+export DATABASE_URL=$(cat /run/secrets/db_url)
 ```
 
 ### Access Control
@@ -295,14 +291,17 @@ output:
   verbose: true                     # Log all operations
 ```
 
-## Migration to Environment Variables
+## Legacy Configuration
 
-### Converting Config File to Environment Variables
+Morphic supports backward compatibility with the legacy `makemigrations.config.yaml` filename. If no `morphic.config.yaml` is found, the loader will fall back to `makemigrations.config.yaml`. Environment variables with the `MAKEMIGRATIONS_` prefix are no longer supported; use `MORPHIC_` instead.
+
+## Converting Config File to Environment Variables
 
 **From config file:**
 ```yaml
 database:
   type: mysql
+  default_url: "host=localhost port=3306 dbname=myapp user=root"
 migration:
   directory: db/migrations
 output:
@@ -312,6 +311,7 @@ output:
 **To environment variables:**
 ```bash
 export MORPHIC_DATABASE_TYPE=mysql
+export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=3306 dbname=myapp user=root"
 export MORPHIC_MIGRATION_DIRECTORY=db/migrations
 export MORPHIC_OUTPUT_VERBOSE=false
 ```

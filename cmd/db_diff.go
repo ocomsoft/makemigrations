@@ -147,7 +147,7 @@ func runDBDiff(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to create database provider: %w", err)
 	}
 
-	connectionString := buildConnectionString(dbType)
+	connectionString := buildConnectionString(dbType, cfg.Database.DefaultURL)
 	dbSchema, err := provider.GetDatabaseSchema(connectionString)
 	if err != nil {
 		return fmt.Errorf("failed to get database schema: %w", err)

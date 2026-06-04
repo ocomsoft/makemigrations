@@ -72,9 +72,9 @@ jobs:
         CGO_ENABLED: 0
       run: |
         if [ "${{ matrix.goos }}" = "windows" ]; then
-          OUTPUT_NAME="makemigrations-${{ matrix.goos }}-${{ matrix.goarch }}.exe"
+          OUTPUT_NAME="morphic-${{ matrix.goos }}-${{ matrix.goarch }}.exe"
         else
-          OUTPUT_NAME="makemigrations-${{ matrix.goos }}-${{ matrix.goarch }}"
+          OUTPUT_NAME="morphic-${{ matrix.goos }}-${{ matrix.goarch }}"
         fi
 
         go build -ldflags="-s -w" -o "$OUTPUT_NAME" .

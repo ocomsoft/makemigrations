@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package symbols holds the yaegi symbol map for makemigrations migrations.
+// Package symbols holds the yaegi symbol map for morphic migrations.
 //
 // The map exposes the public API of github.com/ocomsoft/morphic/migrate
 // to interpreted migration files so they can be loaded without invoking the Go

@@ -41,7 +41,7 @@ This command:
 - If a .schema_snapshot.yaml exists, generates an initial 0001_initial.go migration
 - Prints instructions for faking the initial migration on an existing database
 
-Use this command when setting up makemigrations for the first time in a project.`,
+Use this command when setting up morphic for the first time in a project.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		return ExecuteGoMigrationInit(initDatabaseType, verbose)
 	},

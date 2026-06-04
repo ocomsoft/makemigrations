@@ -49,7 +49,7 @@ migration DAG and applying each operation's Mutate in order. The resulting
 schema state is output as YAML.
 
 This is useful for:
-  - Debugging why makemigrations keeps generating the same migration
+  - Debugging why morphic generate keeps generating the same migration
   - Verifying that the migration chain produces the expected schema
   - Comparing the reconstructed state against your schema.yaml files`,
 	RunE: runCurrentState,

@@ -79,13 +79,13 @@ VS Code, etc.).
 
 Examples:
   # Generate documentation to default file
-  makemigrations schema2diagram
+  morphic schema2diagram
 
   # Generate to specific output file
-  makemigrations schema2diagram --output=docs/database-schema.md
+  morphic schema2diagram --output=docs/database-schema.md
 
   # Generate with verbose processing information
-  makemigrations schema2diagram --verbose --output=schema-docs.md
+  morphic schema2diagram --verbose --output=schema-docs.md
 
 The generated Markdown includes live diagrams that automatically update when
 viewed in supported platforms, making it perfect for living documentation.`,

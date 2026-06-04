@@ -102,7 +102,7 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 		fmt.Printf(`
 Your database already has these tables applied. Mark this migration as applied without re-running SQL:
 
-  makemigrations migrate fake %s
+  morphic migrate fake %s
 
 `, initialMigName)
 	} else {
@@ -110,10 +110,10 @@ Your database already has these tables applied. Mark this migration as applied w
 Initialization complete. No existing schema found.
 
 To generate your first migration:
-  makemigrations makemigrations --name "initial"
+  morphic generate --name "initial"
 
 Then run:
-  makemigrations migrate up
+  morphic migrate up
 
 Migrations are interpreted in-process — no Go toolchain required at runtime.
 The generated %s/main.go and %s/go.mod remain available so you can still

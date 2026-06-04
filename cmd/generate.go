@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package cmd contains all CLI commands for makemigrations.
+// Package cmd contains all CLI commands for morphic.
 package cmd
 
 import (
@@ -59,7 +59,7 @@ var (
 // reconstructed state from existing Go migration files and generates a new
 // migration .go file for any changes detected.
 var goMigrationsCmd = &cobra.Command{
-	Use:   "makemigrations",
+	Use:   "generate",
 	Short: "Generate Go migration files from YAML schema changes",
 	Long: `Compares the current YAML schema against the reconstructed state from existing
 Go migration files and generates a new migration .go file for any changes detected.
@@ -190,7 +190,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 		for i, leaf := range dagOut.Leaves {
 			fmt.Printf("  Branch %d: %s\n", i+1, leaf)
 		}
-		fmt.Println("Run 'makemigrations --merge' to generate a merge migration.")
+		fmt.Println("Run 'morphic generate --merge' to generate a merge migration.")
 	}
 
 	if !diff.HasChanges {

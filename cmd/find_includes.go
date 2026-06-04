@@ -75,9 +75,9 @@ Use --interactive to review and select which schemas to include.
 The command preserves existing includes and only adds newly discovered ones.
 
 Examples:
-  makemigrations find_includes                    # Add all discovered schemas
-  makemigrations find_includes --interactive      # Review before adding
-  makemigrations find_includes --schema custom.yaml  # Use different schema file`,
+  morphic find_includes                    # Add all discovered schemas
+  morphic find_includes --interactive      # Review before adding
+  morphic find_includes --schema custom.yaml  # Use different schema file`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runFindIncludes(cmd, args)
 	},

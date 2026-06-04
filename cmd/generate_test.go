@@ -35,7 +35,7 @@ import (
 
 // TestTypeMappingsSurvivedMergeAndDiffDetection is a regression test for the
 // bug where TypeMappings in a schema.yaml were silently dropped by MergeSchemas,
-// causing makemigrations to report "No changes detected" even when type_mappings
+// causing morphic generate to report "No changes detected" even when type_mappings
 // were present (e.g. float → DOUBLE PRECISION in air_radiators).
 //
 // The test verifies the full pipeline:

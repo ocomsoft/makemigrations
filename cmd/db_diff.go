@@ -73,21 +73,21 @@ YAML file.
 
 Database Connection:
   Use individual flags (--host, --port, --database, --username, --password,
-  --sslmode) or rely on the config file (migrations/makemigrations.config.yaml).
+  --sslmode) or rely on the config file (migrations/morphic.config.yaml).
   Command-line flags take precedence over config file settings.
 
 Examples:
   # Compare using connection flags (text output)
-  makemigrations db-diff --host=localhost --port=5432 --database=myapp --username=user
+  morphic db-diff --host=localhost --port=5432 --database=myapp --username=user
 
   # Compare with JSON output
-  makemigrations db-diff --host=localhost --database=myapp --format=json
+  morphic db-diff --host=localhost --database=myapp --format=json
 
   # Compare using config file settings
-  makemigrations db-diff --config=migrations/makemigrations.config.yaml
+  morphic db-diff --config=migrations/morphic.config.yaml
 
   # Compare with verbose output
-  makemigrations db-diff --verbose --host=localhost --database=myapp`,
+  morphic db-diff --verbose --host=localhost --database=myapp`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runDBDiff(cmd)
 	},
@@ -187,7 +187,7 @@ func runDBDiffWithSchemas(w io.Writer, dagSchema, dbSchema *yamlpkg.Schema, form
 }
 
 // sqlTypeMapping maps SQL-native types (lowercase) returned by database
-// introspection to the canonical YAML schema types used by makemigrations.
+// introspection to the canonical YAML schema types used by morphic.
 var sqlTypeMapping = map[string]string{
 	"character varying":           "varchar",
 	"character":                   "varchar",

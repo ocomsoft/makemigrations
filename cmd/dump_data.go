@@ -48,7 +48,7 @@ var (
 	dumpDataWhere       []string
 )
 
-// dumpDataCmd is the "makemigrations dump-data" subcommand. It connects to a
+// dumpDataCmd is the "morphic dump-data" subcommand. It connects to a
 // live database, fetches all rows from the specified tables, and generates a
 // Go migration file containing UpsertData operations for each table.
 var dumpDataCmd = &cobra.Command{
@@ -66,25 +66,25 @@ the migration chain correctly.
 
 Examples:
   # Dump a single table
-  makemigrations dump-data countries
+  morphic dump-data countries
 
   # Dump multiple tables with a custom name
-  makemigrations dump-data countries currencies --name seed_reference_data
+  morphic dump-data countries currencies --name seed_reference_data
 
   # Override conflict keys for tables without migrations
-  makemigrations dump-data legacy_config --conflict-key code
+  morphic dump-data legacy_config --conflict-key code
 
   # Preview without writing
-  makemigrations dump-data countries --dry-run
+  morphic dump-data countries --dry-run
 
   # Use a full DSN instead of individual flags
-  makemigrations dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+  morphic dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 
   # Filter rows with a WHERE clause
-  makemigrations dump-data users --where "users:status='active'"
+  morphic dump-data users --where "users:status='active'"
 
   # Apply the same filter to all tables
-  makemigrations dump-data countries currencies --where "active = 1"`,
+  morphic dump-data countries currencies --where "active = 1"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runDumpData,
 }
@@ -316,7 +316,7 @@ func buildDumpDataDSN(dbType string) string {
 			return database
 		}
 
-		return "makemigrations.db"
+		return "morphic.db"
 	default:
 		return buildConnectionString(types.DatabasePostgreSQL)
 	}

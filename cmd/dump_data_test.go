@@ -72,7 +72,7 @@ func createTestSQLiteDB(t *testing.T, dbPath, setupSQL string) {
 	}
 }
 
-// writeTestConfig writes a minimal makemigrations config YAML to the given
+// writeTestConfig writes a minimal morphic config YAML to the given
 // path with the specified migrations directory.
 func writeTestConfig(t *testing.T, cfgPath, migrationsDir string) {
 	t.Helper()

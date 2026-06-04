@@ -56,7 +56,7 @@ var db2schemaCmd = &cobra.Command{
 	Aliases: []string{"db2schema"},
 	Short: "Extract database schema to YAML schema file",
 	Long: `Extract database schema information from a PostgreSQL database and generate
-a YAML schema file compatible with makemigrations.
+a YAML schema file compatible with morphic.
 
 This command connects to a PostgreSQL database, reads the INFORMATION_SCHEMA
 tables, and extracts complete metadata including:
@@ -66,12 +66,12 @@ tables, and extracts complete metadata including:
 - Primary key constraints
 - Foreign key relationships with ON DELETE actions
 - Indexes (including unique indexes)
-- Default values (converted to makemigrations YAML format)
+- Default values (converted to morphic YAML format)
 
 Database Connection:
 The command supports two ways to specify database connection:
 1. Use individual flags (--host, --port, --database, --username, --password, --sslmode)
-2. Use existing config file settings (default: migrations/makemigrations.config.yaml)
+2. Use existing config file settings (default: migrations/morphic.config.yaml)
 
 Command-line flags take precedence over config file settings.
 
@@ -81,23 +81,23 @@ Use the --output flag to specify a different file path.
 
 Examples:
   # Extract schema using individual connection flags
-  makemigrations db2schema --host=localhost --port=5432 --database=myapp --username=user --password=pass
+  morphic db2schema --host=localhost --port=5432 --database=myapp --username=user --password=pass
 
   # Extract schema using config file settings
-  makemigrations db2schema --config=migrations/makemigrations.config.yaml
+  morphic db2schema --config=migrations/morphic.config.yaml
 
   # Extract schema to specific output file
-  makemigrations db2schema --output=extracted_schema.yaml --host=localhost --database=myapp
+  morphic db2schema --output=extracted_schema.yaml --host=localhost --database=myapp
 
   # Extract with verbose output
-  makemigrations db2schema --verbose --host=localhost --database=myapp
+  morphic db2schema --verbose --host=localhost --database=myapp
 
 Supported Databases:
 - PostgreSQL (full support)
 - Other databases: placeholder implementations (will be added in future versions)
 
-The generated YAML file follows the makemigrations schema format and can be used
-directly with other makemigrations commands.`,
+The generated YAML file follows the morphic schema format and can be used
+directly with other morphic commands.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runDB2Schema(cmd, args)
 	},
@@ -199,7 +199,7 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nYou can now use this schema file with other makemigrations commands.\n")
+	fmt.Fprintf(cmd.OutOrStdout(), "\nYou can now use this schema file with other morphic commands.\n")
 
 	return nil
 }

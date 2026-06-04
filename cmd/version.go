@@ -41,7 +41,7 @@ var (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
-	Long: `Display version information for makemigrations.
+	Long: `Display version information for morphic.
 
 This command shows the current version, build date, git commit, and platform information.
 
@@ -50,9 +50,9 @@ Output formats:
 - json: JSON format for scripting
 
 Examples:
-  makemigrations version
-  makemigrations version --format json
-  makemigrations version --build-info`,
+  morphic version
+  morphic version --format json
+  morphic version --build-info`,
 	RunE: runVersion,
 }
 

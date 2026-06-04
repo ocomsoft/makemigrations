@@ -44,13 +44,13 @@ migrate App with the provided arguments. No Go toolchain is invoked — the
 migration .go files are interpreted in-process. All subcommands the App
 supports are available:
 
-  makemigrations migrate up
-  makemigrations migrate up --to 0005_add_index
-  makemigrations migrate down --steps 2
-  makemigrations migrate status
-  makemigrations migrate showsql
-  makemigrations migrate fake 0001_initial
-  makemigrations migrate dag`,
+  morphic migrate up
+  morphic migrate up --to 0005_add_index
+  morphic migrate down --steps 2
+  morphic migrate status
+  morphic migrate showsql
+  morphic migrate fake 0001_initial
+  morphic migrate dag`,
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
 	RunE: func(_ *cobra.Command, args []string) error {

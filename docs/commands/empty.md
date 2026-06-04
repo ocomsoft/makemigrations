@@ -2,11 +2,11 @@
 
 The `empty` command creates a blank migration `.go` file with no operations. Use this to write custom migrations that are not generated automatically from schema changes — for example, data backfills, custom SQL triggers, or any operation the diff engine cannot detect.
 
-This is the Go equivalent of Django's `makemigrations --empty` flag.
+This is the Go equivalent of Django's `morphic --empty` flag.
 
 ## Overview
 
-Running `makemigrations empty` generates a migration file that:
+Running `morphic empty` generates a migration file that:
 
 - Has an empty `Operations` slice with a `TODO` comment as a placeholder
 - Automatically depends on the current DAG leaves (the most recently created migrations), so it slots into the chain correctly
@@ -15,7 +15,7 @@ Running `makemigrations empty` generates a migration file that:
 ## Usage
 
 ```
-makemigrations empty [flags]
+morphic empty [flags]
 ```
 
 ## Flags
@@ -30,7 +30,7 @@ makemigrations empty [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/makemigrations.config.yaml` | Path to the configuration file |
+| `--config` | string | `migrations/morphic.config.yaml` | Path to the configuration file |
 
 ---
 
@@ -41,7 +41,7 @@ The generated migration file contains an empty `Operations` slice with a placeho
 ```go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -64,7 +64,7 @@ Edit the file and replace the TODO comment with your custom operations.
 ### Create a blank migration with a custom name
 
 ```bash
-makemigrations empty --name add_custom_triggers
+morphic empty --name add_custom_triggers
 
 # Output:
 # Created migrations/0003_add_custom_triggers.go
@@ -74,13 +74,13 @@ makemigrations empty --name add_custom_triggers
 ### Preview without writing
 
 ```bash
-makemigrations empty --name backfill_users --dry-run
+morphic empty --name backfill_users --dry-run
 ```
 
 ### Verbose output (shows dependencies)
 
 ```bash
-makemigrations empty --name seed_data --verbose
+morphic empty --name seed_data --verbose
 
 # Output:
 # Generating blank migration: 0004_seed_data
@@ -159,19 +159,19 @@ See the [migrate operations reference](../migrations.md) for the full list of av
 ## Workflow
 
 ```
-makemigrations empty --name my_custom_migration
+morphic empty --name my_custom_migration
 ↓
 Edit migrations/NNNN_my_custom_migration.go
   → Add operations
 ↓
-makemigrations migrate up
+morphic migrate up
 ```
 
 ---
 
 ## See Also
 
-- [makemigrations command](./makemigrations.md) — Generate migrations from YAML schema changes
+- [morphic command](./morphic.md) — Generate migrations from YAML schema changes
 - [migrate command](./migrate.md) — Run `up`, `down`, `status`, `fake` etc.
 - [Migrations Guide](../migrations.md) — Full guide to the Go migration framework
 - [init command](./init.md) — Initialise the migrations directory

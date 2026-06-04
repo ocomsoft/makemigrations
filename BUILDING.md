@@ -1,6 +1,6 @@
-# Building makemigrations
+# Building morphic
 
-This document describes how to build, test, and release makemigrations.
+This document describes how to build, test, and release morphic.
 
 ## Prerequisites
 
@@ -70,19 +70,19 @@ make dev  # format, vet, lint, test, build
 
 ### Single Platform
 ```bash
-go build -ldflags="-s -w" -o makemigrations .
+go build -ldflags="-s -w" -o morphic .
 ```
 
 ### Cross-Platform
 ```bash
 # Linux
-GOOS=linux GOARCH=amd64 go build -o makemigrations-linux-amd64 .
+GOOS=linux GOARCH=amd64 go build -o morphic-linux-amd64 .
 
 # macOS
-GOOS=darwin GOARCH=amd64 go build -o makemigrations-darwin-amd64 .
+GOOS=darwin GOARCH=amd64 go build -o morphic-darwin-amd64 .
 
 # Windows
-GOOS=windows GOARCH=amd64 go build -o makemigrations-windows-amd64.exe .
+GOOS=windows GOARCH=amd64 go build -o morphic-windows-amd64.exe .
 ```
 
 ### With Version Information
@@ -93,10 +93,10 @@ GIT_COMMIT=$(git rev-parse --short HEAD)
 
 go build \
   -ldflags="-s -w \
-    -X github.com/ocomsoft/makemigrations/internal/version.Version=$VERSION \
-    -X github.com/ocomsoft/makemigrations/internal/version.BuildDate=$BUILD_DATE \
-    -X github.com/ocomsoft/makemigrations/internal/version.GitCommit=$GIT_COMMIT" \
-  -o makemigrations .
+    -X github.com/ocomsoft/morphic/internal/version.Version=$VERSION \
+    -X github.com/ocomsoft/morphic/internal/version.BuildDate=$BUILD_DATE \
+    -X github.com/ocomsoft/morphic/internal/version.GitCommit=$GIT_COMMIT" \
+  -o morphic .
 ```
 
 ## Testing
@@ -232,12 +232,12 @@ The build system supports the following platforms:
 
 | OS | Architecture | Binary Name |
 |----|--------------|-------------|
-| Linux | amd64 | `makemigrations-linux-amd64` |
-| Linux | arm64 | `makemigrations-linux-arm64` |
-| macOS | amd64 (Intel) | `makemigrations-darwin-amd64` |
-| macOS | arm64 (Apple Silicon) | `makemigrations-darwin-arm64` |
-| Windows | amd64 | `makemigrations-windows-amd64.exe` |
-| Windows | arm64 | `makemigrations-windows-arm64.exe` |
+| Linux | amd64 | `morphic-linux-amd64` |
+| Linux | arm64 | `morphic-linux-arm64` |
+| macOS | amd64 (Intel) | `morphic-darwin-amd64` |
+| macOS | arm64 (Apple Silicon) | `morphic-darwin-arm64` |
+| Windows | amd64 | `morphic-windows-amd64.exe` |
+| Windows | arm64 | `morphic-windows-arm64.exe` |
 
 ## GitHub Actions Workflows
 
@@ -272,9 +272,9 @@ Version information is embedded at build time using Go's ldflags:
 
 Check version:
 ```bash
-./makemigrations version
-./makemigrations version --build-info
-./makemigrations version --format json
+./morphic version
+./morphic version --build-info
+./morphic version --format json
 ```
 
 ## Troubleshooting

@@ -13,7 +13,7 @@ Type "clear"
 Enter
 Sleep 1s
 
-Type "# makemigrations - Schema Change Scenarios"
+Type "# morphic - Schema Change Scenarios"
 Enter
 Sleep 2s
 Type "clear"
@@ -28,7 +28,7 @@ Type "go mod init demo"
 Enter
 Sleep 1s
 
-Type "../makemigrations init"
+Type "../morphic init"
 Enter
 Sleep 2s
 
@@ -85,7 +85,7 @@ Sleep 2s
 
 Type "# Generate initial migration"
 Enter
-Type "../makemigrations makemigrations --name \"create_users\""
+Type "../morphic generate --name \"create_users\""
 Enter
 Sleep 2s
 
@@ -103,7 +103,7 @@ Type "EOF"
 Enter
 Sleep 1s
 
-Type "../makemigrations makemigrations --name \"add_created_at\""
+Type "../morphic generate --name \"add_created_at\""
 Enter
 Sleep 2s
 
@@ -134,7 +134,7 @@ Type "EOF"
 Enter
 Sleep 1s
 
-Type "../makemigrations makemigrations --name \"add_email_index\""
+Type "../morphic generate --name \"add_email_index\""
 Enter
 Sleep 2s
 
@@ -196,7 +196,7 @@ Type "EOF"
 Enter
 Sleep 2s
 
-Type "../makemigrations makemigrations --name \"add_posts_table\""
+Type "../morphic generate --name \"add_posts_table\""
 Enter
 Sleep 2s
 
@@ -271,7 +271,7 @@ Type "EOF"
 Enter
 Sleep 2s
 
-Type "../makemigrations makemigrations --name \"add_tags_m2m\""
+Type "../morphic generate --name \"add_tags_m2m\""
 Enter
 Sleep 2s
 
@@ -294,7 +294,7 @@ Type "# Simulate removing a field (destructive operation)"
 Enter
 Type "# In real usage, this would prompt for confirmation"
 Enter
-Type "../makemigrations makemigrations --dry-run --silent --name \"example_destructive\""
+Type "../morphic generate --dry-run --silent --name \"example_destructive\""
 Enter
 Sleep 3s
 

@@ -4,7 +4,7 @@
 
 Replace the current SQL-file generation pipeline with a Django-style migration framework that generates **compiled Go migration files** with a dependency graph (DAG), typed operations, merge migrations, and state reconstruction. The compiled migration binary becomes the single source of truth — eliminating snapshot caches, comment headers, and any secondary state tracking.
 
-This elevates `makemigrations` from "SQL file generator" to the first Go migration framework with full Django parity: dependency DAGs, branch detection, merge migrations, squashable operations, and compiled standalone binaries.
+This elevates `morphic` from "SQL file generator" to the first Go migration framework with full Django parity: dependency DAGs, branch detection, merge migrations, squashable operations, and compiled standalone binaries.
 
 ## Motivation
 
@@ -44,7 +44,7 @@ Atlas is the closest competitor but fundamentally different: it treats branches 
 The `migrations/` directory is its own Go module. Each migration is a `.go` file containing typed operations that self-register via `init()`. Compiling the directory produces a standalone binary that can report its own DAG, reconstruct schema state, and execute migrations — with zero external dependencies.
 
 ```
-makemigrations makemigrations --name "add_phone"
+morphic generate --name "add_phone"
 
 Internally:
   1. go build ./migrations -o /tmp/migrate
@@ -84,23 +84,23 @@ module myproject/migrations
 go 1.24
 
 require (
-    github.com/ocomsoft/makemigrations/migrate v0.3.0
+    github.com/ocomsoft/morphic/migrate v0.3.0
 )
 ```
 
 ### Two Deployment Artifacts
 
-**`github.com/ocomsoft/makemigrations`** — the CLI tool (developer dependency only):
+**`github.com/ocomsoft/morphic`** — the CLI tool (developer dependency only):
 - YAML parsing, schema diffing, code generation
 - All existing `internal/` packages, refactored
 - Only needed to *generate* new migration files
 
-**`github.com/ocomsoft/makemigrations/migrate`** — the runtime library (production dependency):
+**`github.com/ocomsoft/morphic/migrate`** — the runtime library (production dependency):
 - Types, operations, registry, graph, runner, recorder
 - Small, stable public API that generated code imports
 - Needed to *compile and run* migrations
 
-In CI/CD, you do not need the `makemigrations` tool. You just `go build ./migrations && ./migrate up`.
+In CI/CD, you do not need the `morphic` tool. You just `go build ./migrations && ./migrate up`.
 
 ## Generated Migration Files
 
@@ -110,7 +110,7 @@ In CI/CD, you do not need the `makemigrations` tool. You just `go build ./migrat
 // migrations/0001_initial.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -153,7 +153,7 @@ func init() {
 // migrations/0002_add_user_phone.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -179,7 +179,7 @@ func init() {
 // migrations/0004_merge.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -196,7 +196,7 @@ func init() {
 // migrations/0005_backfill_slugs.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -220,19 +220,19 @@ package main
 
 import (
     "os"
-    m "github.com/ocomsoft/makemigrations/migrate"
+    m "github.com/ocomsoft/morphic/migrate"
 )
 
 func main() {
     app := m.NewApp(m.Config{
-        DatabaseType: m.EnvOr("MAKEMIGRATIONS_DATABASE_TYPE", "postgresql"),
+        DatabaseType: m.EnvOr("MORPHIC_DATABASE_TYPE", "postgresql"),
         DatabaseURL:  m.EnvOr("DATABASE_URL", ""),
-        DBHost:       m.EnvOr("MAKEMIGRATIONS_DB_HOST", "localhost"),
-        DBPort:       m.EnvOr("MAKEMIGRATIONS_DB_PORT", "5432"),
-        DBUser:       m.EnvOr("MAKEMIGRATIONS_DB_USER", "postgres"),
-        DBPassword:   m.EnvOr("MAKEMIGRATIONS_DB_PASSWORD", ""),
-        DBName:       m.EnvOr("MAKEMIGRATIONS_DB_NAME", ""),
-        DBSSLMode:    m.EnvOr("MAKEMIGRATIONS_DB_SSLMODE", "disable"),
+        DBHost:       m.EnvOr("MORPHIC_DB_HOST", "localhost"),
+        DBPort:       m.EnvOr("MORPHIC_DB_PORT", "5432"),
+        DBUser:       m.EnvOr("MORPHIC_DB_USER", "postgres"),
+        DBPassword:   m.EnvOr("MORPHIC_DB_PASSWORD", ""),
+        DBName:       m.EnvOr("MORPHIC_DB_NAME", ""),
+        DBSSLMode:    m.EnvOr("MORPHIC_DB_SSLMODE", "disable"),
     })
 
     if err := app.Run(os.Args[1:]); err != nil {
@@ -243,7 +243,7 @@ func main() {
 
 ## The DAG Output
 
-The compiled binary's `dag` command is the mechanism by which the `makemigrations` CLI queries existing migration state. It produces both machine-parseable JSON and human-readable ASCII.
+The compiled binary's `dag` command is the mechanism by which the `morphic` CLI queries existing migration state. It produces both machine-parseable JSON and human-readable ASCII.
 
 ### JSON Format (`./migrate dag --format json`)
 
@@ -289,7 +289,7 @@ The compiled binary's `dag` command is the mechanism by which the `makemigration
 }
 ```
 
-The `schema_state` is the full reconstructed state after replaying all operations through the graph. This is what `makemigrations` diffs against the current YAML schema.
+The `schema_state` is the full reconstructed state after replaying all operations through the graph. This is what `morphic` diffs against the current YAML schema.
 
 ### ASCII Format (`./migrate dag`)
 
@@ -313,12 +313,12 @@ Migration Graph
 
 Roots:  0001_initial
 Leaves: 0003_feature_a, 0003_feature_b
-⚠ Branches detected — run makemigrations --merge
+⚠ Branches detected — run morphic --merge
 ```
 
 ## The `migrate` Library Package
 
-Public API shipped as `github.com/ocomsoft/makemigrations/migrate`.
+Public API shipped as `github.com/ocomsoft/morphic/migrate`.
 
 ### Package Layout
 
@@ -331,7 +331,7 @@ migrate/
 ├── graph.go         # DAG, topological sort, branch detection, state reconstruction
 ├── state.go         # In-memory SchemaState for operation replay
 ├── runner.go        # Executes migrations against a database
-├── recorder.go      # Manages makemigrations_history table
+├── recorder.go      # Manages morphic_history table
 └── providers.go     # Re-exports existing provider layer
 ```
 
@@ -509,7 +509,7 @@ func (r *Runner) Migrate() error {
 Replaces Goose's `goose_db_version`:
 
 ```sql
-CREATE TABLE IF NOT EXISTS makemigrations_history (
+CREATE TABLE IF NOT EXISTS morphic_history (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -518,7 +518,7 @@ CREATE TABLE IF NOT EXISTS makemigrations_history (
 
 Stores full migration names (not version numbers), supporting non-linear DAG execution.
 
-## The `makemigrations makemigrations` Flow
+## The `morphic generate` Flow
 
 ```go
 func runMakeMigrations(name string, dryRun, check bool) error {
@@ -582,23 +582,23 @@ Optional optimisation: cache the binary and only rebuild when a `.go` file has c
 
 ## Command Line Interface
 
-### Generation Commands (require `makemigrations` CLI)
+### Generation Commands (require `morphic` CLI)
 
 ```bash
 # Generate migration from YAML schema changes
-makemigrations makemigrations --name "add_user_phone"
+morphic generate --name "add_user_phone"
 
 # Preview what would be generated
-makemigrations makemigrations --dry-run
+morphic generate --dry-run
 
 # Check for unmigrated changes (CI/CD)
-makemigrations makemigrations --check
+morphic generate --check
 
 # Detect branches and generate merge migration
-makemigrations makemigrations --merge
+morphic generate --merge
 
 # Initialize a new project with migrations/ directory
-makemigrations init
+morphic init
 ```
 
 ### Runtime Commands (compiled binary — no external tools needed)
@@ -696,13 +696,13 @@ Detect when multiple leaves exist (team members created migrations independently
 
 ### Phase 5: DAG Command + Binary Query (~300–400 LOC)
 
-Implement the `dag` subcommand with `--format json` and `--format ascii` output. ASCII renderer with tree-drawing characters. Wire the `makemigrations makemigrations` command to build the binary, query it, and parse the JSON output.
+Implement the `dag` subcommand with `--format json` and `--format ascii` output. ASCII renderer with tree-drawing characters. Wire the `morphic generate` command to build the binary, query it, and parse the JSON output.
 
-**Deliverable:** `migrate/app.go`, `migrate/dag_ascii.go`, updates to `cmd/makemigrations.go`
+**Deliverable:** `migrate/app.go`, `migrate/dag_ascii.go`, updates to `cmd/morphic.go`
 
 ### Phase 6: Migration Runner (~300–400 LOC)
 
-Execute migrations against a database. Manage the `makemigrations_history` table. Support `up`, `down`, `status`, and `showsql` commands. Delegate SQL generation to existing providers.
+Execute migrations against a database. Manage the `morphic_history` table. Support `up`, `down`, `status`, and `showsql` commands. Delegate SQL generation to existing providers.
 
 **Deliverable:** `migrate/runner.go`, `migrate/recorder.go`
 
@@ -721,7 +721,7 @@ Given a range of migrations, reconstruct the net operations and generate a singl
 vim schema/schema.yaml          # Add phone field to users
 
 # 2. Generate migration
-makemigrations makemigrations --name "add_phone"
+morphic generate --name "add_phone"
 # Created migrations/0002_add_user_phone.go
 
 # 3. Build and apply
@@ -734,17 +734,17 @@ cd migrations && go build -o migrate .
 
 ```bash
 # Developer A (feature-a branch):
-makemigrations makemigrations --name "feature_a"
+morphic generate --name "feature_a"
 # Created migrations/0003_feature_a.go (depends on 0002)
 git add . && git commit
 
 # Developer B (feature-b branch):
-makemigrations makemigrations --name "feature_b"
+morphic generate --name "feature_b"
 # Created migrations/0003_feature_b.go (depends on 0002)
 git add . && git commit
 
 # After merge to main:
-makemigrations makemigrations
+morphic generate
 # ⚠ Branches detected: 0003_feature_a, 0003_feature_b
 # Created migrations/0004_merge_feature_a_and_b.go
 # No additional schema changes detected.
@@ -762,7 +762,7 @@ cd migrations && go build -o migrate .
 ```yaml
 # .github/workflows/migrations.yml
 - name: Check for unmigrated changes
-  run: makemigrations makemigrations --check
+  run: morphic generate --check
 
 - name: Build migration binary
   run: cd migrations && go build -o migrate .
@@ -828,7 +828,7 @@ Previous designs considered snapshot caches (`.schema_state.yaml`) and comment h
 
 ### Why Custom Runner Over Goose
 
-Goose doesn't understand DAGs, merge migrations, or typed operations. Building a custom runner gives full control over execution order, state tracking, and the `makemigrations_history` table format. The runner itself is simple (~300-400 LOC) — the real complexity lives in the graph and operations, which are needed regardless.
+Goose doesn't understand DAGs, merge migrations, or typed operations. Building a custom runner gives full control over execution order, state tracking, and the `morphic_history` table format. The runner itself is simple (~300-400 LOC) — the real complexity lives in the graph and operations, which are needed regardless.
 
 ## Success Metrics
 

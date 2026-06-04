@@ -44,7 +44,7 @@ The skill guides Claude through these steps for every database change:
    └─ Add/modify/remove tables, fields, indexes, defaults, type mappings
 
 3. Generate migration code
-   └─ Run: morphic makemigrations --name "description"
+   └─ Run: morphic generate --name "description"
 
 4. Review and verify
    └─ Run: morphic migrate showsql
@@ -77,7 +77,7 @@ The skill provides Claude with inline quick-reference tables for:
 - **Indexes**: unique, method (BTREE, HASH, GIN, GIST, BRIN), partial indexes with `where`
 - **Defaults**: per-database default value definitions
 - **Type mappings**: per-database SQL type overrides
-- **All commands**: init, makemigrations, migrate (up/down/status/showsql/dag), empty, db2schema, struct2schema, dump-data (via `morphic` CLI)
+- **All commands**: init, morphic, migrate (up/down/status/showsql/dag), empty, db2schema, struct2schema, dump-data (via `morphic` CLI)
 
 ## Example Interaction
 
@@ -87,7 +87,7 @@ You: Add a profiles table with avatar_url and bio fields
 Claude (auto-triggers go-morphic skill):
 1. Checks for migrations/morphic.config.yaml ✓
 2. Edits schema/schema.yaml to add the profiles table
-3. Runs: morphic makemigrations --name "add_profiles"
+3. Runs: morphic generate --name "add_profiles"
 4. Reviews the generated 000N_add_profiles.go
 5. Runs: morphic migrate showsql to preview SQL
 ```

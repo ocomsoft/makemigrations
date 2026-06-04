@@ -1,14 +1,14 @@
 # init Command
 
-The `init` command initialises a new makemigrations project. By default it sets up the **Go migration framework** — type-safe migration `.go` files that the makemigrations CLI runs in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter. A legacy YAML-to-SQL workflow is available via the `--sql` flag.
+The `init` command initialises a new morphic project. By default it sets up the **Go migration framework** — type-safe migration `.go` files that the morphic CLI runs in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter. A legacy YAML-to-SQL workflow is available via the `--sql` flag.
 
 ## Overview
 
-Running `makemigrations init` bootstraps everything needed to start writing Go-based migrations:
+Running `morphic init` bootstraps everything needed to start writing Go-based migrations:
 
 - Creates the `migrations/` directory
-- Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/makemigrations/migrate`. This is what gives your IDE / `gopls` type-checking on the migration files; it is **not** consulted at runtime by `makemigrations migrate`.
-- Generates `migrations/main.go` — an **optional** entry point for compiling the migrations directory into a self-contained binary (`go build -o migrate .`). `makemigrations migrate` does not invoke this `main()`; the file exists purely as a fallback for users who want a standalone binary (e.g. for shipping in a release artifact, or running on a host without makemigrations installed).
+- Generates `migrations/go.mod` — a dedicated module that imports `github.com/ocomsoft/morphic/migrate`. This is what gives your IDE / `gopls` type-checking on the migration files; it is **not** consulted at runtime by `morphic migrate`.
+- Generates `migrations/main.go` — an **optional** entry point for compiling the migrations directory into a self-contained binary (`go build -o migrate .`). `morphic migrate` does not invoke this `main()`; the file exists purely as a fallback for users who want a standalone binary (e.g. for shipping in a release artifact, or running on a host without morphic installed).
 - If an existing `migrations/.schema_snapshot.yaml` is found, generates `migrations/0001_initial.go` with `CreateTable` operations for every table already defined in that snapshot, and prints instructions for fake-applying it
 
 If no snapshot is found the command creates an empty setup and prints instructions for generating the first migration.
@@ -16,7 +16,7 @@ If no snapshot is found the command creates an empty setup and prints instructio
 ## Usage
 
 ```
-makemigrations init [flags]
+morphic init [flags]
 ```
 
 ## Flags
@@ -31,7 +31,7 @@ makemigrations init [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/makemigrations.config.yaml` | Path to the configuration file |
+| `--config` | string | `migrations/morphic.config.yaml` | Path to the configuration file |
 
 ---
 
@@ -43,13 +43,13 @@ makemigrations init [flags]
 project/
 └── migrations/
     ├── go.mod          # Dedicated module: <project>/migrations  (used by IDE/gopls)
-    ├── main.go         # Optional standalone-binary entry point  (NOT used by `makemigrations migrate`)
+    ├── main.go         # Optional standalone-binary entry point  (NOT used by `morphic migrate`)
     └── 0001_initial.go # Only created when .schema_snapshot.yaml is found
 ```
 
 ### `migrations/main.go` (optional)
 
-`makemigrations migrate` interprets the `.go` files in this directory via yaegi and never invokes `main()`. The generated `main.go` exists so you can `go build` the directory into a self-contained binary if you want one. Its body reads database connection details from environment variables:
+`morphic migrate` interprets the `.go` files in this directory via yaegi and never invokes `main()`. The generated `main.go` exists so you can `go build` the directory into a self-contained binary if you want one. Its body reads database connection details from environment variables:
 
 ```go
 package main
@@ -58,7 +58,7 @@ import (
     "fmt"
     "os"
 
-    m "github.com/ocomsoft/makemigrations/migrate"
+    m "github.com/ocomsoft/morphic/migrate"
 )
 
 func main() {
@@ -83,7 +83,7 @@ module <your-project>/migrations
 go 1.25.7     ← matches the parent project's Go version
 
 require (
-    github.com/ocomsoft/makemigrations main
+    github.com/ocomsoft/morphic main
 )
 ```
 
@@ -97,7 +97,7 @@ When `migrations/.schema_snapshot.yaml` already exists at init time, `init` read
 package main
 
 import (
-    "github.com/ocomsoft/makemigrations/migrate"
+    "github.com/ocomsoft/morphic/migrate"
 )
 
 func init() {
@@ -135,7 +135,7 @@ func init() {
 
 ```bash
 # Initialise a new Go migration project (PostgreSQL default)
-makemigrations init
+morphic init
 
 # Output:
 # Created migrations/main.go
@@ -144,10 +144,10 @@ makemigrations init
 # Initialization complete. No existing schema found.
 #
 # To generate your first migration:
-#   makemigrations makemigrations --name "initial"
+#   morphic generate --name "initial"
 #
 # Then run:
-#   makemigrations migrate up
+#   morphic migrate up
 #
 # Migrations are interpreted in-process — no Go toolchain required at runtime.
 ```
@@ -156,10 +156,10 @@ Step-by-step after a fresh init:
 
 ```bash
 # 1. Generate your first migration
-makemigrations makemigrations --name "initial"
+morphic generate --name "initial"
 
 # 2. Apply migrations (yaegi loads the .go files in-process; no go build)
-makemigrations migrate up
+morphic migrate up
 ```
 
 ### Existing Project — Snapshot Found
@@ -167,7 +167,7 @@ makemigrations migrate up
 When a `migrations/.schema_snapshot.yaml` already exists (for example when migrating an existing project to the Go workflow):
 
 ```bash
-makemigrations init
+morphic init
 
 # Output:
 # Created migrations/0001_initial.go (from existing schema snapshot)
@@ -177,36 +177,36 @@ makemigrations init
 # Your database already has these tables applied.
 # Mark this migration as applied without re-running SQL:
 #
-#   makemigrations migrate fake 0001_initial
+#   morphic migrate fake 0001_initial
 ```
 
 Step-by-step after a snapshot-based init:
 
 ```bash
 # 1. Mark the initial migration as already applied (schema already in DB)
-makemigrations migrate fake 0001_initial
+morphic migrate fake 0001_initial
 
 # 2. Confirm status
-makemigrations migrate status
+morphic migrate status
 ```
 
 ### Initialise for a Different Database
 
 ```bash
 # MySQL
-makemigrations init --database mysql
+morphic init --database mysql
 
 # SQLite
-makemigrations init --database sqlite
+morphic init --database sqlite
 
 # SQL Server
-makemigrations init --database sqlserver
+morphic init --database sqlserver
 ```
 
 ### Verbose Output
 
 ```bash
-makemigrations init --verbose
+morphic init --verbose
 
 # Output includes per-file creation details, snapshot parsing steps,
 # and table counts when 0001_initial.go is generated.
@@ -218,8 +218,8 @@ makemigrations init --verbose
 
 | Scenario | Commands |
 |----------|----------|
-| Fresh project | `makemigrations makemigrations --name "initial"` → `makemigrations migrate up` |
-| Existing DB (snapshot found) | `makemigrations migrate fake 0001_initial` → `makemigrations migrate status` |
+| Fresh project | `morphic generate --name "initial"` → `morphic migrate up` |
+| Existing DB (snapshot found) | `morphic migrate fake 0001_initial` → `morphic migrate status` |
 
 ---
 
@@ -232,32 +232,32 @@ The `--sql` flag opts into the original YAML-to-SQL workflow. No Go files are ge
 ```
 project/
 └── migrations/
-    ├── makemigrations.config.yaml   # Tool configuration
+    ├── morphic.config.yaml   # Tool configuration
     └── .schema_snapshot.yaml        # Empty schema state file
 ```
 
 ### Usage
 
 ```bash
-makemigrations init --sql
-makemigrations init --sql --database mysql
+morphic init --sql
+morphic init --sql --database mysql
 ```
 
 ### Output
 
 ```
 Created directory: migrations/
-Generated: migrations/makemigrations.config.yaml
+Generated: migrations/morphic.config.yaml
 Generated: migrations/.schema_snapshot.yaml
 
 Next steps:
   1. Edit schema/schema.yaml to define your tables
-  2. Run: makemigrations sql-migrations
+  2. Run: morphic sql-migrations
 ```
 
 ### Generated Configuration File
 
-`migrations/makemigrations.config.yaml` contains database-appropriate defaults:
+`migrations/morphic.config.yaml` contains database-appropriate defaults:
 
 ```yaml
 database:
@@ -298,7 +298,7 @@ output:
 
 ```bash
 # After init --sql, define your schema then generate SQL migrations
-makemigrations sql-migrations
+morphic sql-migrations
 ```
 
 ---
@@ -308,36 +308,36 @@ makemigrations sql-migrations
 ### Directory Already Exists
 
 ```bash
-$ makemigrations init
+$ morphic init
 Error: migrations directory already exists
 
 # Remove it and retry, or supply --sql if you want to re-init the config only
 rm -rf migrations/
-makemigrations init
+morphic init
 ```
 
 ### Invalid Database Type
 
 ```bash
-$ makemigrations init --database oracle
+$ morphic init --database oracle
 Error: unsupported database type: oracle
 
 # Supported types:
-makemigrations init --database postgresql
-makemigrations init --database mysql
-makemigrations init --database sqlite
-makemigrations init --database sqlserver
+morphic init --database postgresql
+morphic init --database mysql
+morphic init --database sqlite
+morphic init --database sqlserver
 ```
 
 ### Permission Denied
 
 ```bash
-$ makemigrations init
+$ morphic init
 Error: permission denied creating directory: migrations/
 
 # Ensure the current directory is writable, then retry
 chmod 755 .
-makemigrations init
+morphic init
 ```
 
 ---
@@ -356,7 +356,7 @@ git commit -m "chore: initialise Go migration framework"
 
 ### Keep the Migrations Module Tidy (optional)
 
-`migrations/go.mod` is consulted by your IDE / `gopls`, not by `makemigrations migrate` (which uses yaegi and the symbol map shipped with the CLI). If you also use the optional standalone-binary path, run `go mod tidy` after adding new migrations to keep `go.sum` accurate:
+`migrations/go.mod` is consulted by your IDE / `gopls`, not by `morphic migrate` (which uses yaegi and the symbol map shipped with the CLI). If you also use the optional standalone-binary path, run `go mod tidy` after adding new migrations to keep `go.sum` accurate:
 
 ```bash
 cd migrations && go mod tidy
@@ -364,7 +364,7 @@ cd migrations && go mod tidy
 
 ### No Rebuild Step Required
 
-`makemigrations migrate` reads the latest migration files on every invocation — there is no compile or rebuild step between generating a migration and applying it. If you want a self-contained binary as a fallback, see the [Manual Build Guide](../manual-migration-build.md).
+`morphic migrate` reads the latest migration files on every invocation — there is no compile or rebuild step between generating a migration and applying it. If you want a self-contained binary as a fallback, see the [Manual Build Guide](../manual-migration-build.md).
 
 ---
 
@@ -373,7 +373,7 @@ cd migrations && go mod tidy
 - [migrate command](./migrate.md) — run `up`, `down`, `status`, `fake` etc. without manual builds
 - [Manual Build Guide](../manual-migration-build.md) — optional: compile `migrations/` into a standalone binary (GOWORK/GOTOOLCHAIN guidance)
 - [Extending the yaegi Symbol Map](../extending-yaegi-symbols.md) — let interpreted migrations import third-party packages
-- [makemigrations Command](./makemigrations.md) — Generate a new migration file
+- [morphic Command](./morphic.md) — Generate a new migration file
 - [migrate-to-go command](./migrate_to_go.md) — convert existing Goose SQL migrations to Go
 - [Configuration Guide](../configuration.md) — Full configuration reference
 - [Schema Format Guide](../schema-format.md) — YAML schema syntax

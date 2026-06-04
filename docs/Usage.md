@@ -1,6 +1,6 @@
-# makemigrations Usage Guide
+# morphic Usage Guide
 
-A practical, end-to-end walkthrough of the makemigrations workflow using PostgreSQL. This guide covers everything from initial project setup through schema evolution, SQL inspection, data seeding, and stored procedures — including custom type mappings and custom defaults.
+A practical, end-to-end walkthrough of the morphic workflow using PostgreSQL. This guide covers everything from initial project setup through schema evolution, SQL inspection, data seeding, and stored procedures — including custom type mappings and custom defaults.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ A practical, end-to-end walkthrough of the makemigrations workflow using Postgre
 ## Prerequisites
 
 - Go 1.24 or later
-- makemigrations installed: `go install github.com/ocomsoft/makemigrations@latest`
+- morphic installed: `go install github.com/ocomsoft/morphic@latest`
 - A running PostgreSQL instance
 - `DATABASE_URL` environment variable set, for example:
 
@@ -59,7 +59,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 Initialise the project from your Go application root. This creates the `migrations/` directory with its own Go module, a `main.go` entry point, and a configuration file.
 
 ```bash
-makemigrations init --database postgresql
+morphic init --database postgresql
 ```
 
 This produces:
@@ -71,7 +71,7 @@ myapp/
 └── migrations/
     ├── go.mod                  # module: myapp/migrations
     ├── main.go                 # migrations binary entry point
-    └── makemigrations.config.yaml
+    └── morphic.config.yaml
 ```
 
 Create the schema directory:
@@ -333,7 +333,7 @@ tables:
 With the schema defined, generate the first migration file:
 
 ```bash
-makemigrations makemigrations --name "initial"
+morphic generate --name "initial"
 ```
 
 Output:
@@ -347,7 +347,7 @@ The generated file (`migrations/0001_initial.go`) looks like this:
 ```go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -412,7 +412,7 @@ Before applying anything, inspect the SQL that will be executed. There are two w
 `dump-sql` shows the CREATE TABLE statements that your YAML schema would generate, without consulting the migration history at all:
 
 ```bash
-makemigrations dump-sql --database postgresql
+morphic dump-sql --database postgresql
 ```
 
 Output:
@@ -479,10 +479,10 @@ Notice that:
 
 ### Option 2 — showsql (pending-migration SQL)
 
-After generating the migration file, `showsql` shows exactly what SQL `makemigrations migrate up` will execute. This includes only the pending migrations:
+After generating the migration file, `showsql` shows exactly what SQL `morphic migrate up` will execute. This includes only the pending migrations:
 
 ```bash
-makemigrations migrate showsql
+morphic migrate showsql
 ```
 
 Output:
@@ -500,10 +500,10 @@ Use `showsql` for final review before production deployments.
 
 ## Applying Migrations
 
-`makemigrations migrate` loads the migration `.go` files in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter and runs them — no `go build`, no temporary binary:
+`morphic migrate` loads the migration `.go` files in-process via the [yaegi](https://github.com/traefik/yaegi) Go interpreter and runs them — no `go build`, no temporary binary:
 
 ```bash
-makemigrations migrate up
+morphic migrate up
 ```
 
 Output:
@@ -515,7 +515,7 @@ Applying 0001_initial... done
 Check the applied state:
 
 ```bash
-makemigrations migrate status
+morphic migrate status
 ```
 
 Output:
@@ -586,7 +586,7 @@ Suppose you want to add an `orders` table. Edit `schema/schema.yaml` and add the
 Generate the migration:
 
 ```bash
-makemigrations makemigrations --name "add_orders"
+morphic generate --name "add_orders"
 ```
 
 Output:
@@ -598,8 +598,8 @@ Created migrations/0002_add_orders.go
 The generated file contains a single `CreateTable` operation. Review then apply:
 
 ```bash
-makemigrations migrate showsql
-makemigrations migrate up
+morphic migrate showsql
+morphic migrate up
 ```
 
 ---
@@ -626,8 +626,8 @@ Add a `phone` field and a `last_login_at` timestamp to the `users` table by edit
 Generate and apply:
 
 ```bash
-makemigrations makemigrations --name "add_user_phone_and_last_login"
-makemigrations migrate up
+morphic generate --name "add_user_phone_and_last_login"
+morphic migrate up
 ```
 
 The generated migration uses `AddField` for each new column:
@@ -662,8 +662,8 @@ Add a composite index on `users(role, status)` for a query that filters by both:
 Generate and apply:
 
 ```bash
-makemigrations makemigrations --name "add_user_role_status_index"
-makemigrations migrate up
+morphic generate --name "add_user_role_status_index"
+morphic migrate up
 ```
 
 Generated operation:
@@ -700,7 +700,7 @@ Update the field in `schema/schema.yaml`:
 Generate:
 
 ```bash
-makemigrations makemigrations --name "expand_user_status_length"
+morphic generate --name "expand_user_status_length"
 ```
 
 Generated operation:
@@ -747,8 +747,8 @@ Operations: []m.Operation{
 Apply:
 
 ```bash
-makemigrations migrate showsql   # review the SQL
-makemigrations migrate up
+morphic migrate showsql   # review the SQL
+morphic migrate up
 ```
 
 ---
@@ -758,10 +758,10 @@ makemigrations migrate up
 Remove the `notes` field from `orders`. Delete it from `schema/schema.yaml`, then generate:
 
 ```bash
-makemigrations makemigrations --name "remove_order_notes"
+morphic generate --name "remove_order_notes"
 ```
 
-Because removing a column is destructive (data loss), makemigrations prompts you:
+Because removing a column is destructive (data loss), morphic prompts you:
 
 ```
   Destructive operation detected: field_removed on "orders.notes"
@@ -782,7 +782,7 @@ Choose **1** to generate the drop, or **2** to flag it for peer review first. Th
 Apply after review:
 
 ```bash
-makemigrations migrate up
+morphic migrate up
 ```
 
 ---
@@ -792,7 +792,7 @@ makemigrations migrate up
 Remove `product_categories` from `schema/schema.yaml` entirely, then generate:
 
 ```bash
-makemigrations makemigrations --name "remove_product_categories"
+morphic generate --name "remove_product_categories"
 ```
 
 Again you will be prompted for the destructive operation. The generated operation:
@@ -801,7 +801,7 @@ Again you will be prompted for the destructive operation. The generated operatio
 &m.DropTable{Name: "product_categories"},
 ```
 
-> **Warning:** This permanently drops the table and all its data. Verify with `makemigrations migrate showsql` before running `up`.
+> **Warning:** This permanently drops the table and all its data. Verify with `morphic migrate showsql` before running `up`.
 
 ---
 
@@ -813,7 +813,7 @@ Data migrations use `RunSQL` and are written **by hand** — the diff engine onl
 // migrations/0008_seed_categories.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -848,7 +848,7 @@ WHERE slug IN (
 Apply:
 
 ```bash
-makemigrations migrate up
+morphic migrate up
 ```
 
 > **Tip:** Keep schema changes (DDL) and data changes (DML) in separate migrations. This makes rollback cleaner and reduces lock contention on large tables.
@@ -863,7 +863,7 @@ Stored procedures (and any other PostgreSQL-specific DDL like views, triggers, o
 // migrations/0009_add_calculate_order_total_proc.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -916,7 +916,7 @@ For a simpler example — a trigger that keeps `updated_at` current without rely
 // migrations/0010_add_updated_at_trigger.go
 package main
 
-import m "github.com/ocomsoft/makemigrations/migrate"
+import m "github.com/ocomsoft/morphic/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -972,8 +972,8 @@ DROP TRIGGER IF EXISTS trg_orders_updated_at ON orders;
 Apply:
 
 ```bash
-makemigrations migrate showsql   # confirm the SQL looks right
-makemigrations migrate up
+morphic migrate showsql   # confirm the SQL looks right
+morphic migrate up
 ```
 
 ---
@@ -983,19 +983,19 @@ makemigrations migrate up
 Roll back the most recent migration:
 
 ```bash
-makemigrations migrate down
+morphic migrate down
 ```
 
 Roll back the last three migrations:
 
 ```bash
-makemigrations migrate down --steps 3
+morphic migrate down --steps 3
 ```
 
 Roll back until (but not including) a specific migration:
 
 ```bash
-makemigrations migrate down --to 0005_make_phone_required
+morphic migrate down --to 0005_make_phone_required
 ```
 
 Each operation's `Down` reverses the forward change automatically for typed operations (`CreateTable` → `DROP TABLE`, `AddField` → `DROP COLUMN`, etc.). `RunSQL` operations use the `BackwardSQL` you provided.
@@ -1008,41 +1008,41 @@ Each operation's `Down` reverses the forward change automatically for typed oper
 Edit schema/schema.yaml
         │
         ▼
-makemigrations makemigrations --name "describe_the_change"
+morphic generate --name "describe_the_change"
         │
         ▼
 (optional) edit the generated .go file to add RunSQL data steps
         │
         ▼
-makemigrations migrate showsql          ← review SQL before touching the DB
+morphic migrate showsql          ← review SQL before touching the DB
         │
         ▼
-makemigrations migrate up               ← apply
+morphic migrate up               ← apply
         │
         ▼
-makemigrations migrate status           ← verify
+morphic migrate status           ← verify
 ```
 
 ### Useful Commands Reference
 
 | Command | What it does |
 |---------|-------------|
-| `makemigrations init` | Bootstrap the `migrations/` directory |
-| `makemigrations makemigrations` | Generate a migration from schema changes |
-| `makemigrations makemigrations --dry-run` | Preview migration source without writing a file |
-| `makemigrations makemigrations --check` | CI mode: exit 1 if migrations are needed |
-| `makemigrations makemigrations --merge` | Generate a merge migration for concurrent branches |
-| `makemigrations current-state` | Show reconstructed schema from migration DAG as YAML |
-| `makemigrations dump-sql` | Show full CREATE TABLE SQL from the YAML schema |
-| `makemigrations dump-sql --verbose` | Include processing detail in the output |
-| `makemigrations migrate showsql` | Show SQL for all pending migrations |
-| `makemigrations migrate up` | Apply all pending migrations |
-| `makemigrations migrate up --to NAME` | Apply up to a named migration |
-| `makemigrations migrate down` | Roll back the last applied migration |
-| `makemigrations migrate down --steps N` | Roll back N migrations |
-| `makemigrations migrate status` | Show applied vs pending migrations |
-| `makemigrations migrate fake NAME` | Mark a migration applied without running SQL |
-| `makemigrations migrate dag` | Print the migration dependency graph |
+| `morphic init` | Bootstrap the `migrations/` directory |
+| `morphic generate` | Generate a migration from schema changes |
+| `morphic generate --dry-run` | Preview migration source without writing a file |
+| `morphic generate --check` | CI mode: exit 1 if migrations are needed |
+| `morphic generate --merge` | Generate a merge migration for concurrent branches |
+| `morphic current-state` | Show reconstructed schema from migration DAG as YAML |
+| `morphic dump-sql` | Show full CREATE TABLE SQL from the YAML schema |
+| `morphic dump-sql --verbose` | Include processing detail in the output |
+| `morphic migrate showsql` | Show SQL for all pending migrations |
+| `morphic migrate up` | Apply all pending migrations |
+| `morphic migrate up --to NAME` | Apply up to a named migration |
+| `morphic migrate down` | Roll back the last applied migration |
+| `morphic migrate down --steps N` | Roll back N migrations |
+| `morphic migrate status` | Show applied vs pending migrations |
+| `morphic migrate fake NAME` | Mark a migration applied without running SQL |
+| `morphic migrate dag` | Print the migration dependency graph |
 
 ---
 
@@ -1051,7 +1051,7 @@ makemigrations migrate status           ← verify
 - [Schema Format Reference](schema-format.md) — complete YAML schema syntax
 - [Migrations Writing Guide](migrations.md) — anatomy of migration files and all operation types
 - [init Command](commands/init.md) — detailed init options
-- [makemigrations Command](commands/makemigrations.md) — all generation flags
+- [morphic Command](commands/morphic.md) — all generation flags
 - [migrate Command](commands/migrate.md) — all runtime commands and flags
 - [diff Command](commands/diff.md) — compare YAML schema against migration state
 - [db-diff Command](commands/db-diff.md) — compare migration state against live database

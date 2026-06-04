@@ -34,7 +34,7 @@ digraph morphic_workflow {
     "Is morphic initialized?" [shape=diamond];
     "Run morphic init" [shape=box];
     "Edit schema/schema.yaml" [shape=box];
-    "Run morphic makemigrations" [shape=box];
+    "Run morphic generate" [shape=box];
     "Review generated .go file" [shape=box];
     "Preview SQL with migrate showsql" [shape=box];
     "Run tests" [shape=box];
@@ -44,8 +44,8 @@ digraph morphic_workflow {
     "Is morphic initialized?" -> "Run morphic init" [label="no"];
     "Is morphic initialized?" -> "Edit schema/schema.yaml" [label="yes"];
     "Run morphic init" -> "Edit schema/schema.yaml";
-    "Edit schema/schema.yaml" -> "Run morphic makemigrations";
-    "Run morphic makemigrations" -> "Review generated .go file";
+    "Edit schema/schema.yaml" -> "Run morphic generate";
+    "Run morphic generate" -> "Review generated .go file";
     "Review generated .go file" -> "Preview SQL with migrate showsql";
     "Preview SQL with migrate showsql" -> "Run tests";
     "Run tests" -> "Done";
@@ -105,7 +105,7 @@ tables:
 ### Step 3: Generate Migration
 
 ```bash
-morphic makemigrations --name "describe_the_change"
+morphic generate --name "describe_the_change"
 ```
 
 Use `--dry-run` to preview without writing files. Use `--check` to verify schema is up to date (CI use).
@@ -248,7 +248,7 @@ include:
 | Command | Purpose |
 |---------|---------|
 | `morphic init` | Bootstrap migrations directory |
-| `morphic makemigrations` | Generate migration from schema diff |
+| `morphic generate` | Generate migration from schema diff |
 | `morphic migrate up` | Apply pending migrations |
 | `morphic migrate down` | Rollback last migration |
 | `morphic migrate status` | Show migration status |
@@ -264,7 +264,7 @@ include:
 
 | Mistake | Fix |
 |---------|-----|
-| Writing CREATE TABLE SQL directly | Edit schema.yaml and run `morphic makemigrations` |
+| Writing CREATE TABLE SQL directly | Edit schema.yaml and run `morphic generate` |
 | Hand-writing migration operations | Let the tool generate them from the schema diff |
 | Forgetting `--name` flag | Always name migrations: `--name "add_user_profiles"` |
 | Using RunSQL for structure changes | Express it in schema.yaml instead |

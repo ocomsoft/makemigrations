@@ -24,7 +24,7 @@ This tool is ideal for:
 ## Usage
 
 ```bash
-makemigrations schema-to-diagram [flags]
+morphic schema-to-diagram [flags]
 ```
 
 ## Command Flags
@@ -38,7 +38,7 @@ makemigrations schema-to-diagram [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
 
 ## Generated Documentation Features
 
@@ -108,7 +108,7 @@ Detailed relationship documentation:
 
 ```bash
 # Generate documentation to default file
-makemigrations schema-to-diagram
+morphic schema-to-diagram
 
 # Output
 Scanning module dependencies for YAML schemas...
@@ -134,20 +134,20 @@ View the documentation in any Markdown viewer with Mermaid support.
 
 ```bash
 # Generate to specific directory
-makemigrations schema-to-diagram --output=docs/database-schema.md
+morphic schema-to-diagram --output=docs/database-schema.md
 
 # Generate to project documentation
-makemigrations schema-to-diagram --output=README-database.md
+morphic schema-to-diagram --output=README-database.md
 
 # Generate for API documentation
-makemigrations schema-to-diagram --output=api-docs/database-structure.md
+morphic schema-to-diagram --output=api-docs/database-structure.md
 ```
 
 ### Verbose Processing
 
 ```bash
 # Show detailed processing information
-makemigrations schema-to-diagram --verbose --output=schema-docs.md
+morphic schema-to-diagram --verbose --output=schema-docs.md
 
 # Output
 Generating schema documentation with diagrams
@@ -299,7 +299,7 @@ Standard ERD relationship notation:
 
 ```bash
 # Generate documentation for new developers
-makemigrations schema-to-diagram --output=docs/DATABASE.md
+morphic schema-to-diagram --output=docs/DATABASE.md
 
 # Add to project README
 echo "## Database Schema" >> README.md
@@ -310,7 +310,7 @@ echo "See [Database Documentation](docs/DATABASE.md) for complete schema details
 
 ```bash
 # Generate schema docs for API documentation
-makemigrations schema-to-diagram --output=api-docs/database-schema.md
+morphic schema-to-diagram --output=api-docs/database-schema.md
 
 # Include in OpenAPI documentation
 echo "For database schema details, see [Database Schema](./database-schema.md)" >> api-docs/README.md
@@ -320,10 +320,10 @@ echo "For database schema details, see [Database Schema](./database-schema.md)" 
 
 ```bash
 # Generate current schema documentation
-makemigrations schema-to-diagram --output=design-review-current.md
+morphic schema-to-diagram --output=design-review-current.md
 
 # After schema changes
-makemigrations schema-to-diagram --output=design-review-proposed.md
+morphic schema-to-diagram --output=design-review-proposed.md
 
 # Compare for review
 diff design-review-current.md design-review-proposed.md
@@ -333,7 +333,7 @@ diff design-review-current.md design-review-proposed.md
 
 ```bash
 # Generate formal documentation with timestamp
-makemigrations schema-to-diagram --verbose --output="compliance/database-schema-$(date +%Y%m%d).md"
+morphic schema-to-diagram --verbose --output="compliance/database-schema-$(date +%Y%m%d).md"
 
 # Archive documentation
 mkdir -p compliance/archive/
@@ -344,8 +344,8 @@ cp compliance/database-schema-*.md compliance/archive/
 
 ```bash
 # Document different environments
-MAKEMIGRATIONS_CONFIG=staging.config.yaml makemigrations schema-to-diagram --output=docs/staging-schema.md
-MAKEMIGRATIONS_CONFIG=prod.config.yaml makemigrations schema-to-diagram --output=docs/production-schema.md
+MORPHIC_CONFIG=staging.config.yaml morphic schema-to-diagram --output=docs/staging-schema.md
+MORPHIC_CONFIG=prod.config.yaml morphic schema-to-diagram --output=docs/production-schema.md
 
 # Compare environments
 diff docs/staging-schema.md docs/production-schema.md
@@ -414,7 +414,7 @@ The documentation includes index performance guidance:
 Respects configuration settings:
 
 ```yaml
-# migrations/makemigrations.config.yaml
+# migrations/morphic.config.yaml
 schema:
   search_paths:
     - "modules/*/database"
@@ -428,8 +428,8 @@ Environment variables affect output:
 
 ```bash
 # Customize documentation generation
-MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations schema-to-diagram --verbose
-MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false makemigrations schema-to-diagram
+MORPHIC_OUTPUT_VERBOSE=true morphic schema-to-diagram --verbose
+MORPHIC_OUTPUT_COLOR_ENABLED=false morphic schema-to-diagram
 ```
 
 ## Troubleshooting
@@ -440,7 +440,7 @@ MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false makemigrations schema-to-diagram
    ```bash
    # Check current directory and configuration
    ls -la schema/
-   cat migrations/makemigrations.config.yaml | grep -A5 "schema:"
+   cat migrations/morphic.config.yaml | grep -A5 "schema:"
    ```
 
 2. **Mermaid diagrams not rendering**
@@ -452,7 +452,7 @@ MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false makemigrations schema-to-diagram
 3. **Large schemas with performance issues**
    ```bash
    # Use verbose mode to monitor processing time
-   time makemigrations schema-to-diagram --verbose
+   time morphic schema-to-diagram --verbose
    
    # Consider splitting large schemas into modules
    find . -name "schema.yaml" -exec wc -l {} +
@@ -482,10 +482,10 @@ For projects with many schema files:
 
 ```bash
 # Monitor processing time
-time makemigrations schema-to-diagram --verbose
+time morphic schema-to-diagram --verbose
 
 # Profile memory usage
-valgrind --tool=massif makemigrations schema-to-diagram
+valgrind --tool=massif morphic schema-to-diagram
 ```
 
 ### Output File Size Management
@@ -516,7 +516,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Generate Schema Documentation
         run: |
-          ./makemigrations schema-to-diagram --output=docs/DATABASE.md
+          ./morphic schema-to-diagram --output=docs/DATABASE.md
           git add docs/DATABASE.md
           git commit -m "Update database schema documentation"
           git push
@@ -533,11 +533,11 @@ docs: schema-docs
 
 schema-docs:
 	@echo "Generating schema documentation..."
-	@makemigrations schema-to-diagram --output=docs/database-schema.md
+	@morphic schema-to-diagram --output=docs/database-schema.md
 	@echo "Schema documentation generated at docs/database-schema.md"
 
 schema-docs-verbose:
-	@makemigrations schema-to-diagram --verbose --output=docs/database-schema.md
+	@morphic schema-to-diagram --verbose --output=docs/database-schema.md
 
 docs-watch:
 	@while inotifywait -e modify schema/; do make schema-docs; done
@@ -552,7 +552,7 @@ docs-watch:
 echo "Checking for schema changes..."
 if git diff --cached --name-only | grep -q "schema.*\.yaml"; then
     echo "Schema files changed, updating documentation..."
-    makemigrations schema-to-diagram --output=docs/DATABASE.md
+    morphic schema-to-diagram --output=docs/DATABASE.md
     git add docs/DATABASE.md
     echo "Database documentation updated and staged"
 fi
@@ -562,6 +562,6 @@ fi
 
 - [dump-sql Command](./dump-sql.md) - Generate SQL from schemas
 - [db-to-schema Command](./db-to-schema.md) - Extract schemas from databases  
-- [makemigrations Command](./makemigrations.md) - Generate migrations from schemas
+- [morphic Command](./morphic.md) - Generate migrations from schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options

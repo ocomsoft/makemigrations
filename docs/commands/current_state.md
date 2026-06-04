@@ -8,7 +8,7 @@ The command walks all existing migration `.go` files, builds the migration DAG, 
 
 This is useful for:
 
-- Debugging why `makemigrations` keeps generating the same migration
+- Debugging why `morphic` keeps generating the same migration
 - Verifying the migration chain produces the expected schema
 - Comparing the reconstructed state against your `schema/schema.yaml` files
 - Inspecting foreign key, index, and default state after a long chain of migrations
@@ -16,7 +16,7 @@ This is useful for:
 ## Usage
 
 ```bash
-makemigrations current-state [flags]
+morphic current-state [flags]
 ```
 
 ## Command Flags
@@ -29,14 +29,14 @@ makemigrations current-state [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
 
 ## Examples
 
 ### Basic Usage
 
 ```bash
-makemigrations current-state
+morphic current-state
 ```
 
 Output (YAML):
@@ -69,26 +69,26 @@ defaults:
 Use `diff` to find discrepancies between what the migrations produce and what the schema defines:
 
 ```bash
-makemigrations current-state > /tmp/migration_state.yaml
+morphic current-state > /tmp/migration_state.yaml
 diff /tmp/migration_state.yaml schema/schema.yaml
 ```
 
 ### Debugging Phantom Migrations
 
-If `makemigrations makemigrations` keeps generating the same migration (e.g., redundant drop/add foreign key), compare the reconstructed state against your schema to see what field the diff engine thinks has changed:
+If `morphic generate` keeps generating the same migration (e.g., redundant drop/add foreign key), compare the reconstructed state against your schema to see what field the diff engine thinks has changed:
 
 ```bash
-makemigrations current-state | grep -A5 "created_user_id"
+morphic current-state | grep -A5 "created_user_id"
 ```
 
 ### Piping to Other Tools
 
 ```bash
 # Count tables in migration state
-makemigrations current-state | grep "^    - name:" | wc -l
+morphic current-state | grep "^    - name:" | wc -l
 
 # Extract a specific table
-makemigrations current-state | yq '.tables[] | select(.name == "users")'
+morphic current-state | yq '.tables[] | select(.name == "users")'
 ```
 
 ## How It Works
@@ -97,14 +97,14 @@ makemigrations current-state | yq '.tables[] | select(.name == "users")'
 2. Loads all migration files using the yaegi Go interpreter
 3. Builds the migration DAG and resolves topological order
 4. Applies each migration's operations via `Mutate()` to build `SchemaState`
-5. Converts `SchemaState` to a YAML `Schema` struct (same conversion used by `makemigrations makemigrations`)
+5. Converts `SchemaState` to a YAML `Schema` struct (same conversion used by `morphic generate`)
 6. Marshals and prints the YAML to stdout
 
-The conversion in step 5 is the same `schemaStateToYAMLSchema()` function used by the `makemigrations` command — so the output is exactly what the diff engine sees as the "previous state".
+The conversion in step 5 is the same `schemaStateToYAMLSchema()` function used by the `morphic` command — so the output is exactly what the diff engine sees as the "previous state".
 
 ## See Also
 
-- [makemigrations Command](./makemigrations.md) — generate migrations from schema changes
+- [morphic Command](./morphic.md) — generate migrations from schema changes
 - [diff Command](./diff.md) — compare YAML schema against migration state
 - [dump-sql Command](./dump-sql.md) — preview SQL from YAML schema (no migration state)
 - [migrate Command](./migrate.md) — apply, rollback, and inspect migrations

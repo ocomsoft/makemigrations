@@ -13,7 +13,7 @@ This command helps you manage schema includes by:
 ## Usage
 
 ```bash
-makemigrations find-includes [flags]
+morphic find-includes [flags]
 ```
 
 ## Flags
@@ -67,31 +67,31 @@ The command searches for schema.yaml files in:
 ### Basic Usage (Auto-detect schema)
 ```bash
 # Automatically find and update schema.yaml in current directory tree
-makemigrations find-includes
+morphic find-includes
 ```
 
 ### Specify Schema File
 ```bash
 # Update a specific schema file
-makemigrations find-includes --schema schema/schema.yaml
+morphic find-includes --schema schema/schema.yaml
 ```
 
 ### Interactive Mode
 ```bash
 # Review each discovered schema before adding
-makemigrations find-includes --interactive
+morphic find-includes --interactive
 ```
 
 ### Verbose Output
 ```bash
 # See detailed discovery process
-makemigrations find-includes --verbose
+morphic find-includes --verbose
 ```
 
 ### Exclude Workspace Modules
 ```bash
 # Only discover schemas from go.mod dependencies
-makemigrations find-includes --workspace=false
+morphic find-includes --workspace=false
 ```
 
 ## Interactive Mode

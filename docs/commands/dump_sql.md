@@ -15,7 +15,7 @@ The `dump-sql` command processes YAML schema files and outputs the database-spec
 ## Usage
 
 ```bash
-makemigrations dump-sql [flags]
+morphic dump-sql [flags]
 ```
 
 ## Command Flags
@@ -29,7 +29,7 @@ makemigrations dump-sql [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
 
 ## What It Shows
 
@@ -89,7 +89,7 @@ Shows how the same schema generates different SQL for different databases.
 
 ```bash
 # Show SQL for current schema
-makemigrations dump-sql
+morphic dump-sql
 
 # Output
 ▶ Scanning for schema files...
@@ -111,7 +111,7 @@ CREATE TABLE users (
 
 ```bash
 # Show detailed processing information
-makemigrations dump-sql --verbose
+morphic dump-sql --verbose
 
 # Output
 ▶ Scanning for schema files...
@@ -146,7 +146,7 @@ CREATE TABLE users (
 
 ```bash
 # Generate MySQL-specific SQL
-makemigrations dump-sql --database mysql
+morphic dump-sql --database mysql
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -159,7 +159,7 @@ CREATE TABLE users (
 );
 
 # Generate SQLite-specific SQL
-makemigrations dump-sql --database sqlite
+morphic dump-sql --database sqlite
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -286,7 +286,7 @@ CREATE TABLE products (
 The command will show detailed error messages for invalid schemas:
 
 ```bash
-$ makemigrations dump-sql
+$ morphic dump-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -299,7 +299,7 @@ $ makemigrations dump-sql
 ### YAML Syntax Errors
 
 ```bash
-$ makemigrations dump-sql
+$ morphic dump-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -312,7 +312,7 @@ $ makemigrations dump-sql
 ### Missing Schema Files
 
 ```bash
-$ makemigrations dump-sql
+$ morphic dump-sql
 ▶ Scanning for schema files...
 ✗ No schema files found in search paths:
   - ./schema/schema.yaml
@@ -329,7 +329,7 @@ $ makemigrations dump-sql
 ```bash
 # Iterative schema development
 vim schema/schema.yaml
-makemigrations dump-sql --verbose    # Check for issues
+morphic dump-sql --verbose    # Check for issues
 # Fix issues, repeat
 ```
 
@@ -337,9 +337,9 @@ makemigrations dump-sql --verbose    # Check for issues
 
 ```bash
 # Check how schema translates across databases
-makemigrations dump-sql --database postgresql > schema-pg.sql
-makemigrations dump-sql --database mysql > schema-mysql.sql
-makemigrations dump-sql --database sqlite > schema-sqlite.sql
+morphic dump-sql --database postgresql > schema-pg.sql
+morphic dump-sql --database mysql > schema-mysql.sql
+morphic dump-sql --database sqlite > schema-sqlite.sql
 
 # Compare outputs
 diff schema-pg.sql schema-mysql.sql
@@ -349,14 +349,14 @@ diff schema-pg.sql schema-mysql.sql
 
 ```bash
 # Generate schema documentation
-makemigrations dump-sql --verbose > docs/database-schema.sql
+morphic dump-sql --verbose > docs/database-schema.sql
 ```
 
 ### 4. CI/CD Validation
 
 ```bash
 # Validate schema in CI pipeline
-if ! makemigrations dump-sql --verbose; then
+if ! morphic dump-sql --verbose; then
     echo "Schema validation failed"
     exit 1
 fi
@@ -366,7 +366,7 @@ fi
 
 ```bash
 # Debug processing with maximum verbosity
-MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations dump-sql --verbose
+MORPHIC_OUTPUT_VERBOSE=true morphic dump-sql --verbose
 ```
 
 ## Configuration Integration
@@ -377,16 +377,16 @@ The command respects configuration settings:
 
 ```bash
 # Override config file database type
-makemigrations dump-sql --database mysql
+morphic dump-sql --database mysql
 
 # With environment variable
-MAKEMIGRATIONS_DATABASE_TYPE=sqlite makemigrations dump-sql
+MORPHIC_DATABASE_TYPE=sqlite morphic dump-sql
 ```
 
 ### Schema Search Paths
 
 ```yaml
-# migrations/makemigrations.config.yaml
+# migrations/morphic.config.yaml
 schema:
   search_paths:
     - "modules/*/database"
@@ -397,7 +397,7 @@ schema:
 ### Output Settings
 
 ```yaml
-# migrations/makemigrations.config.yaml
+# migrations/morphic.config.yaml
 output:
   verbose: true                    # Default to verbose mode
   color_enabled: false            # Disable colors for file output
@@ -410,7 +410,7 @@ output:
 
 ```bash
 # Dump SQL showing module boundaries
-makemigrations dump-sql --verbose
+morphic dump-sql --verbose
 
 # Output shows file sources
 ▶ Processing YAML schema...
@@ -445,16 +445,16 @@ tables:
         default: custom_timestamp
 EOF
 
-makemigrations dump-sql
+morphic dump-sql
 ```
 
 ### Schema Comparison
 
 ```bash
 # Compare before/after schema changes
-makemigrations dump-sql > before.sql
+morphic dump-sql > before.sql
 # Make schema changes...
-makemigrations dump-sql > after.sql
+morphic dump-sql > after.sql
 diff before.sql after.sql
 ```
 
@@ -469,7 +469,7 @@ diff before.sql after.sql
    ls -la schema/
    
    # Verify config search paths
-   cat migrations/makemigrations.config.yaml
+   cat migrations/morphic.config.yaml
    ```
 
 2. **YAML syntax errors**
@@ -484,7 +484,7 @@ diff before.sql after.sql
 3. **Type validation errors**
    ```bash
    # Review field definitions
-   makemigrations dump-sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
+   morphic dump-sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
    ```
 
 4. **Foreign key reference errors**
@@ -502,7 +502,7 @@ For projects with many schema files:
 
 ```bash
 # Use verbose mode to monitor processing time
-time makemigrations dump-sql --verbose
+time morphic dump-sql --verbose
 
 # Consider splitting large schemas
 find . -name "schema.yaml" -exec wc -l {} + | sort -n
@@ -512,10 +512,10 @@ find . -name "schema.yaml" -exec wc -l {} + | sort -n
 
 ```bash
 # Redirect output for large schemas
-makemigrations dump-sql > full-schema.sql
+morphic dump-sql > full-schema.sql
 
 # Filter specific tables
-makemigrations dump-sql | grep -A20 "CREATE TABLE users"
+morphic dump-sql | grep -A20 "CREATE TABLE users"
 ```
 
 ## Integration Examples
@@ -528,16 +528,16 @@ makemigrations dump-sql | grep -A20 "CREATE TABLE users"
 
 schema-validate:
 	@echo "Validating schema..."
-	@makemigrations dump-sql --verbose > /dev/null
+	@morphic dump-sql --verbose > /dev/null
 
 schema-docs:
 	@echo "Generating schema documentation..."
-	@makemigrations dump-sql --verbose > docs/schema.sql
+	@morphic dump-sql --verbose > docs/schema.sql
 	@echo "Schema docs generated at docs/schema.sql"
 
 schema-compare:
-	@makemigrations dump-sql --database postgresql > schema-pg.sql
-	@makemigrations dump-sql --database mysql > schema-mysql.sql
+	@morphic dump-sql --database postgresql > schema-pg.sql
+	@morphic dump-sql --database mysql > schema-mysql.sql
 	@echo "Cross-database comparison files generated"
 ```
 
@@ -548,7 +548,7 @@ schema-compare:
 # .git/hooks/pre-commit
 
 echo "Validating schema before commit..."
-if ! makemigrations dump-sql --verbose > /dev/null 2>&1; then
+if ! morphic dump-sql --verbose > /dev/null 2>&1; then
     echo "Schema validation failed. Commit aborted."
     exit 1
 fi
@@ -556,7 +556,7 @@ fi
 
 ## See Also
 
-- [makemigrations Command](./makemigrations.md) - Generate migrations from schemas
+- [morphic Command](./morphic.md) - Generate migrations from schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options
 - [init Command](./init.md) - Initialize new projects

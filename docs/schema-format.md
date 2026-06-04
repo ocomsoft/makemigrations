@@ -1,10 +1,10 @@
 # YAML Schema Format Guide
 
-This comprehensive guide covers the YAML schema format used by makemigrations for defining database schemas.
+This comprehensive guide covers the YAML schema format used by morphic for defining database schemas.
 
 ## Overview
 
-The YAML schema format is the **primary interface** for makemigrations. It provides a database-agnostic way to define tables, fields, relationships, and constraints that get automatically converted to database-specific SQL.
+The YAML schema format is the **primary interface** for morphic. It provides a database-agnostic way to define tables, fields, relationships, and constraints that get automatically converted to database-specific SQL.
 
 ## Basic Structure
 
@@ -165,7 +165,7 @@ tables:
 
 ## Type Mappings Section
 
-The `type_mappings` section lets you override the SQL type that makemigrations generates for a
+The `type_mappings` section lets you override the SQL type that morphic generates for a
 given schema field type on a per-database basis. This is useful when the built-in type mapping
 is not suitable for your target database.
 
@@ -214,7 +214,7 @@ The available template variables are: `.Length`, `.Precision`, `.Scale`.
 
 ### DAG Integration
 
-When `type_mappings` change between runs, makemigrations automatically generates a
+When `type_mappings` change between runs, morphic automatically generates a
 `SetTypeMappings` operation in the migration file. This operation has no SQL effect — it
 records the type mapping configuration in the migration DAG so that:
 
@@ -980,10 +980,10 @@ database:
 
 ```bash
 # Validate schema syntax
-makemigrations makemigrations --dry-run --verbose
+morphic generate --dry-run --verbose
 
 # Check for issues
-makemigrations dump_sql --verbose
+morphic dump_sql --verbose
 ```
 
 ### Common Issues

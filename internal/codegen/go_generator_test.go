@@ -138,7 +138,7 @@ func TestGoGenerator_GenerateGoMod(t *testing.T) {
 		t.Error("expected module declaration")
 	}
 	if !strings.Contains(src, "github.com/ocomsoft/morphic") {
-		t.Error("expected makemigrations dependency")
+		t.Error("expected morphic dependency")
 	}
 }
 

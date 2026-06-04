@@ -30,7 +30,7 @@ import (
 
 // Build information set by ldflags during compilation
 var (
-	// Version represents the current makemigrations version
+	// Version represents the current morphic version
 	// This variable is updated by bumpversion during releases or set via ldflags
 	Version = "1.7.0"
 
@@ -48,12 +48,12 @@ func GetVersion() string {
 
 // GetDisplayVersion returns the formatted version for display
 func GetDisplayVersion() string {
-	return fmt.Sprintf("makemigrations v%s", Version)
+	return fmt.Sprintf("morphic v%s", Version)
 }
 
 // GetFullVersion returns detailed version information
 func GetFullVersion() string {
-	return fmt.Sprintf("makemigrations v%s (built %s, commit %s, %s/%s)",
+	return fmt.Sprintf("morphic v%s (built %s, commit %s, %s/%s)",
 		Version, BuildDate, GitCommit, runtime.GOOS, runtime.GOARCH)
 }
 

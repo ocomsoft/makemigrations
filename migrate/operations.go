@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // operations.go defines the Operation interface and all concrete migration
-// operation types used by the makemigrations Go migration framework.
+// operation types used by the morphic Go migration framework.
 package migrate
 
 import (

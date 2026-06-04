@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package migrate provides the runtime library for the makemigrations Go migration framework.
+// Package migrate provides the runtime library for the morphic Go migration framework.
 // Generated migration files import this package and call Register() in their init() functions.
 package migrate
 

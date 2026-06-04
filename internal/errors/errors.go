@@ -29,7 +29,7 @@ import (
 	"strings"
 )
 
-// Common error types for the makemigrations tool
+// Common error types for the morphic tool
 
 type ValidationError struct {
 	Field   string

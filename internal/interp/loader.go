@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package interp loads makemigrations migration .go files into an in-process
+// Package interp loads morphic migration .go files into an in-process
 // *migrate.Registry using the yaegi interpreter, removing the need to compile
 // the migrations module with the Go toolchain.
 package interp

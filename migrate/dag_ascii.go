@@ -103,7 +103,7 @@ func RenderDAGASCII(out *DAGOutput) string {
 	sb.WriteString(fmt.Sprintf("\nRoots:  %s\n", strings.Join(out.Roots, ", ")))
 	sb.WriteString(fmt.Sprintf("Leaves: %s\n", strings.Join(out.Leaves, ", ")))
 	if out.HasBranches {
-		sb.WriteString("WARNING: Branches detected -- run makemigrations --merge\n")
+		sb.WriteString("WARNING: Branches detected -- run morphic generate --merge\n")
 	} else {
 		sb.WriteString("OK: No branches -- graph is linear\n")
 	}

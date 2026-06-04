@@ -10,8 +10,9 @@ fallbacks and a new `upgrade` command.
 - **Full rebrand** across code, module path, binary, config, DB table, docs, skill.
 - Subcommand `makemigrations` → **`generate`**.
 - Module path → **`github.com/ocomsoft/morphic`** (GitHub repo to be renamed too).
-- New **`upgrade`** CLI command to migrate existing projects (rename config file + DB
-  history table).
+- **No separate `upgrade` command.** Instead, keep a `makemigrations` subcommand as a
+  legacy shim: it performs the one-time upgrade (rename config file + DB history table)
+  and tells the user to switch to `generate` going forward.
 - **README**: rework branding + **remove the "Legacy SQL Workflow" section**.
 - `makemigrations_sql`: **docs cleanup only** — it is no longer a real subcommand
   (only referenced in `PRD.md` and the README legacy section). Drop the stale
@@ -32,9 +33,11 @@ fallbacks and a new `upgrade` command.
 
 ## Phase 2 — CLI surface
 5. `cmd/root.go`: `Use: "makemigrations"` → `"morphic"`; update the command list in
-   `Long` help (incl. renaming `makemigrations` → `generate`).
-6. `cmd/go_migrations.go`: subcommand `Use: "makemigrations"` → `"generate"`
-   (rename file to `generate.go` for clarity). Update help/examples.
+   `Long` help (list `generate`; mention `makemigrations` only as a deprecated alias).
+6. `cmd/go_migrations.go`: rename the generate-migrations command
+   `Use: "makemigrations"` → `"generate"` (rename file to `generate.go` for clarity).
+   Update help/examples. The freed-up `makemigrations` name is reused by the legacy
+   shim in Phase 5.
 7. Sweep `makemigrations <subcmd>` usage strings in all `cmd/*.go` help/examples →
    `morphic <subcmd>`.
 
@@ -51,16 +54,23 @@ fallbacks and a new `upgrade` command.
     mysql, sqlite, sqlserver, clickhouse, redshift, tidb, turso, vertica, ydb,
     auroradsql, starrocks) + provider tests.
 11. Recorder: on startup, if `morphic_history` is missing but `makemigrations_history`
-    exists, emit a clear "run `morphic upgrade`" message (no silent dual-write).
+    exists, emit a clear "run `morphic makemigrations` to upgrade" message (no silent
+    dual-write).
 
-## Phase 5 — New `upgrade` command
-12. Add `cmd/upgrade.go` (`Use: "upgrade"`, registered via `rootCmd.AddCommand`):
-    - Rename `migrations/makemigrations.config.yaml` → `morphic.config.yaml` if present.
-    - Rename the DB table via a new provider method
+## Phase 5 — Legacy `makemigrations` shim (replaces the old `upgrade` command idea)
+12. Add `cmd/makemigrations.go` (`Use: "makemigrations"`, registered via
+    `rootCmd.AddCommand`) as a **deprecated alias / upgrader**. When run it:
+    - Renames `migrations/makemigrations.config.yaml` → `morphic.config.yaml` if present.
+    - Renames the DB table via a new provider method
       `RenameHistoryTableSQL(old, new)` (`ALTER TABLE makemigrations_history RENAME TO
       morphic_history`), guarded so it's idempotent (skip if new table already exists).
-    - Support `--dry-run`; print a summary of actions.
-13. Add `docs/commands/upgrade.md`.
+    - Prints a clear deprecation notice: the project has been upgraded, use
+      `morphic generate` from now on.
+    - Supports `--dry-run`; prints a summary of actions.
+    - Marked `Deprecated`/`Hidden` as appropriate so it stays out of the primary help
+      but still works for muscle memory.
+13. Add `docs/commands/makemigrations.md` documenting it as the legacy upgrade shim
+    (keep the existing filename; repoint content).
 
 ## Phase 6 — Build / release / tooling
 14. `Makefile`: binary name `makemigrations` → `morphic` (BINARY_NAME, output paths,
@@ -82,14 +92,14 @@ fallbacks and a new `upgrade` command.
 21. Sweep all `docs/**/*.md`, `*.md`, `*.vhs` (demo scripts) for `makemigrations` →
     `morphic` (command/binary) and config/table names.
 22. **README.md**: title, install/download URLs, command-reference table (rename
-    `makemigrations`→`generate`, add `upgrade`), and **delete the "Legacy SQL Workflow"
-    section** (~lines 309–319).
+    `makemigrations`→`generate`; note `makemigrations` as the legacy upgrade shim), and
+    **delete the "Legacy SQL Workflow" section** (~lines 309–319).
 23. `PRD.md`: drop the stale `makemigrations_sql` references; rebrand remaining mentions.
 
 ## Phase 9 — Verify
 24. `go build ./...`, `go test ./...`, `golangci-lint run` (per `.golangci.yml`).
 25. Smoke-test the binary: `morphic --help`, `morphic generate --help`,
-    `morphic upgrade --dry-run`.
+    `morphic makemigrations --dry-run` (legacy shim/upgrade).
 26. Commit to `claude/youthful-sagan-nyhm1` and push.
 
 ---

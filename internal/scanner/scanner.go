@@ -34,7 +34,7 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 	"golang.org/x/mod/modfile"
 
-	"github.com/ocomsoft/makemigrations/internal/errors"
+	"github.com/ocomsoft/morphic/internal/errors"
 )
 
 type SchemaFile struct {

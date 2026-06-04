@@ -26,7 +26,7 @@ package yaml
 import (
 	"fmt"
 
-	"github.com/ocomsoft/makemigrations/internal/errors"
+	"github.com/ocomsoft/morphic/internal/errors"
 )
 
 // Merger handles YAML schema merging with conflict resolution

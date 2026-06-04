@@ -24,7 +24,7 @@ SOFTWARE.
 package yaml
 
 import (
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // Re-export types for backwards compatibility

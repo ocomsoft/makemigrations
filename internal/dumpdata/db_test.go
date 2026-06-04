@@ -29,7 +29,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/ocomsoft/makemigrations/internal/dumpdata"
+	"github.com/ocomsoft/morphic/internal/dumpdata"
 )
 
 // TestDetectPrimaryKeys_SQLite verifies that DetectPrimaryKeys correctly

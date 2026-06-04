@@ -31,8 +31,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
-	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/config"
 )
 
 var (

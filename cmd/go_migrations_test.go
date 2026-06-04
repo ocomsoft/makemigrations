@@ -29,8 +29,8 @@ import (
 	"strings"
 	"testing"
 
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
-	"github.com/ocomsoft/makemigrations/migrate"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // TestTypeMappingsSurvivedMergeAndDiffDetection is a regression test for the

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // ResolveType evaluates a type mapping string against a field.

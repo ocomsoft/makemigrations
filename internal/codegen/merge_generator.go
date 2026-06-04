@@ -49,7 +49,7 @@ func (g *MergeGenerator) GenerateMerge(name string, deps []string) (string, erro
 	var buf bytes.Buffer
 
 	buf.WriteString("package main\n\n")
-	buf.WriteString("import m \"github.com/ocomsoft/makemigrations/migrate\"\n\n")
+	buf.WriteString("import m \"github.com/ocomsoft/morphic/migrate\"\n\n")
 	buf.WriteString("func init() {\n")
 	fmt.Fprintf(&buf, "\tm.Register(&m.Migration{\n")
 	fmt.Fprintf(&buf, "\t\tName:         %q,\n", name)

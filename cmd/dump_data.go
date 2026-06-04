@@ -32,11 +32,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
-	"github.com/ocomsoft/makemigrations/internal/config"
-	"github.com/ocomsoft/makemigrations/internal/dumpdata"
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/config"
+	"github.com/ocomsoft/morphic/internal/dumpdata"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 var (

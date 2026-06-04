@@ -29,13 +29,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/interp"
+	"github.com/ocomsoft/morphic/internal/interp"
 )
 
 const file0001 = `package main
 
 import (
-	m "github.com/ocomsoft/makemigrations/migrate"
+	m "github.com/ocomsoft/morphic/migrate"
 )
 
 func init() {
@@ -58,7 +58,7 @@ func init() {
 const file0002 = `package main
 
 import (
-	m "github.com/ocomsoft/makemigrations/migrate"
+	m "github.com/ocomsoft/morphic/migrate"
 )
 
 func init() {
@@ -81,7 +81,7 @@ import (
 	"fmt"
 	"os"
 
-	m "github.com/ocomsoft/makemigrations/migrate"
+	m "github.com/ocomsoft/morphic/migrate"
 )
 
 func main() {

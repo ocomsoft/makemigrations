@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/codegen"
 )
 
 // TestRunEmpty_WritesBlankFile verifies that the blank generator creates a file

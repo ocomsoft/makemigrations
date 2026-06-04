@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 	"gopkg.in/yaml.v3"
 )
 

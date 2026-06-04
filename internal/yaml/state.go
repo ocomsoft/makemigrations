@@ -30,8 +30,8 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/makemigrations/internal/errors"
-	"github.com/ocomsoft/makemigrations/internal/version"
+	"github.com/ocomsoft/morphic/internal/errors"
+	"github.com/ocomsoft/morphic/internal/version"
 )
 
 // StateManager handles YAML schema state management

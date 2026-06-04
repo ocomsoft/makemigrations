@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/yaml"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/yaml"
 )
 
 func boolPtr(b bool) *bool {

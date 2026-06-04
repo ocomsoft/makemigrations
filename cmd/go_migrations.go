@@ -36,12 +36,12 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
-	"github.com/ocomsoft/makemigrations/internal/config"
-	"github.com/ocomsoft/makemigrations/internal/interp"
-	"github.com/ocomsoft/makemigrations/internal/types"
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/config"
+	"github.com/ocomsoft/morphic/internal/interp"
+	"github.com/ocomsoft/morphic/internal/types"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // Flag variables for the go_migrations command. These are prefixed with goMig

@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/morphic/internal/config"
 )
 
 // currentStateVerbose controls verbose output for the current_state command.

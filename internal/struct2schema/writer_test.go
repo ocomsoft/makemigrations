@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // TestNewWriter verifies writer creation.

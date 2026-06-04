@@ -27,9 +27,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/typemap"
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/utils"
+	"github.com/ocomsoft/morphic/internal/typemap"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/utils"
 )
 
 // Provider implements the Provider interface for MySQL

@@ -29,8 +29,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 func TestSquashGenerator_GenerateSquash(t *testing.T) {

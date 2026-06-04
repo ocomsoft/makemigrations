@@ -35,7 +35,7 @@ import (
 	"golang.org/x/mod/modfile"
 	yaml "gopkg.in/yaml.v3"
 
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
 var (

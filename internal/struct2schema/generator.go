@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/version"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/version"
 )
 
 // Generator handles generation of YAML schema from Go structs

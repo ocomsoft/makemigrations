@@ -28,8 +28,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/version"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/version"
 )
 
 // ProcessorConfig holds configuration for the struct2schema processor

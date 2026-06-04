@@ -3,7 +3,7 @@ package struct2schema
 import (
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // TestNewGenerator verifies generator creation.

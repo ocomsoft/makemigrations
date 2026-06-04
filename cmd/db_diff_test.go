@@ -32,7 +32,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
 func init() {

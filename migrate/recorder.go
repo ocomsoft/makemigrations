@@ -28,7 +28,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/ocomsoft/makemigrations/internal/providers"
+	"github.com/ocomsoft/morphic/internal/providers"
 )
 
 // MigrationRecorder manages the makemigrations_history table.

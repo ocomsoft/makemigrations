@@ -26,7 +26,7 @@ package utils
 import (
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 func TestConvertDefaultValue(t *testing.T) {

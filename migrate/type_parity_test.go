@@ -32,7 +32,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // TestFieldStructParity verifies that migrate.Field and types.Field have the

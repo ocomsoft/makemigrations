@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/errors"
+	"github.com/ocomsoft/morphic/internal/errors"
 )
 
 func TestScanner_ScanModules_ValidModule(t *testing.T) {

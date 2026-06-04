@@ -3,7 +3,7 @@ package fkutils
 import (
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // newResolver returns a ForeignKeyTypeResolver with typical PostgreSQL types for testing.

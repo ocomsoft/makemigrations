@@ -26,19 +26,19 @@ package providers
 import (
 	"fmt"
 
-	"github.com/ocomsoft/makemigrations/internal/providers/auroradsql"
-	"github.com/ocomsoft/makemigrations/internal/providers/clickhouse"
-	"github.com/ocomsoft/makemigrations/internal/providers/mysql"
-	"github.com/ocomsoft/makemigrations/internal/providers/postgresql"
-	"github.com/ocomsoft/makemigrations/internal/providers/redshift"
-	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
-	"github.com/ocomsoft/makemigrations/internal/providers/sqlserver"
-	"github.com/ocomsoft/makemigrations/internal/providers/starrocks"
-	"github.com/ocomsoft/makemigrations/internal/providers/tidb"
-	"github.com/ocomsoft/makemigrations/internal/providers/turso"
-	"github.com/ocomsoft/makemigrations/internal/providers/vertica"
-	"github.com/ocomsoft/makemigrations/internal/providers/ydb"
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/providers/auroradsql"
+	"github.com/ocomsoft/morphic/internal/providers/clickhouse"
+	"github.com/ocomsoft/morphic/internal/providers/mysql"
+	"github.com/ocomsoft/morphic/internal/providers/postgresql"
+	"github.com/ocomsoft/morphic/internal/providers/redshift"
+	"github.com/ocomsoft/morphic/internal/providers/sqlite"
+	"github.com/ocomsoft/morphic/internal/providers/sqlserver"
+	"github.com/ocomsoft/morphic/internal/providers/starrocks"
+	"github.com/ocomsoft/morphic/internal/providers/tidb"
+	"github.com/ocomsoft/morphic/internal/providers/turso"
+	"github.com/ocomsoft/morphic/internal/providers/vertica"
+	"github.com/ocomsoft/morphic/internal/providers/ydb"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // NewProvider creates a new database provider based on the database type.

@@ -56,7 +56,7 @@ func (g *DumpDataGenerator) Generate(name string, deps []string, tables []TableD
 	var b strings.Builder
 
 	b.WriteString("package main\n\n")
-	b.WriteString("import m \"github.com/ocomsoft/makemigrations/migrate\"\n\n")
+	b.WriteString("import m \"github.com/ocomsoft/morphic/migrate\"\n\n")
 	b.WriteString("func init() {\n")
 	fmt.Fprintf(&b, "\tm.Register(&m.Migration{\n")
 	fmt.Fprintf(&b, "\t\tName:         %q,\n", name)

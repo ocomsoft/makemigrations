@@ -1,4 +1,4 @@
-module github.com/ocomsoft/makemigrations
+module github.com/ocomsoft/morphic
 
 go 1.25.7
 

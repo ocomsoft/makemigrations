@@ -30,7 +30,7 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/makemigrations/internal/errors"
+	"github.com/ocomsoft/morphic/internal/errors"
 )
 
 // Parser handles YAML schema parsing and validation

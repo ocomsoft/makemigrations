@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 func TestFormatLiteral_nil(t *testing.T) {

@@ -33,7 +33,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // --- RenderDAGASCII tests ---

@@ -24,7 +24,7 @@ SOFTWARE.
 
 // Package symbols holds the yaegi symbol map for makemigrations migrations.
 //
-// The map exposes the public API of github.com/ocomsoft/makemigrations/migrate
+// The map exposes the public API of github.com/ocomsoft/morphic/migrate
 // to interpreted migration files so they can be loaded without invoking the Go
 // toolchain. Users who write migrations whose RunSQL bodies (or other
 // hand-written code) import third-party packages can call Register to add

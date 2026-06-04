@@ -29,7 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/makemigrations/internal/version"
+	"github.com/ocomsoft/morphic/internal/version"
 )
 
 var (

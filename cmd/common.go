@@ -26,7 +26,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/ocomsoft/makemigrations/internal/struct2schema"
+	"github.com/ocomsoft/morphic/internal/struct2schema"
 )
 
 // ExecuteStruct2Schema handles the complete struct-to-schema conversion process

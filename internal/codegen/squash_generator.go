@@ -31,8 +31,8 @@ import (
 	"go/format"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/yaml"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // SquashGenerator generates squashed migration .go files.
@@ -57,7 +57,7 @@ func (g *SquashGenerator) GenerateSquash(
 	var buf bytes.Buffer
 
 	buf.WriteString("package main\n\n")
-	buf.WriteString("import m \"github.com/ocomsoft/makemigrations/migrate\"\n\n")
+	buf.WriteString("import m \"github.com/ocomsoft/morphic/migrate\"\n\n")
 	buf.WriteString("func init() {\n")
 	fmt.Fprintf(&buf, "\tm.Register(&m.Migration{\n")
 	fmt.Fprintf(&buf, "\t\tName:         %q,\n", name)

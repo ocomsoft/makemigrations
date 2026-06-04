@@ -33,8 +33,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/utils"
-	"github.com/ocomsoft/makemigrations/internal/yaml"
+	"github.com/ocomsoft/morphic/internal/utils"
+	"github.com/ocomsoft/morphic/internal/yaml"
 )
 
 // GoGenerator produces Go source code for migration files, main.go, and go.mod.
@@ -82,7 +82,7 @@ func (g *GoGenerator) GenerateMigration(
 	// File header
 	b.WriteString("package main\n\n")
 	b.WriteString("import (\n")
-	b.WriteString("\tm \"github.com/ocomsoft/makemigrations/migrate\"\n")
+	b.WriteString("\tm \"github.com/ocomsoft/morphic/migrate\"\n")
 	b.WriteString(")\n\n")
 
 	// init() function
@@ -569,7 +569,7 @@ import (
 	"fmt"
 	"os"
 
-	m "github.com/ocomsoft/makemigrations/migrate"
+	m "github.com/ocomsoft/morphic/migrate"
 )
 
 func main() {
@@ -597,7 +597,7 @@ func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion string) strin
 	b.WriteString(fmt.Sprintf("module %s\n\n", moduleName))
 	b.WriteString(fmt.Sprintf("go %s\n\n", goVersion))
 	b.WriteString("require (\n")
-	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/makemigrations %s\n", version))
+	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/morphic %s\n", version))
 	b.WriteString(")\n")
 	return b.String()
 }

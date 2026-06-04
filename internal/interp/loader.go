@@ -43,8 +43,8 @@ import (
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 
-	"github.com/ocomsoft/makemigrations/migrate"
-	"github.com/ocomsoft/makemigrations/migrate/symbols"
+	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/morphic/migrate/symbols"
 )
 
 // virtualPkg is the package name used inside the in-memory filesystem when
@@ -128,7 +128,7 @@ func perLoadSymbols(reg *migrate.Registry) map[string]map[string]reflect.Value {
 		}
 		out[pkg] = copied
 	}
-	const migPkg = "github.com/ocomsoft/makemigrations/migrate/migrate"
+	const migPkg = "github.com/ocomsoft/morphic/migrate/migrate"
 	if out[migPkg] == nil {
 		out[migPkg] = map[string]reflect.Value{}
 	}

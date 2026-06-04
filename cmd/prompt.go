@@ -30,7 +30,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
 // promptChoice maps a display label to a PromptResponse.

@@ -38,8 +38,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/providers/postgresql"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/providers/postgresql"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/codegen"
 )
 
 func TestMergeGenerator_GenerateMerge(t *testing.T) {

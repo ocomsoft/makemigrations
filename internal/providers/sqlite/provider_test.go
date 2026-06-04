@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 func TestProvider_IsNotFoundError(t *testing.T) {

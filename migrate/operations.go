@@ -30,8 +30,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/providers"
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/providers"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // Operation is the interface all migration operations must implement.

@@ -30,11 +30,11 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
-	"github.com/ocomsoft/makemigrations/internal/fkutils"
-	"github.com/ocomsoft/makemigrations/internal/typemap"
-	"github.com/ocomsoft/makemigrations/internal/types"
-	"github.com/ocomsoft/makemigrations/internal/utils"
-	"github.com/ocomsoft/makemigrations/internal/version"
+	"github.com/ocomsoft/morphic/internal/fkutils"
+	"github.com/ocomsoft/morphic/internal/typemap"
+	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/utils"
+	"github.com/ocomsoft/morphic/internal/version"
 )
 
 // Provider implements the Provider interface for PostgreSQL

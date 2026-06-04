@@ -27,8 +27,8 @@ package migrate
 import (
 	"fmt"
 
-	"github.com/ocomsoft/makemigrations/internal/providers"
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/providers"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // BuildProviderFromType creates a Provider from a database type string.

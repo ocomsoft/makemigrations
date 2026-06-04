@@ -4,7 +4,7 @@ package migrate_test
 import (
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // buildLinearRegistry creates a registry with a simple linear chain for testing.

@@ -29,7 +29,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/makemigrations/cmd"
+	"github.com/ocomsoft/morphic/cmd"
 	"github.com/spf13/cobra"
 )
 

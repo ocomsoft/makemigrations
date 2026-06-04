@@ -24,7 +24,7 @@ SOFTWARE.
 package providers
 
 import (
-	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/morphic/internal/types"
 )
 
 // Provider defines the interface for database-specific SQL generation

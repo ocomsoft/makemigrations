@@ -28,9 +28,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/makemigrations/internal/config"
-	"github.com/ocomsoft/makemigrations/internal/interp"
-	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/morphic/internal/config"
+	"github.com/ocomsoft/morphic/internal/interp"
+	"github.com/ocomsoft/morphic/migrate"
 )
 
 // migrateCmd interprets the migrations module with yaegi and runs the embedded

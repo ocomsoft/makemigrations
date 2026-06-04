@@ -29,9 +29,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/codegen"
-	"github.com/ocomsoft/makemigrations/internal/config"
-	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/morphic/internal/config"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
 // ExecuteGoMigrationInit initializes the migrations/ directory for the Go migration framework.

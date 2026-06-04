@@ -31,7 +31,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ocomsoft/makemigrations/internal/providers"
+	"github.com/ocomsoft/morphic/internal/providers"
 )
 
 // RunOptions controls optional behaviour for Up and Down.

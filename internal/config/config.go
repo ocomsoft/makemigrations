@@ -33,7 +33,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-// Config represents the makemigrations configuration
+// Config represents the morphic configuration
 type Config struct {
 	// Database configuration
 	Database DatabaseConfig `yaml:"database" mapstructure:"database"`
@@ -82,7 +82,7 @@ func Load(configPath string) (*Config, error) {
 	v := viper.New()
 
 	// Set up environment variable binding
-	v.SetEnvPrefix("MAKEMIGRATIONS")
+	v.SetEnvPrefix("MORPHIC")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -93,19 +93,31 @@ func Load(configPath string) (*Config, error) {
 	// Try to read config file if it exists
 	if configPath != "" {
 		v.SetConfigFile(configPath)
+		if err := v.ReadInConfig(); err != nil {
+			// It's okay if config file doesn't exist, we'll use defaults
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return nil, fmt.Errorf("failed to read config file: %w", err)
+			}
+		}
 	} else {
-		// Look for config in migrations directory
-		v.SetConfigName("makemigrations.config")
+		// Try morphic.config first, fall back to makemigrations.config for backward compat
+		v.SetConfigName("morphic.config")
 		v.SetConfigType("yaml")
 		v.AddConfigPath("migrations")
 		v.AddConfigPath(".")
-	}
 
-	// Read config file if it exists
-	if err := v.ReadInConfig(); err != nil {
-		// It's okay if config file doesn't exist, we'll use defaults
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
+		if err := v.ReadInConfig(); err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+				// Try legacy config name
+				v.SetConfigName("makemigrations.config")
+				if legacyErr := v.ReadInConfig(); legacyErr != nil {
+					if _, ok := legacyErr.(viper.ConfigFileNotFoundError); !ok {
+						return nil, fmt.Errorf("failed to read config file: %w", legacyErr)
+					}
+				}
+			} else {
+				return nil, fmt.Errorf("failed to read config file: %w", err)
+			}
 		}
 	}
 
@@ -141,13 +153,13 @@ func (c *Config) Save(path string) error {
 	}
 
 	// Add header comment
-	header := `# Makemigrations Configuration File
+	header := `# Morphic Configuration File
 #
-# This file contains configuration for the makemigrations tool.
-# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
-# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
+# This file contains configuration for the morphic tool.
+# All settings can be overridden using environment variables with the prefix MORPHIC_
+# For example: MORPHIC_DATABASE_TYPE=mysql
 #
-# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
+# For nested values, use underscores: MORPHIC_OUTPUT_COLOR_ENABLED=false
 #
 
 `
@@ -171,6 +183,6 @@ func setDefaults(v *viper.Viper, cfg *Config) {
 
 // GetConfigPath returns the default config file path
 func GetConfigPath() string {
-	return filepath.Join("migrations", "makemigrations.config.yaml")
+	return filepath.Join("migrations", "morphic.config.yaml")
 }
 

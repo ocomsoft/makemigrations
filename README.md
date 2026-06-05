@@ -284,16 +284,38 @@ See the [Configuration Guide](docs/configuration.md) for complete options.
 
 ### Command Reference
 
+**Schema & Generation**
+
 | Command | Description |
 |---------|-------------|
-| **[init](docs/commands/init.md)** | Bootstrap the `migrations/` directory |
-| **[generate](docs/commands/generate.md)** | Generate `.go` migration files from YAML schema |
-| **[migrate](docs/commands/migrate.md)** | Run migrations in-process via the yaegi interpreter |
-| **[migrate-to-go](docs/commands/migrate_to_go.md)** | Convert existing Goose SQL migrations to Go |
-| [struct-to-schema](docs/commands/struct2schema.md) | Generate YAML schemas from Go structs |
-| [current-state](docs/commands/current_state.md) | Show reconstructed schema state from migrations as YAML |
-| [dump-sql](docs/commands/schema_to_sql.md) | Preview generated SQL from schemas |
-| [db-to-schema](docs/commands/db2schema.md) | Reverse-engineer schema from existing database |
+| **[init](docs/commands/init.md)** | Initialize migrations directory and config |
+| **[generate](docs/commands/generate.md)** | Generate migration files from YAML schema changes |
+| [generate empty](docs/commands/empty.md) | Create a blank migration for custom operations |
+| [generate dump-data](docs/commands/dump-data.md) | Generate a data-seeding migration from live DB |
+
+**Migration Runtime**
+
+| Command | Description |
+|---------|-------------|
+| **[migrate](docs/commands/migrate.md)** | Run migrations in-process via yaegi |
+
+**Inspection & Debugging**
+
+| Command | Description |
+|---------|-------------|
+| [schema-diff](docs/commands/schema_diff.md) | Show drift between YAML schema and migration state |
+| [db-diff](docs/commands/db-diff.md) | Compare live DB schema against migration state |
+| [current-state](docs/commands/current_state.md) | Show reconstructed schema state as YAML |
+| [schema-to-sql](docs/commands/schema_to_sql.md) | Convert merged YAML schema to SQL |
+| [schema-to-diagram](docs/commands/schema2diagram.md) | Generate Markdown docs with diagrams |
+
+**Conversion Tools**
+
+| Command | Description |
+|---------|-------------|
+| [db-to-schema](docs/commands/db2schema.md) | Reverse-engineer YAML schema from existing DB |
+| [struct-to-schema](docs/commands/struct2schema.md) | Convert Go structs to YAML schema |
+| [find-includes](docs/commands/find_includes.md) | Discover schema includes from Go modules |
 
 
 ## 🤖 Claude Code Skill

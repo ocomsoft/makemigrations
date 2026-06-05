@@ -46,20 +46,8 @@ var rootCmd = &cobra.Command{
 	Short: "Django-style Go migration generator",
 	Long: `Generate database migrations from YAML schema files as typed Go code.
 
-Available commands:
-  init               Initialize migrations directory and create initial migration
-  generate           Generate Go migration files from YAML schema changes
-  migrate            Run migrations in-process via the yaegi interpreter
-  diff               Show schema drift between YAML and migration state
-  db-diff            Compare live database schema against migration DAG state
-  current-state      Show the reconstructed schema state from existing migrations
-  db-to-schema       Extract database schema to YAML
-  struct-to-schema   Convert Go structs to YAML schema
-  dump-sql           Dump merged YAML schema as SQL
-  dump-data          Generate a migration that seeds table data using UpsertData
-  schema-to-diagram  Generate diagram from YAML schema
-  find-includes      Discover schema includes in Go modules
-  empty              Create a blank migration with no operations`,
+Define your schema in YAML, generate type-safe Go migration files, and run
+them in-process via yaegi — no Go toolchain required at runtime.`,
 }
 
 // GetRootCmd returns the root command for embedding in other applications
@@ -70,8 +58,7 @@ func GetRootCmd() *cobra.Command {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	// Display version at startup for all commands
-	fmt.Printf("%s\n", version.GetDisplayVersion())
+	rootCmd.Version = version.GetVersion()
 	cobra.CheckErr(rootCmd.Execute())
 }
 

@@ -34,7 +34,7 @@ import (
 var (
 	// Version represents the current morphic version
 	// This variable is updated by bumpversion during releases or set via ldflags
-	Version = "1.8.7"
+	Version = "1.8.8"
 
 	// BuildDate is set via ldflags during build
 	BuildDate = "unknown"

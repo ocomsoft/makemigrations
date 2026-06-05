@@ -16,9 +16,9 @@ A **Go-first** database migration tool with a Django-style workflow. Define your
 
 ## ✨ Why Go Migrations?
 
-- 🔒 **Type-safe at edit time**: Migrations are real Go files — caught by your IDE and `go vet` before they ever run
+- 🔒 **Type-safe at edit time**: Migrations are real `.go` files interpreted by [yaegi](https://github.com/traefik/yaegi) — your IDE, `gopls`, and `go vet` catch errors before they ever run
 - ⚡ **No build step at runtime**: yaegi interprets the `.go` files directly; no `go build`, no temporary binary, no GOWORK juggling
-- 🗄️ **Database-agnostic schema**: Write YAML once, deploy to PostgreSQL, MySQL, SQLite, or SQL Server
+- 🗄️ **Database-agnostic schema**: Write YAML once, deploy to PostgreSQL, MySQL, SQLite, or SQL Server — scripting migrations in Go (rather than raw SQL) means the same migration code works across all supported databases
 - 🔀 **DAG-based ordering**: Migrations form a dependency graph so parallel branches merge cleanly
 - 🔄 **Auto change detection**: Diff YAML schemas, generate only what changed
 - ⚠️ **Safe destructive ops**: Field removals, table drops, and renames require explicit review
@@ -198,17 +198,24 @@ your-project/
 
 ## ⚠️ Destructive Operations
 
-When a field removal, table drop, or rename is detected, morphic prompts before generating:
+When a field removal, table drop, or rename is detected, morphic shows an interactive prompt before generating:
 
 ```
-⚠  Destructive operation detected: field_removed on "users" (field: "legacy_col")
-  1) Generate  — include SQL in migration
-  2) Review    — include with // REVIEW comment
-  3) Omit      — skip SQL; schema state still advances (SchemaOnly)
-  4) Exit      — cancel migration generation
-  5) All       — generate all remaining destructive ops without prompting
-Choice [1-5]:
+⚠  Destructive: field_removed on "users" (field: "legacy_col")
+SQL: ALTER TABLE "users" DROP COLUMN "legacy_col"
+
+> Generate       — include operation in migration
+  Review         — include with // REVIEW comment
+  Omit           — skip SQL; schema state still advances (SchemaOnly)
+  IgnoreErrors   — include with IgnoreErrors: true
+  Exit           — cancel migration generation
+
+  Scope: [This only]  All remaining   All of this type
+
+↑/↓ select • tab scope • enter confirm • esc cancel
 ```
+
+Use **Tab** to cycle the scope — *This only*, *All remaining* (apply your choice to every subsequent destructive op), or *All of this type* (e.g. apply to all `field_removed` ops but still prompt for `table_removed`).
 
 ---
 
@@ -227,24 +234,6 @@ Resolve with a merge migration:
 ```bash
 morphic generate --merge
 # Creates: migrations/0004_merge_0002_add_messaging_and_0003_add_payments.go
-```
-
----
-
-## ⬆️ Upgrading from Goose SQL migrations
-
-If the schema is already applied to your database, fake the historical migrations:
-
-```bash
-morphic migrate fake 0001_initial
-morphic migrate fake 0002_add_phone
-morphic migrate status
-```
-
-Or use the dedicated conversion command for more control:
-
-```bash
-morphic migrate-to-go --dir migrations/
 ```
 
 ---

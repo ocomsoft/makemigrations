@@ -24,7 +24,7 @@ all: test build
 
 # Build for current platform
 build:
-	@echo "Building $(BINARY_NAME) v$(VERSION)..."
+	@echo "Building $(BINARY_NAME) $(VERSION)..."
 	CGO_ENABLED=0 $(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) .
 
 # Build for all platforms

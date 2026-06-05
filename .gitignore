@@ -30,3 +30,4 @@ makemigrations
 NOTES.md
 .worktrees
 .claude/worktrees/
+/morphic

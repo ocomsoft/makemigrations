@@ -61,8 +61,9 @@ var (
 // reconstructed state from existing Go migration files and generates a new
 // migration .go file for any changes detected.
 var goMigrationsCmd = &cobra.Command{
-	Use:   "generate",
-	Short: "Generate Go migration files from YAML schema changes",
+	Use:     "generate",
+	GroupID: "schema",
+	Short:   "Generate Go migration files from YAML schema changes",
 	Long: `Compares the current YAML schema against the reconstructed state from existing
 Go migration files and generates a new migration .go file for any changes detected.
 

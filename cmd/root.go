@@ -65,6 +65,13 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	rootCmd.AddGroup(
+		&cobra.Group{ID: "schema", Title: "Schema & Generation:"},
+		&cobra.Group{ID: "runtime", Title: "Migration Runtime:"},
+		&cobra.Group{ID: "inspect", Title: "Inspection & Debugging:"},
+		&cobra.Group{ID: "convert", Title: "Conversion Tools:"},
+	)
+
 	// Global flag for config file
 	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "Config file path (default: migrations/morphic.config.yaml)")
 }

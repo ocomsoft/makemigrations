@@ -46,7 +46,8 @@ var (
 var schema2diagramCmd = &cobra.Command{
 	Use:     "schema-to-diagram",
 	Aliases: []string{"schema2diagram"},
-	Short: "Generate Markdown documentation with diagrams from YAML schemas",
+	GroupID: "inspect",
+	Short:   "Generate Markdown documentation with diagrams from YAML schemas",
 	Long: `Generate comprehensive Markdown documentation with Entity Relationship Diagrams (ERD)
 from YAML schema files.
 

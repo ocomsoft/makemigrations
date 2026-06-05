@@ -11,7 +11,7 @@ and applied consistently across environments via the normal migration workflow.
 ## Usage
 
 ```
-morphic dump-data [table1 table2 ...] [flags]
+morphic generate dump-data [table1 table2 ...] [flags]
 ```
 
 ## Flags
@@ -72,19 +72,19 @@ statement at migration runtime.
 
 ```bash
 # Seed a single reference table
-morphic dump-data unit_type
+morphic generate dump-data unit_type
 
 # Seed multiple tables at once
-morphic dump-data unit_type currency --name seed_reference_data
+morphic generate dump-data unit_type currency --name seed_reference_data
 
 # Preview without writing
-morphic dump-data roles --dry-run
+morphic generate dump-data roles --dry-run
 
 # Override conflict key (table not in schema yet)
-morphic dump-data legacy_table --conflict-key id
+morphic generate dump-data legacy_table --conflict-key id
 
 # Specify database connection explicitly
-morphic dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
+morphic generate dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
 ```
 
 ## Filtering Rows with --where
@@ -93,13 +93,13 @@ By default, all rows are fetched. Use `--where` to filter:
 
 ```bash
 # Per-table filter
-morphic dump-data users orders --where "users:status='active'" --where "orders:total > 0"
+morphic generate dump-data users orders --where "users:status='active'" --where "orders:total > 0"
 
 # Global filter (applies to all tables)
-morphic dump-data users orders --where "active = 1"
+morphic generate dump-data users orders --where "active = 1"
 
 # Multiple conditions combined with AND
-morphic dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
+morphic generate dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
 ```
 
 ## Limitations

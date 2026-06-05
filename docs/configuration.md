@@ -72,7 +72,7 @@ Controls database SQL generation behavior and connection defaults.
 
 **Database URL Precedence:**
 
-When connecting to a database (e.g., `morphic migrate`, `morphic db-to-schema`, `morphic dump-data`), the URL is resolved in this order:
+When connecting to a database (e.g., `morphic migrate`, `morphic db-to-schema`, `morphic generate dump-data`), the URL is resolved in this order:
 
 1. Command-line flags (`--host`, `--port`, `--database`, etc.) or `--dsn`
 2. `DATABASE_URL` environment variable
@@ -132,7 +132,7 @@ export MORPHIC_OUTPUT_COLOR_ENABLED=false
 
 ### Database Connection Variables
 
-The `DATABASE_URL` environment variable is used by `morphic migrate`, `morphic db-to-schema`, `morphic dump-data`, and `morphic db-diff` to connect to the database:
+The `DATABASE_URL` environment variable is used by `morphic migrate`, `morphic db-to-schema`, `morphic generate dump-data`, and `morphic db-diff` to connect to the database:
 
 ```bash
 # PostgreSQL

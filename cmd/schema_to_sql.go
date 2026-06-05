@@ -39,6 +39,7 @@ var (
 var dumpSQLCmd = &cobra.Command{
 	Use:     "schema-to-sql",
 	Aliases: []string{"dump-sql", "dump_sql"},
+	GroupID: "inspect",
 	Short:   "Convert merged YAML schema to SQL and print to console",
 	Long: `Convert the merged YAML schema to SQL and print to the console.
 

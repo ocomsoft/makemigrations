@@ -66,31 +66,31 @@ the migration chain correctly.
 
 Examples:
   # Dump a single table
-  morphic dump-data countries
+  morphic generate dump-data countries
 
   # Dump multiple tables with a custom name
-  morphic dump-data countries currencies --name seed_reference_data
+  morphic generate dump-data countries currencies --name seed_reference_data
 
   # Override conflict keys for tables without migrations
-  morphic dump-data legacy_config --conflict-key code
+  morphic generate dump-data legacy_config --conflict-key code
 
   # Preview without writing
-  morphic dump-data countries --dry-run
+  morphic generate dump-data countries --dry-run
 
   # Use a full DSN instead of individual flags
-  morphic dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+  morphic generate dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 
   # Filter rows with a WHERE clause
-  morphic dump-data users --where "users:status='active'"
+  morphic generate dump-data users --where "users:status='active'"
 
   # Apply the same filter to all tables
-  morphic dump-data countries currencies --where "active = 1"`,
+  morphic generate dump-data countries currencies --where "active = 1"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runDumpData,
 }
 
 func init() {
-	rootCmd.AddCommand(dumpDataCmd)
+	goMigrationsCmd.AddCommand(dumpDataCmd)
 
 	dumpDataCmd.Flags().StringVar(&dumpDataName, "name", "",
 		"Custom migration name suffix")

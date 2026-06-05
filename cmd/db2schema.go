@@ -54,7 +54,8 @@ var (
 var db2schemaCmd = &cobra.Command{
 	Use:     "db-to-schema",
 	Aliases: []string{"db2schema"},
-	Short: "Extract database schema to YAML schema file",
+	GroupID: "convert",
+	Short:   "Extract database schema to YAML schema file",
 	Long: `Extract database schema information from a PostgreSQL database and generate
 a YAML schema file compatible with morphic.
 

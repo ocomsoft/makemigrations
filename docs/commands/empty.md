@@ -6,7 +6,7 @@ This is the Go equivalent of Django's `morphic --empty` flag.
 
 ## Overview
 
-Running `morphic empty` generates a migration file that:
+Running `morphic generate empty` generates a migration file that:
 
 - Has an empty `Operations` slice with a `TODO` comment as a placeholder
 - Automatically depends on the current DAG leaves (the most recently created migrations), so it slots into the chain correctly
@@ -15,7 +15,7 @@ Running `morphic empty` generates a migration file that:
 ## Usage
 
 ```
-morphic empty [flags]
+morphic generate empty [flags]
 ```
 
 ## Flags
@@ -64,7 +64,7 @@ Edit the file and replace the TODO comment with your custom operations.
 ### Create a blank migration with a custom name
 
 ```bash
-morphic empty --name add_custom_triggers
+morphic generate empty --name add_custom_triggers
 
 # Output:
 # Created migrations/0003_add_custom_triggers.go
@@ -74,13 +74,13 @@ morphic empty --name add_custom_triggers
 ### Preview without writing
 
 ```bash
-morphic empty --name backfill_users --dry-run
+morphic generate empty --name backfill_users --dry-run
 ```
 
 ### Verbose output (shows dependencies)
 
 ```bash
-morphic empty --name seed_data --verbose
+morphic generate empty --name seed_data --verbose
 
 # Output:
 # Generating blank migration: 0004_seed_data
@@ -159,7 +159,7 @@ See the [migrate operations reference](../migrations.md) for the full list of av
 ## Workflow
 
 ```
-morphic empty --name my_custom_migration
+morphic generate empty --name my_custom_migration
 ↓
 Edit migrations/NNNN_my_custom_migration.go
   → Add operations

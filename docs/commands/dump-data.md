@@ -4,7 +4,7 @@ The `dump-data` command connects to a live database, fetches rows from the speci
 
 ## Overview
 
-Running `morphic dump-data <table1> [table2 ...]` generates a migration file that:
+Running `morphic generate dump-data <table1> [table2 ...]` generates a migration file that:
 
 - Contains one `UpsertData` operation per table
 - Uses `INSERT ... ON CONFLICT (pk) DO UPDATE` at migration runtime
@@ -14,7 +14,7 @@ Running `morphic dump-data <table1> [table2 ...]` generates a migration file tha
 ## Usage
 
 ```
-morphic dump-data [table1 table2 ...] [flags]
+morphic generate dump-data [table1 table2 ...] [flags]
 ```
 
 ## Flags
@@ -72,7 +72,7 @@ By default, `dump-data` fetches **all rows** from each table. Use `--where` to f
 Prefix the condition with the table name and a colon:
 
 ```bash
-morphic dump-data users orders --where "users:status='active'" --where "orders:total > 0"
+morphic generate dump-data users orders --where "users:status='active'" --where "orders:total > 0"
 ```
 
 This fetches only active users and orders with a positive total.
@@ -82,7 +82,7 @@ This fetches only active users and orders with a positive total.
 Omit the table prefix to apply the condition to every table:
 
 ```bash
-morphic dump-data users orders --where "active = 1"
+morphic generate dump-data users orders --where "active = 1"
 ```
 
 ### Combining filters
@@ -90,7 +90,7 @@ morphic dump-data users orders --where "active = 1"
 Multiple `--where` entries for the same table are combined with `AND`:
 
 ```bash
-morphic dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
+morphic generate dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
 # Equivalent to: WHERE status='active' AND created_at > '2025-01-01'
 ```
 
@@ -132,49 +132,49 @@ Each `UpsertData` operation translates to an `INSERT ... ON CONFLICT (pk) DO UPD
 ### Dump a single table
 
 ```bash
-morphic dump-data countries
+morphic generate dump-data countries
 ```
 
 ### Dump multiple tables with a custom name
 
 ```bash
-morphic dump-data countries currencies --name seed_reference_data
+morphic generate dump-data countries currencies --name seed_reference_data
 ```
 
 ### Preview without writing
 
 ```bash
-morphic dump-data roles --dry-run
+morphic generate dump-data roles --dry-run
 ```
 
 ### Override conflict key (table not in schema yet)
 
 ```bash
-morphic dump-data legacy_table --conflict-key id
+morphic generate dump-data legacy_table --conflict-key id
 ```
 
 ### Specify database connection via DSN
 
 ```bash
-morphic dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
+morphic generate dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
 ```
 
 ### Dump only active records
 
 ```bash
-morphic dump-data users --where "users:status='active'" --dry-run
+morphic generate dump-data users --where "users:status='active'" --dry-run
 ```
 
 ### Filter all tables with the same condition
 
 ```bash
-morphic dump-data countries currencies --where "active = 1"
+morphic generate dump-data countries currencies --where "active = 1"
 ```
 
 ### Verbose output
 
 ```bash
-morphic dump-data countries --verbose
+morphic generate dump-data countries --verbose
 
 # Output:
 # Connecting to postgresql database...

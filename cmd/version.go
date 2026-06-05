@@ -39,8 +39,9 @@ var (
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show version information",
+	Use:     "version",
+	GroupID: "inspect",
+	Short:   "Show version information",
 	Long: `Display version information for morphic.
 
 This command shows the current version, build date, git commit, and platform information.

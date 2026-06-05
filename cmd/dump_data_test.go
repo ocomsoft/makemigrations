@@ -134,7 +134,7 @@ func TestDumpData_DryRun(t *testing.T) {
 	// Use --conflict-key since there are no existing migrations to derive PKs from.
 	rootCmd.SetArgs([]string{
 		"--config", cfgPath,
-		"dump-data", "colours",
+		"generate", "dump-data", "colours",
 		"--dsn", dbPath,
 		"--conflict-key", "id",
 		"--dry-run",
@@ -173,7 +173,7 @@ func TestDumpData_MissingArg(t *testing.T) {
 		rootCmd.SetArgs([]string{})
 	})
 
-	rootCmd.SetArgs([]string{"dump-data"})
+	rootCmd.SetArgs([]string{"generate", "dump-data"})
 
 	err := rootCmd.Execute()
 	if err == nil {
@@ -292,7 +292,7 @@ func TestDumpData_NoMigrationsDir_PKFromFlag(t *testing.T) {
 	// Execute dump-data with --conflict-key override and --dry-run.
 	rootCmd.SetArgs([]string{
 		"--config", cfgPath,
-		"dump-data", "widgets",
+		"generate", "dump-data", "widgets",
 		"--dsn", dbPath,
 		"--conflict-key", "id",
 		"--dry-run",
@@ -339,7 +339,7 @@ func TestDumpData_WhereFlag(t *testing.T) {
 
 	rootCmd.SetArgs([]string{
 		"--config", cfgPath,
-		"dump-data", "products",
+		"generate", "dump-data", "products",
 		"--dsn", dbPath,
 		"--conflict-key", "id",
 		"--where", "products:active = 1",
@@ -387,7 +387,7 @@ func TestDumpData_WhereFlagBare(t *testing.T) {
 
 	rootCmd.SetArgs([]string{
 		"--config", cfgPath,
-		"dump-data", "items",
+		"generate", "dump-data", "items",
 		"--dsn", dbPath,
 		"--conflict-key", "id",
 		"--where", "active = 1",

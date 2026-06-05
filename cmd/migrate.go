@@ -37,8 +37,9 @@ import (
 // migrate.App in-process. DisableFlagParsing passes every argument straight to
 // the App, so each of its subcommands works unchanged.
 var migrateCmd = &cobra.Command{
-	Use:   "migrate [args...]",
-	Short: "Run migrations in-process via the yaegi interpreter",
+	Use:     "migrate [args...]",
+	GroupID: "runtime",
+	Short:   "Run migrations in-process via the yaegi interpreter",
 	Long: `Load the migrations directory with the yaegi interpreter and run the embedded
 migrate App with the provided arguments. No Go toolchain is invoked — the
 migration .go files are interpreted in-process. All subcommands the App

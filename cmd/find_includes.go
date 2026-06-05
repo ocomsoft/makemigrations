@@ -50,7 +50,8 @@ var (
 var findIncludesCmd = &cobra.Command{
 	Use:     "find-includes",
 	Aliases: []string{"find_includes"},
-	Short: "Discover and add schema includes from Go modules",
+	GroupID: "convert",
+	Short:   "Discover and add schema includes from Go modules",
 	Long: `Automatically discover YAML schema files in Go modules and workspace,
 then add them as includes to your main schema.yaml file.
 

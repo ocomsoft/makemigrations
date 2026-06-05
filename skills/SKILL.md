@@ -131,7 +131,7 @@ morphic migrate up
 1. **Schema-first**: Edit `schema/schema.yaml` before anything else. Never write SQL to change structure.
 2. **NEVER compile or run migrations with `go build` / `go run`**: The `migrations/` directory contains `.go` files but you must NOT compile or execute them with the Go toolchain. Always use `morphic migrate up`, `morphic migrate showsql`, etc. The yaegi interpreter runs them in-process — no build step needed.
 3. **Prefer generated code unchanged**: Only modify generated migration `.go` files if you absolutely must (e.g., adding data migration logic). Try to leave them as-is.
-4. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `morphic empty --name "description"` to create the shell.
+4. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `morphic generate empty --name "description"` to create the shell.
 5. **Never skip generation**: Don't hand-write migration operations. Let the tool diff the schema and generate them.
 6. **Name migrations descriptively**: `--name "add_user_profiles"` not `--name "update"`.
 
@@ -255,10 +255,10 @@ include:
 | `morphic migrate status` | Show migration status |
 | `morphic migrate showsql` | Preview SQL without applying |
 | `morphic migrate dag` | View migration dependency graph |
-| `morphic empty` | Create blank migration (for RunSQL) |
+| `morphic generate empty` | Create blank migration (for RunSQL) |
 | `morphic db2schema` | Reverse-engineer schema from existing DB |
 | `morphic struct2schema` | Convert Go structs to schema YAML |
-| `morphic dump-data` | Generate data-seeding migration |
+| `morphic generate dump-data` | Generate data-seeding migration |
 | `morphic schema-to-sql` | Convert merged YAML schema to SQL |
 
 ## Common Mistakes
@@ -280,4 +280,4 @@ include:
 - Database-specific features not covered by field types (e.g., triggers, stored procedures)
 - One-off fixes that don't map to schema changes
 
-Create the shell with: `morphic empty --name "description"`
+Create the shell with: `morphic generate empty --name "description"`

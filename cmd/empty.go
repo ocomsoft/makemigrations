@@ -56,12 +56,12 @@ The generated migration automatically depends on the current DAG leaves
 (the most recent migrations), so it will be applied in the correct order.
 
 Example:
-  morphic empty --name add_custom_triggers`,
+  morphic generate empty --name add_custom_triggers`,
 	RunE: runEmpty,
 }
 
 func init() {
-	rootCmd.AddCommand(emptyCmd)
+	goMigrationsCmd.AddCommand(emptyCmd)
 	emptyCmd.Flags().StringVar(&emptyMigName, "name", "blank",
 		"Custom migration name suffix (default: blank)")
 	emptyCmd.Flags().BoolVar(&emptyMigDryRun, "dry-run", false,

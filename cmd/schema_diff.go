@@ -47,8 +47,10 @@ var (
 )
 
 var diffCmd = &cobra.Command{
-	Use:   "diff",
-	Short: "Show schema drift between YAML and migration state",
+	Use:     "schema-diff",
+	Aliases: []string{"diff"},
+	GroupID: "inspect",
+	Short:   "Show schema drift between YAML and migration state",
 	Long: `Compare the current YAML schema files against the migration DAG state
 and show the differences in both directions:
 

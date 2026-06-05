@@ -60,7 +60,7 @@ The skill guides Claude through these steps for every database change:
 
 2. **Prefer generated code unchanged**: Claude will try to leave generated migration `.go` files as-is. If a modification is genuinely needed (e.g., data migration logic), it will be minimal and careful.
 
-3. **RunSQL is last resort**: Only used for data migrations, complex constraints, or database-specific features that can't be expressed in the schema format. Claude uses `morphic empty --name "description"` to create the shell file.
+3. **RunSQL is last resort**: Only used for data migrations, complex constraints, or database-specific features that can't be expressed in the schema format. Claude uses `morphic generate empty --name "description"` to create the shell file.
 
 4. **Never skip generation**: Claude will not hand-write migration operations. The tool diffs the schema and generates them.
 

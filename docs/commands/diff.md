@@ -1,4 +1,4 @@
-# `diff` Command
+# `schema-diff` Command
 
 Compares the current YAML schema files against the migration DAG state and
 shows the differences in both directions.
@@ -78,25 +78,25 @@ Raw `SchemaDiff` structure as JSON, suitable for piping to `jq` or other tools.
 ### Quick overview of pending changes
 
 ```bash
-morphic diff
+morphic schema-diff
 ```
 
 ### YAML output for scripting
 
 ```bash
-morphic diff --yaml
+morphic schema-diff --yaml
 ```
 
 ### JSON output piped to jq
 
 ```bash
-morphic diff --json | jq '.changes[] | select(.type == "table_removed")'
+morphic schema-diff --json | jq '.changes[] | select(.type == "table_removed")'
 ```
 
 ### Verbose mode
 
 ```bash
-morphic diff --verbose
+morphic schema-diff --verbose
 ```
 
 Shows additional detail for each change, including full descriptions.
@@ -105,6 +105,6 @@ Shows additional detail for each change, including full descriptions.
 
 | Command | Compares | Use Case |
 |---------|----------|----------|
-| `diff` | YAML schema ↔ migration DAG | See what a migration would do |
+| `schema-diff` | YAML schema ↔ migration DAG | See what a migration would do |
 | `db-diff` | migration DAG ↔ live database | Detect drift after deployment |
 | `morphic --check` | YAML schema ↔ migration DAG | CI gate (exit code only) |

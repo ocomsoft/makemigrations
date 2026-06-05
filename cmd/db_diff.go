@@ -47,8 +47,9 @@ var dbDiffFormat string
 // dbDiffCmd represents the db-diff command that compares a live database schema
 // against the schema state reconstructed from the migration DAG.
 var dbDiffCmd = &cobra.Command{
-	Use:   "db-diff",
-	Short: "Compare live database schema against migration DAG state",
+	Use:     "db-diff",
+	GroupID: "inspect",
+	Short:   "Compare live database schema against migration DAG state",
 	Long: `Compare the live database schema against the expected schema derived from the
 migration DAG (Directed Acyclic Graph).
 

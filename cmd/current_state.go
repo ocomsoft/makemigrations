@@ -43,7 +43,8 @@ var currentStateVerbose bool
 var currentStateCmd = &cobra.Command{
 	Use:     "current-state",
 	Aliases: []string{"current_state"},
-	Short: "Show the reconstructed schema state from existing migrations",
+	GroupID: "inspect",
+	Short:   "Show the reconstructed schema state from existing migrations",
 	Long: `Rebuilds the merged schema from all existing Go migration files by walking the
 migration DAG and applying each operation's Mutate in order. The resulting
 schema state is output as YAML.

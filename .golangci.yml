@@ -7,20 +7,21 @@ linters:
   default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
-    - typecheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - revive
   exclusions:
     paths:
       - debug
       - vendor
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
 
 linters-settings:
   govet:

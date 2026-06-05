@@ -129,10 +129,11 @@ morphic migrate up
 ## Rules
 
 1. **Schema-first**: Edit `schema/schema.yaml` before anything else. Never write SQL to change structure.
-2. **Prefer generated code unchanged**: Only modify generated migration `.go` files if you absolutely must (e.g., adding data migration logic). Try to leave them as-is.
-3. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `morphic empty --name "description"` to create the shell.
-4. **Never skip generation**: Don't hand-write migration operations. Let the tool diff the schema and generate them.
-5. **Name migrations descriptively**: `--name "add_user_profiles"` not `--name "update"`.
+2. **NEVER compile or run migrations with `go build` / `go run`**: The `migrations/` directory contains `.go` files but you must NOT compile or execute them with the Go toolchain. Always use `morphic migrate up`, `morphic migrate showsql`, etc. The yaegi interpreter runs them in-process — no build step needed.
+3. **Prefer generated code unchanged**: Only modify generated migration `.go` files if you absolutely must (e.g., adding data migration logic). Try to leave them as-is.
+4. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `morphic empty --name "description"` to create the shell.
+5. **Never skip generation**: Don't hand-write migration operations. Let the tool diff the schema and generate them.
+6. **Name migrations descriptively**: `--name "add_user_profiles"` not `--name "update"`.
 
 ## Quick Reference: Field Types
 
@@ -264,6 +265,7 @@ include:
 
 | Mistake | Fix |
 |---------|-----|
+| Running `go build` or `go run` on the migrations directory | Use `morphic migrate up` — yaegi interprets them in-process, no compilation needed |
 | Writing CREATE TABLE SQL directly | Edit schema.yaml and run `morphic generate` |
 | Hand-writing migration operations | Let the tool generate them from the schema diff |
 | Forgetting `--name` flag | Always name migrations: `--name "add_user_profiles"` |

@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing/fstest"
 
 	"github.com/traefik/yaegi/interp"
@@ -138,8 +139,14 @@ func perLoadSymbols(reg *migrate.Registry) map[string]map[string]reflect.Value {
 	return out
 }
 
-// rewritePackage parses src and returns it with the package name replaced by
-// newName. Comments and formatting are preserved.
+const (
+	legacyImportPrefix  = "github.com/ocomsoft/makemigrations/"
+	currentImportPrefix = "github.com/ocomsoft/morphic/"
+)
+
+// rewritePackage parses src, replaces the package name with newName, and
+// silently rewrites legacy makemigrations import paths to morphic.
+// Comments and formatting are preserved.
 func rewritePackage(filename string, src []byte, newName string) ([]byte, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
@@ -147,9 +154,22 @@ func rewritePackage(filename string, src []byte, newName string) ([]byte, error)
 		return nil, err
 	}
 	file.Name = ast.NewIdent(newName)
+	rewriteLegacyImports(file)
 	var buf bytes.Buffer
 	if err := printer.Fprint(&buf, fset, file); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// rewriteLegacyImports rewrites any import paths starting with the old
+// makemigrations module path to the current morphic path, so pre-rebrand
+// migration files load without manual edits.
+func rewriteLegacyImports(file *ast.File) {
+	for _, imp := range file.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		if strings.HasPrefix(path, legacyImportPrefix) {
+			imp.Path.Value = `"` + currentImportPrefix + strings.TrimPrefix(path, legacyImportPrefix) + `"`
+		}
+	}
 }

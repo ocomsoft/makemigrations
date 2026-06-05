@@ -147,6 +147,47 @@ func TestLoadRegistryIsolated(t *testing.T) {
 	}
 }
 
+// file0001Legacy uses the old makemigrations import path — the loader
+// should silently rewrite it to the morphic path.
+const file0001Legacy = `package main
+
+import (
+	m "github.com/ocomsoft/makemigrations/migrate"
+)
+
+func init() {
+	m.Register(&m.Migration{
+		Name:         "0001_initial",
+		Dependencies: []string{},
+		Operations: []m.Operation{
+			&m.CreateTable{
+				Name: "users",
+				Fields: []m.Field{
+					{Name: "id", Type: "uuid", PrimaryKey: true},
+				},
+			},
+		},
+	})
+}
+`
+
+func TestLoadRegistryLegacyImport(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "0001_initial.go"), file0001Legacy)
+
+	reg, err := interp.LoadRegistry(dir)
+	if err != nil {
+		t.Fatalf("LoadRegistry with legacy import: %v", err)
+	}
+	all := reg.All()
+	if len(all) != 1 {
+		t.Fatalf("expected 1 migration, got %d", len(all))
+	}
+	if all[0].Name != "0001_initial" {
+		t.Errorf("migration name = %q, want %q", all[0].Name, "0001_initial")
+	}
+}
+
 func mustWrite(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

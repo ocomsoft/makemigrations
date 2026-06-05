@@ -27,10 +27,12 @@ SOFTWARE.
 package cmd
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -46,9 +48,10 @@ var makemigrationsShimCmd = &cobra.Command{
 	Short:      "Legacy upgrade shim — migrates config and DB table names",
 	Long: `Upgrade a project from the legacy "makemigrations" naming convention to "morphic".
 
-This command performs two actions:
+This command performs three actions:
   1. Renames migrations/makemigrations.config.yaml to migrations/morphic.config.yaml
   2. Renames the makemigrations_history DB table to morphic_history
+  3. Rewrites import paths in migration .go files from makemigrations to morphic
 
 Both operations are idempotent — running this command multiple times is safe.
 Use --dry-run to preview what would happen without making changes.`,
@@ -90,7 +93,16 @@ func runMakemigrationsShim(cmd *cobra.Command, _ []string) error {
 		cmd.Println("Skipping DB history table rename: DATABASE_URL not set")
 	}
 
-	// Step 3: Print summary
+	// Step 3: Rewrite legacy import paths in migration .go files
+	rewritten, err := shimRewriteImports(cmd, makemigrationsShimDryRun)
+	if err != nil {
+		return err
+	}
+	if rewritten > 0 {
+		actions = append(actions, fmt.Sprintf("%d migration file(s) updated", rewritten))
+	}
+
+	// Step 4: Print summary
 	if len(actions) == 0 {
 		cmd.Println("Nothing to do — project is already upgraded.")
 	} else if makemigrationsShimDryRun {
@@ -197,4 +209,46 @@ func fileExists(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+const (
+	legacyImport  = "github.com/ocomsoft/makemigrations/"
+	currentImport = "github.com/ocomsoft/morphic/"
+)
+
+// shimRewriteImports scans all .go files in the migrations directory and
+// rewrites any legacy makemigrations import paths to the morphic equivalents.
+// Returns the number of files that were (or would be) modified.
+func shimRewriteImports(cmd *cobra.Command, dryRun bool) (int, error) {
+	migrationsDir := "migrations"
+	files, err := filepath.Glob(filepath.Join(migrationsDir, "*.go"))
+	if err != nil {
+		return 0, fmt.Errorf("scanning migrations directory: %w", err)
+	}
+
+	count := 0
+	for _, path := range files {
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return 0, fmt.Errorf("reading %s: %w", path, readErr)
+		}
+		if !bytes.Contains(data, []byte(legacyImport)) {
+			continue
+		}
+		updated := strings.ReplaceAll(string(data), legacyImport, currentImport)
+		if dryRun {
+			cmd.Printf("Imports: would rewrite %s\n", path)
+		} else {
+			if writeErr := os.WriteFile(path, []byte(updated), 0o644); writeErr != nil {
+				return 0, fmt.Errorf("writing %s: %w", path, writeErr)
+			}
+			cmd.Printf("Imports: rewrote %s\n", path)
+		}
+		count++
+	}
+
+	if count == 0 {
+		cmd.Println("Imports: no legacy import paths found — nothing to rewrite.")
+	}
+	return count, nil
 }

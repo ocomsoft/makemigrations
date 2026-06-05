@@ -1,6 +1,6 @@
 module github.com/ocomsoft/morphic
 
-go 1.25.7
+go 1.25.11
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10

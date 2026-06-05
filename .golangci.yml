@@ -1,22 +1,10 @@
+version: "2"
+
 run:
   timeout: 5m
 
-linters-settings:
-  govet:
-    enable:
-      - shadow
-  gocyclo:
-    min-complexity: 15
-  maligned:
-    suggest-new: true
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck
     - gosimple
@@ -29,8 +17,19 @@ linters:
     - goimports
     - misspell
     - revive
+  exclusions:
+    paths:
+      - debug
+      - vendor
 
-issues:
-  exclude-dirs:
-    - debug
-    - vendor
+linters-settings:
+  govet:
+    enable:
+      - shadow
+  gocyclo:
+    min-complexity: 15
+  dupl:
+    threshold: 100
+  goconst:
+    min-len: 2
+    min-occurrences: 2

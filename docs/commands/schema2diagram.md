@@ -560,7 +560,7 @@ fi
 
 ## See Also
 
-- [dump-sql Command](./dump-sql.md) - Generate SQL from schemas
+- [schema-to-sql Command](./schema_to_sql.md) - Generate SQL from schemas
 - [db-to-schema Command](./db-to-schema.md) - Extract schemas from databases  
 - [morphic Command](./morphic.md) - Generate migrations from schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference

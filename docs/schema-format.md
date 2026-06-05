@@ -983,7 +983,7 @@ database:
 morphic generate --dry-run --verbose
 
 # Check for issues
-morphic dump_sql --verbose
+morphic schema-to-sql --verbose
 ```
 
 ### Common Issues

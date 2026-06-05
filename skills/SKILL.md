@@ -259,7 +259,7 @@ include:
 | `morphic db2schema` | Reverse-engineer schema from existing DB |
 | `morphic struct2schema` | Convert Go structs to schema YAML |
 | `morphic dump-data` | Generate data-seeding migration |
-| `morphic dump_sql` | Preview SQL from schema (no migration state) |
+| `morphic schema-to-sql` | Convert merged YAML schema to SQL |
 
 ## Common Mistakes
 

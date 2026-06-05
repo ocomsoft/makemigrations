@@ -197,7 +197,7 @@ Each command is in its own source file. The CLI is built with Cobra.
 | `db2schema.go`         | `morphic db2schema`     | Reverse-engineer DB to YAML schema                   |
 | `struct2schema.go`     | `morphic struct2schema` | Convert Go structs to YAML schema                    |
 | `schema2diagram.go`    | `morphic schema2diagram`| Visualise schema as diagram                          |
-| `dump_sql.go`          | `morphic dump-sql`      | Generate SQL without writing migration files         |
+| `schema_to_sql.go`          | `morphic schema-to-sql`      | Generate SQL without writing migration files         |
 | `find_includes.go`     | `morphic find-includes` | Discover schema includes from Go modules             |
 
 ### 2. `migrate/` Package (Runtime Library)
@@ -832,7 +832,7 @@ github.com/ocomsoft/morphic
 │   ├── db2schema.go
 │   ├── struct2schema.go
 │   ├── schema2diagram.go
-│   ├── dump_sql.go
+│   ├── schema_to_sql.go
 │   └── find_includes.go
 │
 ├── migrate/                       Runtime library (imported by generated files)

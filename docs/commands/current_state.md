@@ -1,6 +1,6 @@
 # current-state Command
 
-The `current-state` command reconstructs the schema state from existing Go migration files and outputs it as YAML. This is the inverse of `dump-sql` — instead of showing what the YAML schema would produce, it shows what the migration DAG thinks the current schema looks like.
+The `current-state` command reconstructs the schema state from existing Go migration files and outputs it as YAML. This is the inverse of `schema-to-sql` — instead of showing what the YAML schema would produce, it shows what the migration DAG thinks the current schema looks like.
 
 ## Overview
 
@@ -106,5 +106,5 @@ The conversion in step 5 is the same `schemaStateToYAMLSchema()` function used b
 
 - [morphic Command](./morphic.md) — generate migrations from schema changes
 - [diff Command](./diff.md) — compare YAML schema against migration state
-- [dump-sql Command](./dump-sql.md) — preview SQL from YAML schema (no migration state)
+- [schema-to-sql Command](./schema_to_sql.md) — preview SQL from YAML schema (no migration state)
 - [migrate Command](./migrate.md) — apply, rollback, and inspect migrations

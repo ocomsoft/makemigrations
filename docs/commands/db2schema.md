@@ -563,7 +563,7 @@ morphic init
 ```bash
 # Extract schema for documentation
 morphic db-to-schema --database=myapp --verbose > schema_extraction.log
-morphic dump-sql --database=postgresql > schema_structure.sql
+morphic schema-to-sql --database=postgresql > schema_structure.sql
 
 # Generate complete documentation
 echo "# Database Schema Documentation" > docs/database.md
@@ -710,6 +710,6 @@ Some PostgreSQL types have no direct YAML equivalent:
 
 - [init Command](./init.md) - Initialize new projects with extracted schemas
 - [morphic Command](./morphic.md) - Generate migrations from schemas  
-- [dump-sql Command](./dump-sql.md) - View generated SQL from extracted schemas
+- [schema-to-sql Command](./schema_to_sql.md) - View generated SQL from extracted schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options

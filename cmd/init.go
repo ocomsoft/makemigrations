@@ -32,7 +32,7 @@ var initDatabaseType string
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize migrations directory for the Go migration framework",
+	Short: "Initialize migrations directory and config",
 	Long: `Bootstrap the migrations/ directory for the Django-style Go migration framework.
 
 This command:

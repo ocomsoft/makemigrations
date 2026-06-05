@@ -25,6 +25,9 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/ocomsoft/morphic/internal/workflow"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
 var (
@@ -61,7 +64,16 @@ Database Support:
 
 // runDumpSQL executes the dump_sql command
 func runDumpSQL(cmd *cobra.Command, args []string) error {
-	return ExecuteDumpSQL(cmd, databaseType, pending, verbose)
+	dagQuerier := &workflow.DAGQuerier{
+		QueryPreviousSchema: func(migrationsDir string, dbType string, verbose bool) (*yamlpkg.Schema, error) {
+			dagOut, err := queryDAG(migrationsDir, verbose)
+			if err != nil {
+				return nil, err
+			}
+			return schemaStateToYAMLSchema(dagOut.SchemaState, dbType), nil
+		},
+	}
+	return workflow.ExecuteDumpSQL(cmd, databaseType, pending, verbose, configFile, dagQuerier)
 }
 
 func init() {

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-package cmd
+package drivers
 
 // Blank-imports for SQL drivers used by the migrate command. Under the
 // previous compile-flow each user added the driver they needed to their
@@ -31,8 +31,8 @@ package cmd
 // registered transitively by internal/providers/postgresql.
 //
 // The mapping from migrate.Config.DatabaseType to driver name is in
-// migrate/app.go (driverName): "mysql"/"tidb" → mysql, "sqlserver" →
-// sqlserver, "sqlite" → sqlite3, anything else → postgres.
+// migrate/app.go (driverName): "mysql"/"tidb" -> mysql, "sqlserver" ->
+// sqlserver, "sqlite" -> sqlite3, anything else -> postgres.
 import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"

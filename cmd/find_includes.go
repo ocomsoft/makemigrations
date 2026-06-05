@@ -35,6 +35,7 @@ import (
 	"golang.org/x/mod/modfile"
 	yaml "gopkg.in/yaml.v3"
 
+	"github.com/ocomsoft/morphic/internal/workflow"
 	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
@@ -44,18 +45,6 @@ var (
 	includeWorkspace bool
 	schemaProvided   bool
 )
-
-// DiscoveredSchema represents a schema found during discovery
-type DiscoveredSchema struct {
-	ModulePath   string
-	RelativePath string
-	FullPath     string
-	IsWorkspace  bool
-	Schema       *yamlpkg.Schema
-	TableCount   int
-	DatabaseName string
-	DatabaseType string
-}
 
 // findIncludesCmd represents the find_includes command
 var findIncludesCmd = &cobra.Command{
@@ -85,12 +74,35 @@ Examples:
 
 // runFindIncludes executes the find_includes command
 func runFindIncludes(cmd *cobra.Command, args []string) error {
-	return ExecuteFindIncludes(cmd, configFile, schemaPath, interactive, includeWorkspace)
+	callbacks := &workflow.FindIncludesCallbacks{
+		FindLocalSchemaFiles: func() ([]workflow.LocalSchemaFile, error) {
+			return findLocalSchemaFiles()
+		},
+		SelectLocalSchemaFile: func(schemas []workflow.LocalSchemaFile) (string, error) {
+			return selectLocalSchemaFile(schemas)
+		},
+		DiscoverSchemas: func() ([]workflow.DiscoveredSchema, error) {
+			return discoverSchemas()
+		},
+		SelectSchemasInteractively: func(schemas []workflow.DiscoveredSchema) ([]workflow.DiscoveredSchema, error) {
+			return selectSchemasInteractively(schemas)
+		},
+		LoadExistingSchema: func(path string) (*yamlpkg.Schema, error) {
+			return loadExistingSchema(path)
+		},
+		FilterNewSchemas: func(discovered []workflow.DiscoveredSchema, existing *yamlpkg.Schema) []workflow.DiscoveredSchema {
+			return filterNewSchemas(discovered, existing)
+		},
+		UpdateSchemaWithIncludes: func(path string, schema *yamlpkg.Schema, schemasToAdd []workflow.DiscoveredSchema) error {
+			return updateSchemaWithIncludes(path, schema, schemasToAdd)
+		},
+	}
+	return workflow.ExecuteFindIncludes(cmd, configFile, schemaPath, interactive, includeWorkspace, callbacks)
 }
 
 // discoverSchemas finds all YAML schemas in Go modules and workspace
-func discoverSchemas() ([]DiscoveredSchema, error) {
-	var discovered []DiscoveredSchema
+func discoverSchemas() ([]workflow.DiscoveredSchema, error) {
+	var discovered []workflow.DiscoveredSchema
 
 	// First, discover workspace modules (prioritized)
 	if includeWorkspace {
@@ -116,8 +128,8 @@ func discoverSchemas() ([]DiscoveredSchema, error) {
 
 // discoverWorkspaceSchemas finds schemas in Go workspace modules
 // discoverWorkspaceSchemas finds schemas in Go workspace modules
-func discoverWorkspaceSchemas() ([]DiscoveredSchema, error) {
-	var discovered []DiscoveredSchema
+func discoverWorkspaceSchemas() ([]workflow.DiscoveredSchema, error) {
+	var discovered []workflow.DiscoveredSchema
 
 	// Find go.work file by searching upward through parent directories
 	workFilePath, err := findGoWorkFile()
@@ -176,7 +188,7 @@ func discoverWorkspaceSchemas() ([]DiscoveredSchema, error) {
 
 		// Exclude the schema file we're trying to add to
 		if targetAbs != "" {
-			filtered := make([]DiscoveredSchema, 0, len(schemas))
+			filtered := make([]workflow.DiscoveredSchema, 0, len(schemas))
 			for _, s := range schemas {
 				if s.FullPath == targetAbs {
 					if verbose {
@@ -223,8 +235,8 @@ func findGoWorkFile() (string, error) {
 }
 
 // discoverGoModSchemas finds schemas in go.mod dependencies
-func discoverGoModSchemas() ([]DiscoveredSchema, error) {
-	var discovered []DiscoveredSchema
+func discoverGoModSchemas() ([]workflow.DiscoveredSchema, error) {
+	var discovered []workflow.DiscoveredSchema
 
 	// Parse go.mod
 	goModBytes, err := os.ReadFile("go.mod")
@@ -270,8 +282,8 @@ func discoverGoModSchemas() ([]DiscoveredSchema, error) {
 }
 
 // findSchemasInPath finds schemas in a given path (workspace module)
-func findSchemasInPath(basePath string, isWorkspace bool) ([]DiscoveredSchema, error) {
-	var schemas []DiscoveredSchema
+func findSchemasInPath(basePath string, isWorkspace bool) ([]workflow.DiscoveredSchema, error) {
+	var schemas []workflow.DiscoveredSchema
 
 	// Read the module path from go.mod in this directory
 	goModPath := filepath.Join(basePath, "go.mod")
@@ -317,7 +329,7 @@ func findSchemasInPath(basePath string, isWorkspace bool) ([]DiscoveredSchema, e
 				return nil // Continue walking
 			}
 
-			discovered := DiscoveredSchema{
+			discovered := workflow.DiscoveredSchema{
 				ModulePath:   modulePath,
 				RelativePath: relPath,
 				FullPath:     path,
@@ -342,8 +354,8 @@ func findSchemasInPath(basePath string, isWorkspace bool) ([]DiscoveredSchema, e
 }
 
 // findSchemasInModule finds schemas in a cached Go module
-func findSchemasInModule(modPath, modulePath string) ([]DiscoveredSchema, error) {
-	var schemas []DiscoveredSchema
+func findSchemasInModule(modPath, modulePath string) ([]workflow.DiscoveredSchema, error) {
+	var schemas []workflow.DiscoveredSchema
 
 	// Walk the module directory to find schema files
 	err := filepath.WalkDir(modPath, func(path string, d os.DirEntry, err error) error {
@@ -371,7 +383,7 @@ func findSchemasInModule(modPath, modulePath string) ([]DiscoveredSchema, error)
 				return nil // Continue walking
 			}
 
-			discovered := DiscoveredSchema{
+			discovered := workflow.DiscoveredSchema{
 				ModulePath:   modulePath,
 				RelativePath: relPath,
 				FullPath:     path,
@@ -395,16 +407,9 @@ func findSchemasInModule(modPath, modulePath string) ([]DiscoveredSchema, error)
 	return schemas, err
 }
 
-// LocalSchemaFile represents a local schema.yaml file found in the current directory
-type LocalSchemaFile struct {
-	Path         string
-	DatabaseName string
-	TableCount   int
-}
-
 // findLocalSchemaFiles recursively searches for schema.yaml files in the current directory
-func findLocalSchemaFiles() ([]LocalSchemaFile, error) {
-	var schemas []LocalSchemaFile
+func findLocalSchemaFiles() ([]workflow.LocalSchemaFile, error) {
+	var schemas []workflow.LocalSchemaFile
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current directory: %w", err)
@@ -435,7 +440,7 @@ func findLocalSchemaFiles() ([]LocalSchemaFile, error) {
 				relPath = path // Use absolute path if relative fails
 			}
 
-			localSchema := LocalSchemaFile{
+			localSchema := workflow.LocalSchemaFile{
 				Path:         relPath,
 				DatabaseName: schema.Database.Name,
 				TableCount:   len(schema.Tables),
@@ -516,8 +521,8 @@ func loadExistingSchema(filePath string) (*yamlpkg.Schema, error) {
 }
 
 // filterNewSchemas filters out schemas that are already included
-func filterNewSchemas(discovered []DiscoveredSchema, existingSchema *yamlpkg.Schema) []DiscoveredSchema {
-	var newSchemas []DiscoveredSchema
+func filterNewSchemas(discovered []workflow.DiscoveredSchema, existingSchema *yamlpkg.Schema) []workflow.DiscoveredSchema {
+	var newSchemas []workflow.DiscoveredSchema
 
 	// Create a map of existing includes for quick lookup
 	existingIncludes := make(map[string]bool)
@@ -540,7 +545,7 @@ func filterNewSchemas(discovered []DiscoveredSchema, existingSchema *yamlpkg.Sch
 }
 
 // selectLocalSchemaFile prompts user to select a schema file when multiple are found
-func selectLocalSchemaFile(schemas []LocalSchemaFile) (string, error) {
+func selectLocalSchemaFile(schemas []workflow.LocalSchemaFile) (string, error) {
 	reader := bufio.NewReader(os.Stdin)
 
 	color.Cyan("\nMultiple schema.yaml files found:")
@@ -578,8 +583,8 @@ func selectLocalSchemaFile(schemas []LocalSchemaFile) (string, error) {
 }
 
 // selectSchemasInteractively allows user to select which schemas to include
-func selectSchemasInteractively(schemas []DiscoveredSchema) ([]DiscoveredSchema, error) {
-	var selected []DiscoveredSchema
+func selectSchemasInteractively(schemas []workflow.DiscoveredSchema) ([]workflow.DiscoveredSchema, error) {
+	var selected []workflow.DiscoveredSchema
 	reader := bufio.NewReader(os.Stdin)
 
 	color.Cyan("\nDiscovered schemas (workspace modules are recommended):")
@@ -617,7 +622,7 @@ func selectSchemasInteractively(schemas []DiscoveredSchema) ([]DiscoveredSchema,
 }
 
 // updateSchemaWithIncludes adds the selected includes to the schema file
-func updateSchemaWithIncludes(filePath string, schema *yamlpkg.Schema, schemasToAdd []DiscoveredSchema) error {
+func updateSchemaWithIncludes(filePath string, schema *yamlpkg.Schema, schemasToAdd []workflow.DiscoveredSchema) error {
 	// Add new includes
 	for _, discoveredSchema := range schemasToAdd {
 		include := yamlpkg.Include{

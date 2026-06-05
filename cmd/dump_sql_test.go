@@ -29,7 +29,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/morphic/cmd"
+	"github.com/ocomsoft/morphic/internal/workflow"
+	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -102,7 +103,7 @@ tables:
 	os.Stdout = w
 
 	testCmd, _ := newTestCmd()
-	err := cmd.ExecuteDumpSQL(testCmd, "postgresql", false, false)
+	err := workflow.ExecuteDumpSQL(testCmd, "postgresql", false, false, "", nil)
 
 	_ = w.Close()
 	os.Stdout = oldStdout
@@ -155,7 +156,12 @@ tables:
 	testCmd, _ := newTestCmd()
 	// With pending=true and no migrations directory, all changes are "pending"
 	// since previous state is empty
-	err := cmd.ExecuteDumpSQL(testCmd, "postgresql", true, false)
+	dagQuerier := &workflow.DAGQuerier{
+		QueryPreviousSchema: func(migrationsDir string, dbType string, verbose bool) (*yamlpkg.Schema, error) {
+			return nil, nil
+		},
+	}
+	err := workflow.ExecuteDumpSQL(testCmd, "postgresql", true, false, "", dagQuerier)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -202,7 +208,7 @@ func TestExecuteDumpSQL_NoSchemaFiles(t *testing.T) {
 	}
 
 	testCmd, _ := newTestCmd()
-	err = cmd.ExecuteDumpSQL(testCmd, "postgresql", false, false)
+	err = workflow.ExecuteDumpSQL(testCmd, "postgresql", false, false, "", nil)
 	if err != nil {
 		t.Fatalf("expected nil error for no schema files, got: %v", err)
 	}

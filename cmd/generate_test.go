@@ -29,6 +29,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ocomsoft/morphic/internal/ui"
 	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 	"github.com/ocomsoft/morphic/migrate"
 )
@@ -521,30 +522,30 @@ func TestParsePromptInput(t *testing.T) {
 	tests := []struct {
 		input     string
 		wantResp  yamlpkg.PromptResponse
-		wantScope promptScope
+		wantScope ui.PromptScope
 	}{
-		{"1", yamlpkg.PromptGenerate, scopeOne},
-		{"2", yamlpkg.PromptReview, scopeOne},
-		{"3", yamlpkg.PromptOmit, scopeOne},
-		{"4", yamlpkg.PromptExit, scopeOne},
-		{"5", yamlpkg.PromptIgnoreErrors, scopeOne},
-		{"1a", yamlpkg.PromptGenerate, scopeAll},
-		{"1A", yamlpkg.PromptGenerate, scopeAll},
-		{"3a", yamlpkg.PromptOmit, scopeAll},
-		{"5a", yamlpkg.PromptIgnoreErrors, scopeAll},
-		{"1t", yamlpkg.PromptGenerate, scopeType},
-		{"1T", yamlpkg.PromptGenerate, scopeType},
-		{"2t", yamlpkg.PromptReview, scopeType},
-		{"3t", yamlpkg.PromptOmit, scopeType},
-		{"5t", yamlpkg.PromptIgnoreErrors, scopeType},
-		{"4a", yamlpkg.PromptExit, scopeOne},  // exit ignores scope
-		{"", yamlpkg.PromptGenerate, scopeOne}, // empty defaults to generate
-		{"x", yamlpkg.PromptGenerate, scopeOne},
+		{"1", yamlpkg.PromptGenerate, ui.ScopeOne},
+		{"2", yamlpkg.PromptReview, ui.ScopeOne},
+		{"3", yamlpkg.PromptOmit, ui.ScopeOne},
+		{"4", yamlpkg.PromptExit, ui.ScopeOne},
+		{"5", yamlpkg.PromptIgnoreErrors, ui.ScopeOne},
+		{"1a", yamlpkg.PromptGenerate, ui.ScopeAll},
+		{"1A", yamlpkg.PromptGenerate, ui.ScopeAll},
+		{"3a", yamlpkg.PromptOmit, ui.ScopeAll},
+		{"5a", yamlpkg.PromptIgnoreErrors, ui.ScopeAll},
+		{"1t", yamlpkg.PromptGenerate, ui.ScopeType},
+		{"1T", yamlpkg.PromptGenerate, ui.ScopeType},
+		{"2t", yamlpkg.PromptReview, ui.ScopeType},
+		{"3t", yamlpkg.PromptOmit, ui.ScopeType},
+		{"5t", yamlpkg.PromptIgnoreErrors, ui.ScopeType},
+		{"4a", yamlpkg.PromptExit, ui.ScopeOne},  // exit ignores scope
+		{"", yamlpkg.PromptGenerate, ui.ScopeOne}, // empty defaults to generate
+		{"x", yamlpkg.PromptGenerate, ui.ScopeOne},
 	}
 	for _, tt := range tests {
-		resp, scope := parsePromptInput(tt.input)
+		resp, scope := ui.ParsePromptInput(tt.input)
 		if resp != tt.wantResp || scope != tt.wantScope {
-			t.Errorf("parsePromptInput(%q) = (%d, %d), want (%d, %d)",
+			t.Errorf("ParsePromptInput(%q) = (%d, %d), want (%d, %d)",
 				tt.input, resp, scope, tt.wantResp, tt.wantScope)
 		}
 	}

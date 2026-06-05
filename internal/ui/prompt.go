@@ -21,7 +21,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package cmd
+
+// Package ui provides bubbletea TUI prompts for destructive migration operations.
+package ui
 
 import (
 	"fmt"
@@ -32,6 +34,48 @@ import (
 
 	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
+
+// PromptScope controls how a prompt response is applied to subsequent operations.
+type PromptScope int
+
+const (
+	ScopeOne  PromptScope = iota // apply to this operation only
+	ScopeAll                     // apply to all remaining destructive ops
+	ScopeType                    // apply to all remaining ops of the same ChangeType
+)
+
+// ParsePromptInput parses a prompt input like "1", "3a", "5t" into a
+// PromptResponse and a scope. Used as fallback for non-interactive environments.
+func ParsePromptInput(input string) (yamlpkg.PromptResponse, PromptScope) {
+	if len(input) == 0 {
+		return yamlpkg.PromptGenerate, ScopeOne
+	}
+
+	scope := ScopeOne
+	last := input[len(input)-1]
+	if last == 'a' || last == 'A' {
+		scope = ScopeAll
+		input = input[:len(input)-1]
+	} else if last == 't' || last == 'T' {
+		scope = ScopeType
+		input = input[:len(input)-1]
+	}
+
+	switch input {
+	case "1":
+		return yamlpkg.PromptGenerate, scope
+	case "2":
+		return yamlpkg.PromptReview, scope
+	case "3":
+		return yamlpkg.PromptOmit, scope
+	case "4":
+		return yamlpkg.PromptExit, ScopeOne
+	case "5":
+		return yamlpkg.PromptIgnoreErrors, scope
+	default:
+		return yamlpkg.PromptGenerate, ScopeOne
+	}
+}
 
 // promptChoice maps a display label to a PromptResponse.
 type promptChoice struct {
@@ -55,7 +99,7 @@ type promptModel struct {
 	title    string
 	choices  []promptChoice
 	cursor   int
-	scope    promptScope
+	scope    PromptScope
 	maxScope int // 2 = all three scopes available
 	chosen   bool
 	quitting bool
@@ -86,10 +130,10 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		case "tab":
-			m.scope = (m.scope + 1) % promptScope(m.maxScope+1)
+			m.scope = (m.scope + 1) % PromptScope(m.maxScope+1)
 		case "shift+tab":
 			if m.scope == 0 {
-				m.scope = promptScope(m.maxScope)
+				m.scope = PromptScope(m.maxScope)
 			} else {
 				m.scope--
 			}
@@ -133,7 +177,7 @@ func (m promptModel) View() string {
 	if m.choices[m.cursor].resp != yamlpkg.PromptExit {
 		b.WriteString("\n  Scope: ")
 		for i, label := range scopeLabels {
-			if promptScope(i) == m.scope {
+			if PromptScope(i) == m.scope {
 				b.WriteString(scopeStyle.Render("[" + label + "]"))
 			} else {
 				b.WriteString(dimStyle.Render(" " + label + " "))
@@ -150,25 +194,25 @@ func (m promptModel) View() string {
 	return b.String()
 }
 
-// runDestructivePrompt shows a bubbletea prompt for a single destructive
+// RunDestructivePrompt shows a bubbletea prompt for a single destructive
 // operation and returns the user's chosen response and scope.
-func runDestructivePrompt(title string, changeType yamlpkg.ChangeType) (yamlpkg.PromptResponse, promptScope, error) {
+func RunDestructivePrompt(title string, changeType yamlpkg.ChangeType) (yamlpkg.PromptResponse, PromptScope, error) {
 	m := newPromptModel(title, changeType)
 	p := tea.NewProgram(m)
 	result, err := p.Run()
 	if err != nil {
-		return 0, scopeOne, fmt.Errorf("running prompt: %w", err)
+		return 0, ScopeOne, fmt.Errorf("running prompt: %w", err)
 	}
 
 	final := result.(promptModel)
 	if final.quitting {
-		return yamlpkg.PromptExit, scopeOne, nil
+		return yamlpkg.PromptExit, ScopeOne, nil
 	}
 
 	resp := final.choices[final.cursor].resp
 	scope := final.scope
 	if resp == yamlpkg.PromptExit {
-		scope = scopeOne
+		scope = ScopeOne
 	}
 	return resp, scope, nil
 }

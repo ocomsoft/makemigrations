@@ -34,6 +34,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/workflow"
 )
 
 var (
@@ -108,15 +109,15 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Output file: %s\n", diagramOutput)
 	}
 
-	// Initialize YAML components using existing functions from yaml_common.go
-	components := InitializeYAMLComponents(dbType, verbose)
+	// Initialize YAML components using shared workflow functions
+	components := workflow.InitializeYAMLComponents(dbType, verbose)
 
 	if verbose {
 		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
 	}
 
 	// Scan and parse schemas using shared function
-	allSchemas, err := ScanAndParseSchemas(components, verbose)
+	allSchemas, err := workflow.ScanAndParseSchemas(components, verbose)
 	if err != nil {
 		if err.Error() == "no YAML schema files found" {
 			fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to document.\n")
@@ -130,7 +131,7 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 	}
 
 	// Merge and validate schemas using shared function
-	mergedSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, verbose)
+	mergedSchema, err := workflow.MergeAndValidateSchemas(components, allSchemas, dbType, verbose)
 	if err != nil {
 		return fmt.Errorf("merged schema validation failed: %w", err)
 	}

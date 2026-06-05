@@ -40,6 +40,8 @@ import (
 	"github.com/ocomsoft/morphic/internal/config"
 	"github.com/ocomsoft/morphic/internal/interp"
 	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/ui"
+	"github.com/ocomsoft/morphic/internal/workflow"
 	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 	"github.com/ocomsoft/morphic/migrate"
 )
@@ -132,14 +134,14 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid database type: %w", err)
 	}
-	components := InitializeYAMLComponents(dbType, goMigVerbose)
-	allSchemas, err := ScanAndParseSchemas(components, goMigVerbose)
+	components := workflow.InitializeYAMLComponents(dbType, goMigVerbose)
+	allSchemas, err := workflow.ScanAndParseSchemas(components, goMigVerbose)
 	if err != nil {
 		return fmt.Errorf("parsing YAML schema: %w", err)
 	}
 
 	// Merge parsed schemas into a single schema for diffing
-	currentSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, goMigVerbose)
+	currentSchema, err := workflow.MergeAndValidateSchemas(components, allSchemas, dbType, goMigVerbose)
 	if err != nil {
 		return fmt.Errorf("merging YAML schemas: %w", err)
 	}
@@ -323,7 +325,7 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 			title = fmt.Sprintf("Destructive: %s on %q", change.Type, change.TableName)
 		}
 
-		resp, scope, err := runDestructivePrompt(title, change.Type)
+		resp, scope, err := ui.RunDestructivePrompt(title, change.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -333,54 +335,13 @@ func promptGoMigDecisions(diff *yamlpkg.SchemaDiff) (map[int]yamlpkg.PromptRespo
 
 		decisions[i] = resp
 		switch scope {
-		case scopeAll:
+		case ui.ScopeAll:
 			applyAll = resp
-		case scopeType:
+		case ui.ScopeType:
 			applyByType[change.Type] = resp
 		}
 	}
 	return decisions, nil
-}
-
-type promptScope int
-
-const (
-	scopeOne  promptScope = iota // apply to this operation only
-	scopeAll                     // apply to all remaining destructive ops
-	scopeType                    // apply to all remaining ops of the same ChangeType
-)
-
-// parsePromptInput parses a prompt input like "1", "3a", "5t" into a
-// PromptResponse and a scope. Used as fallback for non-interactive environments.
-func parsePromptInput(input string) (yamlpkg.PromptResponse, promptScope) {
-	if len(input) == 0 {
-		return yamlpkg.PromptGenerate, scopeOne
-	}
-
-	scope := scopeOne
-	last := input[len(input)-1]
-	if last == 'a' || last == 'A' {
-		scope = scopeAll
-		input = input[:len(input)-1]
-	} else if last == 't' || last == 'T' {
-		scope = scopeType
-		input = input[:len(input)-1]
-	}
-
-	switch input {
-	case "1":
-		return yamlpkg.PromptGenerate, scope
-	case "2":
-		return yamlpkg.PromptReview, scope
-	case "3":
-		return yamlpkg.PromptOmit, scope
-	case "4":
-		return yamlpkg.PromptExit, scopeOne
-	case "5":
-		return yamlpkg.PromptIgnoreErrors, scope
-	default:
-		return yamlpkg.PromptGenerate, scopeOne
-	}
 }
 
 // queryDAG loads the migrations directory with the yaegi interpreter and

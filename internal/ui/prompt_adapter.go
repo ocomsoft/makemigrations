@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-package cmd
+package ui
 
 import (
 	"fmt"
@@ -57,16 +57,16 @@ func NewBubbleteaPromptFunc() yamlpkg.PromptFunc {
 			title = fmt.Sprintf("Destructive: %s on %q\nSQL: %s", change.Type, change.TableName, sqlStmt)
 		}
 
-		resp, scope, err := runDestructivePrompt(title, change.Type)
+		resp, scope, err := RunDestructivePrompt(title, change.Type)
 		if err != nil {
 			return yamlpkg.PromptExit, err
 		}
 
 		// Record scope for future calls
 		switch scope {
-		case scopeAll:
+		case ScopeAll:
 			applyAll = resp
-		case scopeType:
+		case ScopeType:
 			applyByType[change.Type] = resp
 		}
 

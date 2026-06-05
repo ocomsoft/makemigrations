@@ -36,6 +36,7 @@ import (
 
 	"github.com/ocomsoft/morphic/internal/config"
 	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/morphic/internal/workflow"
 	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
 )
 
@@ -98,13 +99,13 @@ func runDiff(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("invalid database type: %w", err)
 	}
-	components := InitializeYAMLComponents(dbType, diffVerbose)
-	allSchemas, err := ScanAndParseSchemas(components, diffVerbose)
+	components := workflow.InitializeYAMLComponents(dbType, diffVerbose)
+	allSchemas, err := workflow.ScanAndParseSchemas(components, diffVerbose)
 	if err != nil {
 		return fmt.Errorf("parsing YAML schema: %w", err)
 	}
 
-	currentSchema, err := MergeAndValidateSchemas(components, allSchemas, dbType, diffVerbose)
+	currentSchema, err := workflow.MergeAndValidateSchemas(components, allSchemas, dbType, diffVerbose)
 	if err != nil {
 		return fmt.Errorf("merging YAML schemas: %w", err)
 	}

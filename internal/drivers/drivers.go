@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+// Package drivers registers the SQL drivers used by the makemigrations CLI.
 package drivers
 
 // Blank-imports for SQL drivers used by the migrate command. Under the
@@ -34,7 +35,7 @@ package drivers
 // migrate/app.go (driverName): "mysql"/"tidb" -> mysql, "sqlserver" ->
 // sqlserver, "sqlite" -> sqlite3, anything else -> postgres.
 import (
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/mattn/go-sqlite3"
-	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"  // MySQL driver
+	_ "github.com/mattn/go-sqlite3"     // SQLite driver
+	_ "github.com/microsoft/go-mssqldb" // SQL Server driver
 )

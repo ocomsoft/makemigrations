@@ -56,9 +56,9 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{errors.New("mssql: Cannot drop the table 'users', because it does not exist or you do not have permission."), true},
-		{errors.New(`mssql: Cannot find the object "idx_email" because it does not exist or you do not have permission.`), true},
-		{errors.New("mssql: Invalid object name 'users'."), false},
+		{errors.New("mssql: Cannot drop the table 'users', because it does not exist or you do not have permission."), true},     //nolint:revive // mimics actual SQL Server error message
+		{errors.New(`mssql: Cannot find the object "idx_email" because it does not exist or you do not have permission.`), true}, //nolint:revive // mimics actual SQL Server error message
+		{errors.New("mssql: Invalid object name 'users'."), false},                                                               //nolint:revive // mimics actual SQL Server error message
 		{errors.New("connection refused"), false},
 		{nil, false},
 	}

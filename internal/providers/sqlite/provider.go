@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package sqlite provides a database provider for SQLite.
 package sqlite
 
 import (
@@ -229,8 +231,7 @@ func (p *Provider) GenerateRenameColumn(tableName, oldName, newName string) stri
 		p.QuoteName(tableName), p.QuoteName(oldName), p.QuoteName(newName))
 }
 
-// Placeholder implementations for remaining interface methods
-
+// GenerateCreateTable generates the CREATE TABLE SQL statement for the given table.
 func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table) (string, error) {
 	var fieldDefs []string
 	var constraints []string
@@ -315,6 +316,7 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), constraint, nil
 }
 
+// GenerateAlterColumn returns empty SQL for SQLite since ALTER COLUMN is not supported.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
@@ -329,17 +331,20 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return "", nil
 }
 
+// GenerateForeignKeyConstraint returns empty string for SQLite since ALTER TABLE ADD CONSTRAINT is not supported.
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	// SQLite doesn't support ALTER TABLE ADD CONSTRAINT for foreign keys
 	// FKs must be defined inline in CREATE TABLE
 	return ""
 }
 
+// GenerateDropForeignKeyConstraint returns empty string for SQLite since ALTER TABLE DROP CONSTRAINT is not supported.
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
 	// SQLite doesn't support ALTER TABLE DROP CONSTRAINT for foreign keys
 	return ""
 }
 
+// GenerateJunctionTable generates the CREATE TABLE SQL for a many-to-many junction table.
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
 	t1, t2 := table1, table2
 	if t1 > t2 {
@@ -363,10 +368,12 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 	), nil
 }
 
+// InferForeignKeyType returns the SQL type to use for a foreign key column referencing the given table.
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
 	return "INTEGER"
 }
 
+// GenerateIndexes generates CREATE INDEX statements for all tables in the schema.
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	var indexes []string
 
@@ -395,6 +402,7 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	return strings.Join(indexes, "\n")
 }
 
+// GenerateForeignKeyConstraints generates all foreign key constraint SQL statements for a schema.
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
 	var constraints []string
 

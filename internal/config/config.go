@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package config provides configuration loading and management for makemigrations.
 package config
 
 import (
@@ -47,7 +49,7 @@ type Config struct {
 
 // DatabaseConfig contains database-related settings
 type DatabaseConfig struct {
-	Type       string `yaml:"type" mapstructure:"type"`              // postgresql, mysql, sqlserver, sqlite
+	Type       string `yaml:"type" mapstructure:"type"`               // postgresql, mysql, sqlserver, sqlite
 	DefaultURL string `yaml:"default_url" mapstructure:"default_url"` // Fallback database URL when DATABASE_URL env var is not set
 }
 
@@ -58,7 +60,7 @@ type MigrationConfig struct {
 
 // OutputConfig contains output formatting settings
 type OutputConfig struct {
-	Verbose      bool `yaml:"verbose" mapstructure:"verbose"`           // Enable verbose output
+	Verbose      bool `yaml:"verbose" mapstructure:"verbose"`             // Enable verbose output
 	ColorEnabled bool `yaml:"color_enabled" mapstructure:"color_enabled"` // Enable colored output
 }
 
@@ -187,4 +189,3 @@ func setDefaults(v *viper.Viper, cfg *Config) {
 func GetConfigPath() string {
 	return filepath.Join("migrations", "morphic.config.yaml")
 }
-

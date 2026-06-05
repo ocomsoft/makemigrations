@@ -176,28 +176,28 @@ func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, pending bool, verbo
 
 	if verbose {
 		if pending {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Dumping pending schema changes as SQL\n")
-			fmt.Fprintf(cmd.ErrOrStderr(), "=====================================\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Dumping pending schema changes as SQL\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "=====================================\n")
 		} else {
-			fmt.Fprintf(cmd.ErrOrStderr(), "Dumping merged schema as SQL\n")
-			fmt.Fprintf(cmd.ErrOrStderr(), "============================\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Dumping merged schema as SQL\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "============================\n")
 		}
-		fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Database type: %s\n", dbType)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
 	}
 
 	// Scan and parse schemas
 	allSchemas, err := ScanAndParseSchemas(components, false)
 	if err != nil {
 		if err.Error() == "no YAML schema files found" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to dump.\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to dump.\n")
 			return nil
 		}
 		return err
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
 	}
 
 	// Merge and validate schemas
@@ -207,7 +207,7 @@ func ExecuteDumpSQL(cmd *cobra.Command, databaseType string, pending bool, verbo
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
 	}
 
 	if pending {
@@ -222,7 +222,7 @@ func executeFullDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, mergedS
 	sqlConverter := yamlpkg.NewSQLConverter(dbType, verbose)
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Generating SQL...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Generating SQL...\n")
 	}
 
 	sql, err := sqlConverter.ConvertSchema(mergedSchema)
@@ -231,9 +231,9 @@ func executeFullDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, mergedS
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Generated %d lines of SQL\n", len(sql))
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nSQL Output:\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Generated %d lines of SQL\n", len(sql))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\nSQL Output:\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
 	}
 
 	fmt.Print(sql)
@@ -264,7 +264,7 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 
 	if len(migFiles) > 0 {
 		if verbose {
-			fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Querying migration DAG for previous state...\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Querying migration DAG for previous state...\n")
 		}
 		prevSchema, err = dagQuerier.QueryPreviousSchema(migrationsDir, string(dbType), verbose)
 		if err != nil {
@@ -272,13 +272,13 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 		}
 	} else {
 		if verbose {
-			fmt.Fprintf(cmd.ErrOrStderr(), "\n3. No existing migrations found, treating previous state as empty...\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n3. No existing migrations found, treating previous state as empty...\n")
 		}
 	}
 
 	// Diff previous state against current schema
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Computing schema diff...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Computing schema diff...\n")
 	}
 	diffEngine := yamlpkg.NewDiffEngine(verbose)
 	diff, err := diffEngine.CompareSchemas(prevSchema, currentSchema)
@@ -292,8 +292,8 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Found %d pending changes\n", len(diff.Changes))
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n5. Generating SQL for pending changes...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Found %d pending changes\n", len(diff.Changes))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n5. Generating SQL for pending changes...\n")
 	}
 
 	// Convert diff to SQL using silent mode (no interactive prompts)
@@ -304,8 +304,8 @@ func executePendingDumpSQL(cmd *cobra.Command, dbType yamlpkg.DatabaseType, curr
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nPending SQL Output:\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\nPending SQL Output:\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "================\n")
 	}
 
 	fmt.Print(upSQL)

@@ -43,7 +43,6 @@ var (
 	interactive      bool
 	schemaPath       string
 	includeWorkspace bool
-	schemaProvided   bool
 )
 
 // findIncludesCmd represents the find_includes command

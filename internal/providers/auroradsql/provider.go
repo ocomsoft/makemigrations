@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package auroradsql provides a database provider for Amazon Aurora DSQL.
 package auroradsql
 
 import (
@@ -454,7 +456,7 @@ func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionT
 
 // GetDatabaseSchema extracts schema information from an Aurora DSQL database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
-	return nil, fmt.Errorf("Aurora DSQL schema extraction not implemented yet")
+	return nil, fmt.Errorf("aurora DSQL schema extraction not implemented yet")
 }
 
 // GenerateUpsert generates a multi-row INSERT ... ON CONFLICT DO UPDATE SET statement

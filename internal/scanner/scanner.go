@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package scanner provides utilities for discovering schema files within Go module directories.
 package scanner
 
 import (
@@ -37,6 +39,7 @@ import (
 	"github.com/ocomsoft/morphic/internal/errors"
 )
 
+// SchemaFile represents a discovered schema file along with its module path and content.
 type SchemaFile struct {
 	ModulePath string
 	FilePath   string
@@ -45,31 +48,38 @@ type SchemaFile struct {
 	Type       SchemaType
 }
 
+// SchemaType identifies the format of a discovered schema file (SQL or YAML).
 type SchemaType string
 
+// SchemaType constants enumerate the supported schema file formats.
 const (
 	SchemaTypeSQL  SchemaType = "sql"
 	SchemaTypeYAML SchemaType = "yaml"
 )
 
+// Scanner discovers schema files within a Go module directory tree.
 type Scanner struct {
 	verbose bool
 }
 
+// New creates a new Scanner with optional verbose logging.
 func New(verbose bool) *Scanner {
 	return &Scanner{
 		verbose: verbose,
 	}
 }
 
+// ScanModules discovers SQL schema files in the current module directory.
 func (s *Scanner) ScanModules() ([]SchemaFile, error) {
 	return s.ScanModulesWithType(SchemaTypeSQL)
 }
 
+// ScanYAMLModules discovers YAML schema files in the current module directory.
 func (s *Scanner) ScanYAMLModules() ([]SchemaFile, error) {
 	return s.ScanModulesWithType(SchemaTypeYAML)
 }
 
+// ScanModulesWithType discovers schema files of the specified type in the current module directory.
 func (s *Scanner) ScanModulesWithType(schemaType SchemaType) ([]SchemaFile, error) {
 	goModPath := "go.mod"
 

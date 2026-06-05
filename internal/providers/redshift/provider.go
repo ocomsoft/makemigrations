@@ -541,5 +541,5 @@ func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns [
 
 // GetDatabaseSchema extracts schema information from a Redshift database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
-	return nil, fmt.Errorf("Redshift schema extraction not implemented yet")
+	return nil, fmt.Errorf("redshift schema extraction not implemented yet")
 }

@@ -125,16 +125,16 @@ func (p *Processor) Process() error {
 	if p.config.DryRun {
 		fmt.Println("=== Generated Schema (Dry Run) ===")
 		return p.writer.PreviewSchema(schema)
-	} else {
-		// Create output directory if it doesn't exist
-		outputDir := filepath.Dir(p.config.OutputFile)
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
-			return fmt.Errorf("failed to create output directory: %w", err)
-		}
-
-		// Write the schema file
-		return p.writer.WriteSchema(schema, p.config.OutputFile)
 	}
+
+	// Create output directory if it doesn't exist
+	outputDir := filepath.Dir(p.config.OutputFile)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Write the schema file
+	return p.writer.WriteSchema(schema, p.config.OutputFile)
 }
 
 func validateConfig(config ProcessorConfig) error {

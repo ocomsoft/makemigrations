@@ -1,3 +1,4 @@
+// Package typemap resolves user-defined type mapping templates against schema field definitions.
 package typemap
 
 import (

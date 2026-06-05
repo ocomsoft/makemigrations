@@ -307,7 +307,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 		return "", nil
 	}
 
-	return "", fmt.Errorf("Turso (libSQL) does not support ALTER COLUMN; use a RunSQL migration with table recreation (create new table, copy data, drop old, rename)")
+	return "", fmt.Errorf("turso (libSQL) does not support ALTER COLUMN; use a RunSQL migration with table recreation (create new table, copy data, drop old, rename)")
 }
 
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
@@ -473,5 +473,5 @@ func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns [
 
 // GetDatabaseSchema extracts schema information from a Turso database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
-	return nil, fmt.Errorf("Turso schema extraction not implemented yet")
+	return nil, fmt.Errorf("turso schema extraction not implemented yet")
 }

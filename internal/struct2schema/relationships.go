@@ -31,6 +31,7 @@ import (
 // RelationshipType represents the type of relationship between structs
 type RelationshipType int
 
+// RelationshipType constants enumerate the supported inter-struct relationship kinds.
 const (
 	RelationshipForeignKey RelationshipType = iota
 	RelationshipManyToMany
@@ -199,17 +200,17 @@ func (rd *RelationshipDetector) inferRelationshipFromType(goStruct GoStruct, fie
 			TargetTable:   targetTable,
 			JunctionTable: rd.generateJunctionTableName(sourceTable, targetTable),
 		}
-	} else {
-		// Single struct field indicates foreign key relationship
-		return &Relationship{
-			Type:         RelationshipForeignKey,
-			SourceStruct: goStruct.Name,
-			SourceTable:  rd.toSnakeCase(goStruct.Name),
-			SourceField:  rd.toSnakeCase(field.Name),
-			TargetStruct: cleanType,
-			TargetTable:  rd.toSnakeCase(cleanType),
-			OnDelete:     "RESTRICT", // Default constraint
-		}
+	}
+
+	// Single struct field indicates foreign key relationship
+	return &Relationship{
+		Type:         RelationshipForeignKey,
+		SourceStruct: goStruct.Name,
+		SourceTable:  rd.toSnakeCase(goStruct.Name),
+		SourceField:  rd.toSnakeCase(field.Name),
+		TargetStruct: cleanType,
+		TargetTable:  rd.toSnakeCase(cleanType),
+		OnDelete:     "RESTRICT", // Default constraint
 	}
 }
 

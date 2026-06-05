@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package starrocks provides a database provider for StarRocks MPP analytical databases.
 package starrocks
 
 import (
@@ -333,7 +335,7 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), nil
 }
 
-// Remaining interface methods
+// GenerateAlterColumn generates an ALTER TABLE MODIFY COLUMN statement for StarRocks.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
@@ -369,14 +371,17 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return stmt, nil
 }
 
+// GenerateForeignKeyConstraint returns a no-op comment because StarRocks does not support foreign key constraints.
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	return fmt.Sprintf("-- StarRocks doesn't support foreign key constraints for %s.%s -> %s;", tableName, fieldName, referencedTable)
 }
 
+// GenerateDropForeignKeyConstraint returns a no-op comment because StarRocks does not support foreign key constraints.
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
 	return fmt.Sprintf("-- StarRocks doesn't support foreign key constraints for %s.%s;", tableName, constraintName)
 }
 
+// GenerateJunctionTable generates the CREATE TABLE SQL for a many-to-many junction table.
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
 	t1, t2 := table1, table2
 	if t1 > t2 {
@@ -404,6 +409,7 @@ func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Sch
 	return "BIGINT"
 }
 
+// GenerateIndexes generates index-related SQL comments for all tables in the schema.
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	var comments []string
 
@@ -428,6 +434,7 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	return strings.Join(comments, "\n")
 }
 
+// GenerateForeignKeyConstraints returns a no-op comment because StarRocks does not support foreign key constraints.
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
 	return "-- StarRocks doesn't support foreign key constraints;"
 }

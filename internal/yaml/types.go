@@ -27,17 +27,37 @@ import (
 	"github.com/ocomsoft/morphic/internal/types"
 )
 
-// Re-export types for backwards compatibility
+// Include is an alias for types.Include for backwards compatibility.
 type Include = types.Include
+
+// Schema is an alias for types.Schema for backwards compatibility.
 type Schema = types.Schema
+
+// Database is an alias for types.Database for backwards compatibility.
 type Database = types.Database
+
+// Defaults is an alias for types.Defaults for backwards compatibility.
 type Defaults = types.Defaults
+
+// TypeMappings is an alias for types.TypeMappings for backwards compatibility.
 type TypeMappings = types.TypeMappings
+
+// Table is an alias for types.Table for backwards compatibility.
 type Table = types.Table
+
+// Field is an alias for types.Field for backwards compatibility.
 type Field = types.Field
+
+// ForeignKey is an alias for types.ForeignKey for backwards compatibility.
 type ForeignKey = types.ForeignKey
+
+// ManyToMany is an alias for types.ManyToMany for backwards compatibility.
 type ManyToMany = types.ManyToMany
+
+// Index is an alias for types.Index for backwards compatibility.
 type Index = types.Index
+
+// DatabaseType is an alias for types.DatabaseType for backwards compatibility.
 type DatabaseType = types.DatabaseType
 
 // Re-export constants

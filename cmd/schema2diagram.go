@@ -32,6 +32,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/ocomsoft/morphic/internal/types"
 	"github.com/ocomsoft/morphic/internal/workflow"
@@ -99,36 +101,36 @@ viewed in supported platforms, making it perfect for living documentation.`,
 // runSchema2Diagram executes the schema2diagram command
 func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Generating schema documentation with diagrams\n")
-		fmt.Fprintf(cmd.ErrOrStderr(), "===========================================\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Generating schema documentation with diagrams\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "===========================================\n")
 	}
 
 	// Use PostgreSQL as default for diagram generation (type doesn't affect diagram output)
 	dbType := types.DatabasePostgreSQL
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Output file: %s\n", diagramOutput)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Output file: %s\n", diagramOutput)
 	}
 
 	// Initialize YAML components using shared workflow functions
 	components := workflow.InitializeYAMLComponents(dbType, verbose)
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Scanning Go modules for YAML schema files...\n")
 	}
 
 	// Scan and parse schemas using shared function
 	allSchemas, err := workflow.ScanAndParseSchemas(components, verbose)
 	if err != nil {
 		if err.Error() == "no YAML schema files found" {
-			fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to document.\n")
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "No YAML schema files found. Nothing to document.\n")
 			return nil
 		}
 		return err
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Parsing and merging YAML schemas...\n")
 	}
 
 	// Merge and validate schemas using shared function
@@ -138,8 +140,8 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Generating Markdown documentation...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Merged schema: %d tables\n", len(mergedSchema.Tables))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Generating Markdown documentation...\n")
 	}
 
 	// Generate Markdown documentation with diagrams
@@ -149,7 +151,7 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Writing documentation file...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n4. Writing documentation file...\n")
 	}
 
 	// Create output directory if it doesn't exist
@@ -165,18 +167,18 @@ func runSchema2Diagram(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to write documentation file: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Schema documentation successfully generated: %s\n", diagramOutput)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Schema documentation successfully generated: %s\n", diagramOutput)
 
 	if len(mergedSchema.Tables) > 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "\nDocumented %d tables with Entity Relationship Diagram\n", len(mergedSchema.Tables))
-		fmt.Fprintf(cmd.OutOrStdout(), "\nThe generated Markdown includes:\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  • Interactive Mermaid ERD diagram\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  • Complete table and field documentation\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  • Index and constraint specifications\n")
-		fmt.Fprintf(cmd.OutOrStdout(), "  • Relationship mapping between tables\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nDocumented %d tables with Entity Relationship Diagram\n", len(mergedSchema.Tables))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nThe generated Markdown includes:\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  • Interactive Mermaid ERD diagram\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  • Complete table and field documentation\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  • Index and constraint specifications\n")
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  • Relationship mapping between tables\n")
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nView the documentation in any Markdown viewer with Mermaid support.\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nView the documentation in any Markdown viewer with Mermaid support.\n")
 
 	return nil
 }
@@ -206,7 +208,7 @@ func generateMarkdownDocumentation(schema *types.Schema) (string, error) {
 
 	for _, table := range sortedTables {
 		md.WriteString(fmt.Sprintf("  - [%s Table](#%s-table)\n",
-			strings.Title(table.Name), strings.ToLower(strings.ReplaceAll(table.Name, "_", "-"))))
+			cases.Title(language.Und).String(table.Name), strings.ToLower(strings.ReplaceAll(table.Name, "_", "-"))))
 	}
 	md.WriteString("- [Indexes and Constraints](#indexes-and-constraints)\n")
 	md.WriteString("- [Relationships](#relationships)\n\n")
@@ -246,7 +248,7 @@ func generateERDSection(md *strings.Builder, schema *types.Schema) error {
 
 	// Define entities with their fields
 	for _, table := range sortedTables {
-		md.WriteString(fmt.Sprintf("    %s {\n", strings.ToUpper(table.Name)))
+		fmt.Fprintf(md, "    %s {\n", strings.ToUpper(table.Name))
 
 		// Sort fields for consistent output
 		sortedFields := make([]types.Field, len(table.Fields))
@@ -259,8 +261,8 @@ func generateERDSection(md *strings.Builder, schema *types.Schema) error {
 			fieldType := convertTypeForMermaid(field.Type)
 			constraints := generateFieldConstraints(field)
 
-			md.WriteString(fmt.Sprintf("        %s %s %s\n",
-				fieldType, field.Name, constraints))
+			fmt.Fprintf(md, "        %s %s %s\n",
+				fieldType, field.Name, constraints)
 		}
 		md.WriteString("    }\n\n")
 	}
@@ -270,11 +272,11 @@ func generateERDSection(md *strings.Builder, schema *types.Schema) error {
 		for _, field := range table.Fields {
 			if field.Type == "foreign_key" && field.ForeignKey != nil {
 				relationship := generateRelationshipType(field.ForeignKey.OnDelete)
-				md.WriteString(fmt.Sprintf("    %s %s %s : \"%s\"\n",
+				fmt.Fprintf(md, "    %s %s %s : \"%s\"\n",
 					strings.ToUpper(field.ForeignKey.Table),
 					relationship,
 					strings.ToUpper(table.Name),
-					field.Name))
+					field.Name)
 			}
 		}
 	}
@@ -308,10 +310,10 @@ func generateOverviewSection(md *strings.Builder, schema *types.Schema) {
 
 	md.WriteString("| Statistic | Count |\n")
 	md.WriteString("|-----------|-------|\n")
-	md.WriteString(fmt.Sprintf("| **Total Tables** | %d |\n", len(schema.Tables)))
-	md.WriteString(fmt.Sprintf("| **Total Fields** | %d |\n", totalFields))
-	md.WriteString(fmt.Sprintf("| **Total Indexes** | %d |\n", totalIndexes))
-	md.WriteString(fmt.Sprintf("| **Foreign Key Relationships** | %d |\n\n", totalForeignKeys))
+	fmt.Fprintf(md, "| **Total Tables** | %d |\n", len(schema.Tables))
+	fmt.Fprintf(md, "| **Total Fields** | %d |\n", totalFields)
+	fmt.Fprintf(md, "| **Total Indexes** | %d |\n", totalIndexes)
+	fmt.Fprintf(md, "| **Foreign Key Relationships** | %d |\n\n", totalForeignKeys)
 
 	// Database defaults
 	pgDefaults := schema.Defaults.ForProvider(types.DatabasePostgreSQL)
@@ -330,7 +332,7 @@ func generateOverviewSection(md *strings.Builder, schema *types.Schema) {
 
 		for _, key := range defaultKeys {
 			value := pgDefaults[key]
-			md.WriteString(fmt.Sprintf("| `%s` | `%s` |\n", key, value))
+			fmt.Fprintf(md, "| `%s` | `%s` |\n", key, value)
 		}
 		md.WriteString("\n")
 	}
@@ -341,12 +343,12 @@ func generateTableDocumentation(md *strings.Builder, tables []types.Table) {
 	md.WriteString("## Table Documentation\n\n")
 
 	for _, table := range tables {
-		tableName := strings.Title(table.Name)
+		tableName := cases.Title(language.Und).String(table.Name)
 
-		md.WriteString(fmt.Sprintf("### %s Table\n\n", tableName))
-		md.WriteString(fmt.Sprintf("**Table Name:** `%s`  \n", table.Name))
-		md.WriteString(fmt.Sprintf("**Field Count:** %d  \n", len(table.Fields)))
-		md.WriteString(fmt.Sprintf("**Index Count:** %d  \n\n", len(table.Indexes)))
+		fmt.Fprintf(md, "### %s Table\n\n", tableName)
+		fmt.Fprintf(md, "**Table Name:** `%s`  \n", table.Name)
+		fmt.Fprintf(md, "**Field Count:** %d  \n", len(table.Fields))
+		fmt.Fprintf(md, "**Index Count:** %d  \n\n", len(table.Indexes))
 
 		// Fields documentation
 		md.WriteString("#### Fields\n\n")
@@ -366,8 +368,8 @@ func generateTableDocumentation(md *strings.Builder, tables []types.Table) {
 			defaultValue := generateDefaultDescription(field)
 			description := generateFieldDescription(field)
 
-			md.WriteString(fmt.Sprintf("| `%s` | %s | %s | %s | %s |\n",
-				field.Name, fieldType, constraints, defaultValue, description))
+			fmt.Fprintf(md, "| `%s` | %s | %s | %s | %s |\n",
+				field.Name, fieldType, constraints, defaultValue, description)
 		}
 		md.WriteString("\n")
 
@@ -393,8 +395,8 @@ func generateTableDocumentation(md *strings.Builder, tables []types.Table) {
 				}
 
 				fieldsStr := strings.Join(index.Fields, ", ")
-				md.WriteString(fmt.Sprintf("| `%s` | `%s` | %s | %s |\n",
-					index.Name, fieldsStr, indexType, purpose))
+				fmt.Fprintf(md, "| `%s` | `%s` | %s | %s |\n",
+					index.Name, fieldsStr, indexType, purpose)
 			}
 			md.WriteString("\n")
 		}
@@ -419,8 +421,8 @@ func generateTableDocumentation(md *strings.Builder, tables []types.Table) {
 				}
 				purpose := fmt.Sprintf("Links to %s table", fk.ForeignKey.Table)
 
-				md.WriteString(fmt.Sprintf("| `%s` | `%s` | %s | %s |\n",
-					fk.Name, fk.ForeignKey.Table, onDelete, purpose))
+				fmt.Fprintf(md, "| `%s` | `%s` | %s | %s |\n",
+					fk.Name, fk.ForeignKey.Table, onDelete, purpose)
 			}
 			md.WriteString("\n")
 		}
@@ -477,8 +479,8 @@ func generateIndexesSection(md *strings.Builder, tables []types.Table) {
 		}
 
 		fieldsStr := "`" + strings.Join(item.Index.Fields, "`, `") + "`"
-		md.WriteString(fmt.Sprintf("| `%s` | `%s` | %s | %s | %s |\n",
-			item.TableName, item.Index.Name, fieldsStr, indexType, impact))
+		fmt.Fprintf(md, "| `%s` | `%s` | %s | %s | %s |\n",
+			item.TableName, item.Index.Name, fieldsStr, indexType, impact)
 	}
 	md.WriteString("\n")
 
@@ -540,8 +542,8 @@ func generateRelationshipsSection(md *strings.Builder, tables []types.Table) {
 	for _, rel := range relationships {
 		relationshipType := determineRelationshipType(rel.OnDelete)
 
-		md.WriteString(fmt.Sprintf("| `%s` | `%s` | `%s` | %s | %s |\n",
-			rel.FromTable, rel.FromField, rel.ToTable, rel.OnDelete, relationshipType))
+		fmt.Fprintf(md, "| `%s` | `%s` | `%s` | %s | %s |\n",
+			rel.FromTable, rel.FromField, rel.ToTable, rel.OnDelete, relationshipType)
 	}
 	md.WriteString("\n")
 
@@ -574,8 +576,8 @@ func generateRelationshipsSection(md *strings.Builder, tables []types.Table) {
 				label += " (CASCADE)"
 			}
 
-			md.WriteString(fmt.Sprintf("    %s %s %s\n",
-				strings.ToUpper(rel.ToTable), arrow, strings.ToUpper(rel.FromTable)))
+			fmt.Fprintf(md, "    %s %s|%s| %s\n",
+				strings.ToUpper(rel.ToTable), arrow, label, strings.ToUpper(rel.FromTable))
 		}
 
 		md.WriteString("```\n\n")
@@ -726,7 +728,7 @@ func generateFieldDescription(field types.Field) string {
 	case "json", "jsonb":
 		return "JSON data with binary storage"
 	default:
-		return fmt.Sprintf("%s field", strings.Title(field.Type))
+		return fmt.Sprintf("%s field", cases.Title(language.Und).String(field.Type))
 	}
 }
 

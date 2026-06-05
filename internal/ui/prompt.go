@@ -38,6 +38,7 @@ import (
 // PromptScope controls how a prompt response is applied to subsequent operations.
 type PromptScope int
 
+// PromptScope constants define how broadly a prompt response is applied.
 const (
 	ScopeOne  PromptScope = iota // apply to this operation only
 	ScopeAll                     // apply to all remaining destructive ops
@@ -53,10 +54,11 @@ func ParsePromptInput(input string) (yamlpkg.PromptResponse, PromptScope) {
 
 	scope := ScopeOne
 	last := input[len(input)-1]
-	if last == 'a' || last == 'A' {
+	switch last {
+	case 'a', 'A':
 		scope = ScopeAll
 		input = input[:len(input)-1]
-	} else if last == 't' || last == 'T' {
+	case 't', 'T':
 		scope = ScopeType
 		input = input[:len(input)-1]
 	}

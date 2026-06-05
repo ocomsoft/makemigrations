@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package yaml provides YAML schema parsing, diff computation, and migration generation.
 package yaml
 
 import (
@@ -139,6 +141,7 @@ type Change struct {
 // ChangeType represents the type of change
 type ChangeType string
 
+// ChangeType constants enumerate the kinds of schema changes that can be detected.
 const (
 	ChangeTypeTableAdded           ChangeType = "table_added"
 	ChangeTypeTableRemoved         ChangeType = "table_removed"
@@ -609,12 +612,12 @@ func (de *DiffEngine) GenerateMigrationName(diff *SchemaDiff) string {
 			return "modify_table"
 		}
 		return "modify_tables"
-	} else {
-		if fieldChanges == 1 {
-			return "modify_field"
-		}
-		return "modify_fields"
 	}
+
+	if fieldChanges == 1 {
+		return "modify_field"
+	}
+	return "modify_fields"
 }
 
 // HasDestructiveChanges checks if the diff contains destructive changes

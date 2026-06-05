@@ -299,8 +299,6 @@ ENGINE = Log();`
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 func TestProvider_GenerateAlterColumn_TypeChange(t *testing.T) {
 	p := New()
 	old := &types.Field{Name: "score", Type: "integer"}
@@ -346,7 +344,7 @@ func TestProvider_IsNotFoundError(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{errors.New("Code: 60. DB::Exception: Table default.users doesn't exist."), true},
+		{errors.New("Code: 60. DB::Exception: Table default.users doesn't exist."), true}, //nolint:revive // mimics actual ClickHouse error message
 		{errors.New("Code: 36. DB::Exception: Unknown DROP query"), false},
 		{nil, false},
 	}

@@ -112,7 +112,9 @@ func TestScanner_ScanModules_NoGoMod(t *testing.T) {
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWd) }()
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	scanner := New(false)
 	_, err = scanner.ScanModules()
@@ -137,7 +139,9 @@ func TestScanner_ScanModules_EmptyGoMod(t *testing.T) {
 	// Change to temp directory
 	oldWd, _ := os.Getwd()
 	defer func() { _ = os.Chdir(oldWd) }()
-	os.Chdir(tmpDir)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create empty go.mod
 	err = os.WriteFile("go.mod", []byte(""), 0644)

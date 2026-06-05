@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package vertica provides a database provider for Vertica analytics databases.
 package vertica
 
 import (
@@ -315,8 +317,7 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), constraint, nil
 }
 
-// Placeholder implementations for remaining interface methods
-
+// GenerateAlterColumn generates ALTER TABLE statements to modify a column definition in Vertica.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
 	var stmts []string
 	tbl := p.QuoteName(tableName)
@@ -359,6 +360,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return strings.Join(stmts, "\n"), nil
 }
 
+// GenerateForeignKeyConstraint generates an ALTER TABLE statement to add an informational foreign key in Vertica.
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	// Vertica supports foreign keys but they're informational only (not enforced)
 	if constraintName == "" {
@@ -376,10 +378,12 @@ func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referenced
 		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause, onUpdateClause)
 }
 
+// GenerateDropForeignKeyConstraint generates an ALTER TABLE DROP CONSTRAINT statement for Vertica.
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
 	return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", p.QuoteName(tableName), p.QuoteName(constraintName))
 }
 
+// GenerateJunctionTable generates the CREATE TABLE SQL for a many-to-many junction table.
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
 	t1, t2 := table1, table2
 	if t1 > t2 {
@@ -403,10 +407,12 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 	), nil
 }
 
+// InferForeignKeyType returns the SQL type to use for a foreign key column referencing the given table.
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
 	return "INTEGER" // Vertica prefers INTEGER for foreign keys
 }
 
+// GenerateIndexes generates CREATE INDEX statements for all tables in the schema.
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	var indexes []string
 
@@ -437,6 +443,7 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	return strings.Join(indexes, "\n")
 }
 
+// GenerateForeignKeyConstraints generates all foreign key constraint SQL statements for a schema.
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
 	var constraints []string
 
@@ -558,5 +565,5 @@ func (p *Provider) GenerateUpsert(table string, conflictKeys []string, columns [
 
 // GetDatabaseSchema extracts schema information from a Vertica database
 func (p *Provider) GetDatabaseSchema(connectionString string) (*types.Schema, error) {
-	return nil, fmt.Errorf("Vertica schema extraction not implemented yet")
+	return nil, fmt.Errorf("vertica schema extraction not implemented yet")
 }

@@ -309,7 +309,7 @@ func (w *Writer) ValidateOutputPath(outputPath string) error {
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		return fmt.Errorf("cannot write to output directory: %w", err)
 	}
-	os.Remove(testFile) // Clean up
+	_ = os.Remove(testFile) // Clean up
 
 	return nil
 }

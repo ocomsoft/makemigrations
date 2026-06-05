@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package ydb provides a database provider for YDB (Yandex Database).
 package ydb
 
 import (
@@ -296,7 +298,7 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), nil
 }
 
-// Remaining interface methods with YDB-specific implementations or placeholders
+// GenerateAlterColumn generates ALTER TABLE statements to modify a column definition in YDB.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)

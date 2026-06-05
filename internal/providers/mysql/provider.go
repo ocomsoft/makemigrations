@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package mysql provides a database provider for MySQL and MariaDB.
 package mysql
 
 import (
@@ -250,8 +252,7 @@ func (p *Provider) GenerateRenameColumn(tableName, oldName, newName string) stri
 		p.QuoteName(tableName), p.QuoteName(oldName), p.QuoteName(newName))
 }
 
-// Placeholder implementations for remaining interface methods
-
+// GenerateCreateTable generates the CREATE TABLE SQL statement for the given table.
 func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table) (string, error) {
 	var fieldDefs []string
 	var constraints []string
@@ -338,6 +339,7 @@ func (p *Provider) convertField(schema *types.Schema, field *types.Field) (strin
 	return def.String(), constraint, nil
 }
 
+// GenerateAlterColumn generates an ALTER TABLE MODIFY COLUMN statement for MySQL.
 func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *types.Field) (string, error) {
 	oldType := p.ConvertFieldType(oldField)
 	newType := p.ConvertFieldType(newField)
@@ -375,6 +377,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return stmt, nil
 }
 
+// GenerateForeignKeyConstraint generates an ALTER TABLE statement to add a foreign key constraint.
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	if constraintName == "" {
 		constraintName = fmt.Sprintf("fk_%s_%s", tableName, fieldName)
@@ -391,10 +394,12 @@ func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referenced
 		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause, onUpdateClause)
 }
 
+// GenerateDropForeignKeyConstraint generates an ALTER TABLE DROP FOREIGN KEY statement for MySQL.
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
 	return fmt.Sprintf("ALTER TABLE %s DROP FOREIGN KEY %s;", p.QuoteName(tableName), p.QuoteName(constraintName))
 }
 
+// GenerateJunctionTable generates the CREATE TABLE SQL for a many-to-many junction table.
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
 	t1, t2 := table1, table2
 	if t1 > t2 {
@@ -418,10 +423,12 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 	), nil
 }
 
+// InferForeignKeyType returns the SQL type to use for a foreign key column referencing the given table.
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
 	return "BIGINT"
 }
 
+// GenerateIndexes generates CREATE INDEX statements for all tables in the schema.
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	var indexes []string
 
@@ -450,6 +457,7 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	return strings.Join(indexes, "\n")
 }
 
+// GenerateForeignKeyConstraints generates all foreign key constraint SQL statements for a schema.
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
 	var constraints []string
 

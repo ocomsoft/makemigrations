@@ -44,8 +44,8 @@ var makemigrationsShimDryRun bool
 // makemigrationsShimCmd is the legacy upgrade shim. It renames the old config
 // file and DB history table to their morphic equivalents.
 var makemigrationsShimCmd = &cobra.Command{
-	Use:        "makemigrations",
-	Short:      "Legacy upgrade shim — migrates config and DB table names",
+	Use:   "makemigrations",
+	Short: "Legacy upgrade shim — migrates config and DB table names",
 	Long: `Upgrade a project from the legacy "makemigrations" naming convention to "morphic".
 
 This command performs three actions:
@@ -198,7 +198,7 @@ func RenameHistoryTable(db *sql.DB, oldName, newName string) error {
 // tableExists checks if a table exists by attempting a SELECT against it.
 func tableExists(db *sql.DB, tableName string) bool {
 	query := fmt.Sprintf("SELECT 1 FROM %s LIMIT 1", tableName) //nolint:gosec // table name is a constant, not user input
-	_, err := db.Query(query)                                    //nolint:rowserrcheck // we only care about the error
+	_, err := db.Query(query)                                   //nolint:rowserrcheck // we only care about the error
 	return err == nil
 }
 

@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package postgresql provides a database provider for PostgreSQL.
 package postgresql
 
 import (
@@ -29,7 +31,7 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/ocomsoft/morphic/internal/fkutils"
 	"github.com/ocomsoft/morphic/internal/typemap"
 	"github.com/ocomsoft/morphic/internal/types"
@@ -266,9 +268,7 @@ func (p *Provider) GenerateRenameColumn(tableName, oldName, newName string) stri
 		p.QuoteName(tableName), p.QuoteName(oldName), p.QuoteName(newName))
 }
 
-// Placeholder implementations for remaining interface methods
-// These will be implemented in the next step
-
+// GenerateCreateTable generates the CREATE TABLE SQL statement for the given table.
 func (p *Provider) GenerateCreateTable(schema *types.Schema, table *types.Table) (string, error) {
 	var fieldDefs []string
 	var constraints []string
@@ -505,6 +505,7 @@ func (p *Provider) GenerateAlterColumn(tableName string, oldField, newField *typ
 	return strings.Join(stmts, "\n"), nil
 }
 
+// GenerateForeignKeyConstraint generates an ALTER TABLE statement to add a foreign key constraint.
 func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referencedTable, constraintName, onDelete, onUpdate string) string {
 	if constraintName == "" {
 		constraintName = utils.SafeConstraintName(fmt.Sprintf("fk_%s_%s", tableName, fieldName))
@@ -521,10 +522,12 @@ func (p *Provider) GenerateForeignKeyConstraint(tableName, fieldName, referenced
 		p.QuoteName(tableName), p.QuoteName(constraintName), p.QuoteName(fieldName), p.QuoteName(referencedTable), onDeleteClause, onUpdateClause)
 }
 
+// GenerateDropForeignKeyConstraint generates an ALTER TABLE statement to drop a foreign key constraint.
 func (p *Provider) GenerateDropForeignKeyConstraint(tableName, constraintName string) string {
 	return fmt.Sprintf("ALTER TABLE %s DROP CONSTRAINT %s;", p.QuoteName(tableName), p.QuoteName(constraintName))
 }
 
+// GenerateJunctionTable generates the CREATE TABLE SQL for a many-to-many junction table.
 func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Schema) (string, error) {
 	t1, t2 := table1, table2
 	if t1 > t2 {
@@ -548,10 +551,12 @@ func (p *Provider) GenerateJunctionTable(table1, table2 string, schema *types.Sc
 	), nil
 }
 
+// InferForeignKeyType returns the SQL type to use for a foreign key column referencing the given table.
 func (p *Provider) InferForeignKeyType(referencedTable string, schema *types.Schema) string {
 	return "BIGINT"
 }
 
+// GenerateIndexes generates CREATE INDEX statements for all tables in the schema.
 func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	var indexes []string
 
@@ -582,6 +587,7 @@ func (p *Provider) GenerateIndexes(schema *types.Schema) string {
 	return strings.Join(indexes, "\n")
 }
 
+// GenerateForeignKeyConstraints generates all foreign key constraint SQL statements for a schema.
 func (p *Provider) GenerateForeignKeyConstraints(schema *types.Schema, junctionTables []types.Table) string {
 	var constraints []string
 

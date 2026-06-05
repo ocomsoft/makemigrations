@@ -163,8 +163,6 @@ func TestProvider_GenerateForeignKeyConstraints_Empty(t *testing.T) {
 	}
 }
 
-func boolPtr(b bool) *bool { return &b }
-
 func TestProvider_GenerateAlterColumn_ReturnsError(t *testing.T) {
 	p := New()
 	old := &types.Field{Name: "score", Type: "integer"}

@@ -145,7 +145,7 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Connecting to database...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n1. Connecting to database...\n")
 	}
 
 	// Extract schema from database
@@ -155,17 +155,17 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "Successfully extracted schema with %d tables\n", len(schema.Tables))
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Successfully extracted schema with %d tables\n", len(schema.Tables))
 
 		// Show table summary
 		for _, table := range schema.Tables {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  - %s: %d fields, %d indexes\n",
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  - %s: %d fields, %d indexes\n",
 				table.Name, len(table.Fields), len(table.Indexes))
 		}
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Converting to YAML format...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n2. Converting to YAML format...\n")
 	}
 
 	// Convert schema to YAML
@@ -175,7 +175,7 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Writing YAML schema file...\n")
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "\n3. Writing YAML schema file...\n")
 	}
 
 	// Create output directory if it doesn't exist
@@ -191,16 +191,16 @@ func runDB2Schema(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to write schema file: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Database schema successfully extracted to: %s\n", output)
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Database schema successfully extracted to: %s\n", output)
 
 	if len(schema.Tables) > 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "\nExtracted %d tables:\n", len(schema.Tables))
+		_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nExtracted %d tables:\n", len(schema.Tables))
 		for _, table := range schema.Tables {
-			fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", table.Name)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "  - %s\n", table.Name)
 		}
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "\nYou can now use this schema file with other morphic commands.\n")
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "\nYou can now use this schema file with other morphic commands.\n")
 
 	return nil
 }

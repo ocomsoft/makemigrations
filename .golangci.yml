@@ -17,6 +17,23 @@ linters:
     paths:
       - debug
       - vendor
+    rules:
+      - linters: [revive]
+        text: "package-comments"
+      - linters: [revive]
+        text: "exported .* should have comment"
+      - linters: [revive]
+        text: "comment on exported .* should be of the form"
+      - linters: [revive]
+        text: "var-naming"
+      - linters: [revive]
+        text: "unused-parameter"
+      - linters: [revive]
+        text: "blank-imports"
+      - linters: [revive]
+        text: "avoid meaningless package names"
+      - linters: [revive]
+        text: "avoid package names that conflict"
 
 formatters:
   enable:

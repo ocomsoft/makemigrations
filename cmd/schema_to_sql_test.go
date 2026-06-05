@@ -163,7 +163,7 @@ tables:
 	}
 	err := workflow.ExecuteDumpSQL(testCmd, "postgresql", true, false, "", dagQuerier)
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = oldStdout
 
 	if err != nil {
@@ -171,7 +171,7 @@ tables:
 	}
 
 	var out bytes.Buffer
-	out.ReadFrom(r)
+	_, _ = out.ReadFrom(r)
 	output := out.String()
 
 	// Should produce SQL since everything is new (no previous state)

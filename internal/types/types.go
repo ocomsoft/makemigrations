@@ -21,6 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+// Package types defines the shared schema data structures used throughout makemigrations.
 package types
 
 import "fmt"
@@ -168,6 +170,7 @@ type Index struct {
 // DatabaseType represents supported database types
 type DatabaseType string
 
+// DatabaseType constants enumerate the supported database backends.
 const (
 	DatabasePostgreSQL DatabaseType = "postgresql"
 	DatabaseMySQL      DatabaseType = "mysql"

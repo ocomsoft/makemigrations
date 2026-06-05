@@ -538,7 +538,7 @@ func TestParsePromptInput(t *testing.T) {
 		{"2t", yamlpkg.PromptReview, ui.ScopeType},
 		{"3t", yamlpkg.PromptOmit, ui.ScopeType},
 		{"5t", yamlpkg.PromptIgnoreErrors, ui.ScopeType},
-		{"4a", yamlpkg.PromptExit, ui.ScopeOne},  // exit ignores scope
+		{"4a", yamlpkg.PromptExit, ui.ScopeOne},   // exit ignores scope
 		{"", yamlpkg.PromptGenerate, ui.ScopeOne}, // empty defaults to generate
 		{"x", yamlpkg.PromptGenerate, ui.ScopeOne},
 	}

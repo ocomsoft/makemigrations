@@ -1,5 +1,7 @@
 # makemigrations
 
+> ⚠️ **This project has moved.** `makemigrations` is now continued as **[morphic](https://github.com/ocomsoft/morphic)** — the new version of this project, actively maintained at [github.com/ocomsoft/morphic](https://github.com/ocomsoft/morphic). Please use morphic for new projects and migrate existing ones (run `makemigrations morphic` to upgrade in place).
+
 A **Go-first** database migration tool with a Django-style workflow. Define your schema in YAML, generate type-safe Go migration files, and run them in-process — no Go toolchain required at runtime, no compiled binary to ship.
 
 > **How migrations run.** Generated migration files are real `.go` source —

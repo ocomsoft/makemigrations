@@ -36,9 +36,9 @@ import (
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/morphic/internal/config"
-	"github.com/ocomsoft/morphic/internal/providers"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/providers"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // dbDiffFormat controls the output format for the db-diff command ("text" or "json").
@@ -74,21 +74,21 @@ YAML file.
 
 Database Connection:
   Use individual flags (--host, --port, --database, --username, --password,
-  --sslmode) or rely on the config file (migrations/morphic.config.yaml).
+  --sslmode) or rely on the config file (migrations/makemigrations.config.yaml).
   Command-line flags take precedence over config file settings.
 
 Examples:
   # Compare using connection flags (text output)
-  morphic db-diff --host=localhost --port=5432 --database=myapp --username=user
+  makemigrations db-diff --host=localhost --port=5432 --database=myapp --username=user
 
   # Compare with JSON output
-  morphic db-diff --host=localhost --database=myapp --format=json
+  makemigrations db-diff --host=localhost --database=myapp --format=json
 
   # Compare using config file settings
-  morphic db-diff --config=migrations/morphic.config.yaml
+  makemigrations db-diff --config=migrations/makemigrations.config.yaml
 
   # Compare with verbose output
-  morphic db-diff --verbose --host=localhost --database=myapp`,
+  makemigrations db-diff --verbose --host=localhost --database=myapp`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runDBDiff(cmd)
 	},
@@ -188,7 +188,7 @@ func runDBDiffWithSchemas(w io.Writer, dagSchema, dbSchema *yamlpkg.Schema, form
 }
 
 // sqlTypeMapping maps SQL-native types (lowercase) returned by database
-// introspection to the canonical YAML schema types used by morphic.
+// introspection to the canonical YAML schema types used by makemigrations.
 var sqlTypeMapping = map[string]string{
 	"character varying":           "varchar",
 	"character":                   "varchar",

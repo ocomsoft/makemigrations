@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package cmd contains all CLI commands for morphic.
+// Package cmd contains all CLI commands for makemigrations.
 package cmd
 
 import (
@@ -36,14 +36,14 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
-	"github.com/ocomsoft/morphic/internal/config"
-	"github.com/ocomsoft/morphic/internal/interp"
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/internal/ui"
-	"github.com/ocomsoft/morphic/internal/workflow"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/interp"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/ui"
+	"github.com/ocomsoft/makemigrations/internal/workflow"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 // Flag variables for the go_migrations command. These are prefixed with goMig
@@ -193,7 +193,7 @@ func runGoMakeMigrations(_ *cobra.Command, _ []string) error {
 		for i, leaf := range dagOut.Leaves {
 			fmt.Printf("  Branch %d: %s\n", i+1, leaf)
 		}
-		fmt.Println("Run 'morphic generate --merge' to generate a merge migration.")
+		fmt.Println("Run 'makemigrations generate --merge' to generate a merge migration.")
 	}
 
 	if !diff.HasChanges {

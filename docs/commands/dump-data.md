@@ -4,7 +4,7 @@ The `dump-data` command connects to a live database, fetches rows from the speci
 
 ## Overview
 
-Running `morphic generate dump-data <table1> [table2 ...]` generates a migration file that:
+Running `makemigrations generate dump-data <table1> [table2 ...]` generates a migration file that:
 
 - Contains one `UpsertData` operation per table
 - Uses `INSERT ... ON CONFLICT (pk) DO UPDATE` at migration runtime
@@ -14,7 +14,7 @@ Running `morphic generate dump-data <table1> [table2 ...]` generates a migration
 ## Usage
 
 ```
-morphic generate dump-data [table1 table2 ...] [flags]
+makemigrations generate dump-data [table1 table2 ...] [flags]
 ```
 
 ## Flags
@@ -38,7 +38,7 @@ morphic generate dump-data [table1 table2 ...] [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/morphic.config.yaml` | Path to the configuration file |
+| `--config` | string | `migrations/makemigrations.config.yaml` | Path to the configuration file |
 
 ---
 
@@ -72,7 +72,7 @@ By default, `dump-data` fetches **all rows** from each table. Use `--where` to f
 Prefix the condition with the table name and a colon:
 
 ```bash
-morphic generate dump-data users orders --where "users:status='active'" --where "orders:total > 0"
+makemigrations generate dump-data users orders --where "users:status='active'" --where "orders:total > 0"
 ```
 
 This fetches only active users and orders with a positive total.
@@ -82,7 +82,7 @@ This fetches only active users and orders with a positive total.
 Omit the table prefix to apply the condition to every table:
 
 ```bash
-morphic generate dump-data users orders --where "active = 1"
+makemigrations generate dump-data users orders --where "active = 1"
 ```
 
 ### Combining filters
@@ -90,7 +90,7 @@ morphic generate dump-data users orders --where "active = 1"
 Multiple `--where` entries for the same table are combined with `AND`:
 
 ```bash
-morphic generate dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
+makemigrations generate dump-data users --where "users:status='active'" --where "users:created_at > '2025-01-01'"
 # Equivalent to: WHERE status='active' AND created_at > '2025-01-01'
 ```
 
@@ -103,7 +103,7 @@ The command produces a standard Go migration file. For example, dumping a `unit_
 ```go
 package main
 
-import m "github.com/ocomsoft/morphic/migrate"
+import m "github.com/ocomsoft/makemigrations/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -132,49 +132,49 @@ Each `UpsertData` operation translates to an `INSERT ... ON CONFLICT (pk) DO UPD
 ### Dump a single table
 
 ```bash
-morphic generate dump-data countries
+makemigrations generate dump-data countries
 ```
 
 ### Dump multiple tables with a custom name
 
 ```bash
-morphic generate dump-data countries currencies --name seed_reference_data
+makemigrations generate dump-data countries currencies --name seed_reference_data
 ```
 
 ### Preview without writing
 
 ```bash
-morphic generate dump-data roles --dry-run
+makemigrations generate dump-data roles --dry-run
 ```
 
 ### Override conflict key (table not in schema yet)
 
 ```bash
-morphic generate dump-data legacy_table --conflict-key id
+makemigrations generate dump-data legacy_table --conflict-key id
 ```
 
 ### Specify database connection via DSN
 
 ```bash
-morphic generate dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
+makemigrations generate dump-data countries --dsn "host=prod-db port=5432 dbname=myapp user=ro sslmode=require"
 ```
 
 ### Dump only active records
 
 ```bash
-morphic generate dump-data users --where "users:status='active'" --dry-run
+makemigrations generate dump-data users --where "users:status='active'" --dry-run
 ```
 
 ### Filter all tables with the same condition
 
 ```bash
-morphic generate dump-data countries currencies --where "active = 1"
+makemigrations generate dump-data countries currencies --where "active = 1"
 ```
 
 ### Verbose output
 
 ```bash
-morphic generate dump-data countries --verbose
+makemigrations generate dump-data countries --verbose
 
 # Output:
 # Connecting to postgresql database...
@@ -198,6 +198,6 @@ morphic generate dump-data countries --verbose
 ## See Also
 
 - [empty command](./empty.md) — Create a blank migration for custom operations
-- [morphic command](./morphic.md) — Generate migrations from YAML schema changes
+- [makemigrations command](./makemigrations.md) — Generate migrations from YAML schema changes
 - [migrate command](./migrate.md) — Run `up`, `down`, `status`, `fake` etc.
 - [Migrations Guide](../migrations.md) — Full guide to the Go migration framework

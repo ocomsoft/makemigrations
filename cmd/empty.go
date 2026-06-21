@@ -31,8 +31,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
-	"github.com/ocomsoft/morphic/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/config"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 	emptyMigVerbose bool
 )
 
-// emptyCmd is the "morphic empty" subcommand. It creates a blank
+// emptyCmd is the "makemigrations empty" subcommand. It creates a blank
 // migration .go file with no operations, similar to Django's
 // `makemigrations --empty`. The developer fills in the operations manually.
 var emptyCmd = &cobra.Command{
@@ -56,7 +56,7 @@ The generated migration automatically depends on the current DAG leaves
 (the most recent migrations), so it will be applied in the correct order.
 
 Example:
-  morphic generate empty --name add_custom_triggers`,
+  makemigrations generate empty --name add_custom_triggers`,
 	RunE: runEmpty,
 }
 

@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 // cmd/makemigrations.go — legacy upgrade shim that migrates config and DB table
-// names from the old "makemigrations" naming to "morphic".
+// names from the old "morphic" naming to "makemigrations".
 package cmd
 
 import (
@@ -36,26 +36,26 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 var makemigrationsShimDryRun bool
 
-// makemigrationsShimCmd is the legacy upgrade shim. It renames the old config
-// file and DB history table to their morphic equivalents.
+// makemigrationsShimCmd is the legacy upgrade shim. It renames the old morphic
+// config file and DB history table to their makemigrations equivalents.
 var makemigrationsShimCmd = &cobra.Command{
-	Use:   "makemigrations",
+	Use:   "morphic",
 	Short: "Legacy upgrade shim — migrates config and DB table names",
-	Long: `Upgrade a project from the legacy "makemigrations" naming convention to "morphic".
+	Long: `Upgrade a project from the legacy "morphic" naming convention to "makemigrations".
 
 This command performs three actions:
-  1. Renames migrations/makemigrations.config.yaml to migrations/morphic.config.yaml
-  2. Renames the makemigrations_history DB table to morphic_history
-  3. Rewrites import paths in migration .go files from makemigrations to morphic
+  1. Renames migrations/morphic.config.yaml to migrations/makemigrations.config.yaml
+  2. Renames the morphic_history DB table to makemigrations_history
+  3. Rewrites import paths in migration .go files from morphic to makemigrations
 
 Both operations are idempotent — running this command multiple times is safe.
 Use --dry-run to preview what would happen without making changes.`,
-	Deprecated: "use 'morphic generate' to generate migrations",
+	Deprecated: "use 'makemigrations generate' to generate migrations",
 	Hidden:     true,
 	RunE:       runMakemigrationsShim,
 }
@@ -66,7 +66,7 @@ func init() {
 		"Show what would be done without making changes")
 }
 
-// runMakemigrationsShim performs the legacy-to-morphic upgrade steps.
+// runMakemigrationsShim performs the legacy-to-makemigrations upgrade steps.
 func runMakemigrationsShim(cmd *cobra.Command, _ []string) error {
 	var actions []string
 
@@ -108,11 +108,11 @@ func runMakemigrationsShim(cmd *cobra.Command, _ []string) error {
 	} else if makemigrationsShimDryRun {
 		cmd.Println("Dry run complete. No changes were made.")
 	} else {
-		cmd.Println("Project upgraded to morphic successfully.")
+		cmd.Println("Project upgraded to makemigrations successfully.")
 	}
 	cmd.Println("")
-	cmd.Println("NOTICE: The 'makemigrations' command is deprecated.")
-	cmd.Println("Use 'morphic generate' to generate migrations from now on.")
+	cmd.Println("NOTICE: The 'morphic' command is deprecated.")
+	cmd.Println("Use 'makemigrations generate' to generate migrations from now on.")
 
 	return nil
 }
@@ -122,8 +122,8 @@ func runMakemigrationsShim(cmd *cobra.Command, _ []string) error {
 // performed in dry-run mode).
 func shimRenameConfig(cmd *cobra.Command, dryRun bool) (bool, error) {
 	migrationsDir := "migrations"
-	oldPath := filepath.Join(migrationsDir, "makemigrations.config.yaml")
-	newPath := filepath.Join(migrationsDir, "morphic.config.yaml")
+	oldPath := filepath.Join(migrationsDir, "morphic.config.yaml")
+	newPath := filepath.Join(migrationsDir, "makemigrations.config.yaml")
 
 	oldExists := fileExists(oldPath)
 	newExists := fileExists(newPath)
@@ -133,7 +133,7 @@ func shimRenameConfig(cmd *cobra.Command, dryRun bool) (bool, error) {
 		return false, nil
 	}
 	if newExists {
-		cmd.Println("Config: morphic.config.yaml already exists — skipping rename.")
+		cmd.Println("Config: makemigrations.config.yaml already exists — skipping rename.")
 		return false, nil
 	}
 
@@ -159,27 +159,27 @@ func shimRenameHistoryTable(cmd *cobra.Command, dbURL string, dryRun bool) (bool
 	}
 	defer func() { _ = db.Close() }()
 
-	oldExists := tableExists(db, "makemigrations_history")
-	newExists := tableExists(db, "morphic_history")
+	oldExists := tableExists(db, "morphic_history")
+	newExists := tableExists(db, "makemigrations_history")
 
 	if !oldExists {
-		cmd.Println("DB: no legacy makemigrations_history table found — nothing to rename.")
+		cmd.Println("DB: no legacy morphic_history table found — nothing to rename.")
 		return false, nil
 	}
 	if newExists {
-		cmd.Println("DB: morphic_history table already exists — skipping rename.")
+		cmd.Println("DB: makemigrations_history table already exists — skipping rename.")
 		return false, nil
 	}
 
 	if dryRun {
-		cmd.Println("DB: would rename table makemigrations_history -> morphic_history")
+		cmd.Println("DB: would rename table morphic_history -> makemigrations_history")
 		return true, nil
 	}
 
-	if err := RenameHistoryTable(db, "makemigrations_history", "morphic_history"); err != nil {
+	if err := RenameHistoryTable(db, "morphic_history", "makemigrations_history"); err != nil {
 		return false, err
 	}
-	cmd.Println("DB: renamed table makemigrations_history -> morphic_history")
+	cmd.Println("DB: renamed table morphic_history -> makemigrations_history")
 	return true, nil
 }
 
@@ -212,12 +212,12 @@ func fileExists(path string) bool {
 }
 
 const (
-	legacyImport  = "github.com/ocomsoft/makemigrations/"
-	currentImport = "github.com/ocomsoft/morphic/"
+	legacyImport  = "github.com/ocomsoft/morphic/"
+	currentImport = "github.com/ocomsoft/makemigrations/"
 )
 
 // shimRewriteImports scans all .go files in the migrations directory and
-// rewrites any legacy makemigrations import paths to the morphic equivalents.
+// rewrites any legacy morphic import paths to the makemigrations equivalents.
 // Returns the number of files that were (or would be) modified.
 func shimRewriteImports(cmd *cobra.Command, dryRun bool) (int, error) {
 	migrationsDir := "migrations"

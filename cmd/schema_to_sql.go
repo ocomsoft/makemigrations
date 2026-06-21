@@ -26,8 +26,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/workflow"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/workflow"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 var (

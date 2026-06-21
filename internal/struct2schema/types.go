@@ -27,7 +27,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // TypeMapping represents a mapping from Go type to SQL type

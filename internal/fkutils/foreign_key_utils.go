@@ -28,7 +28,7 @@ package fkutils
 import (
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // ForeignKeyTypeResolver helps resolve the appropriate SQL type for foreign key fields

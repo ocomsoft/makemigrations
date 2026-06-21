@@ -28,9 +28,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/providers/postgresql"
-	"github.com/ocomsoft/morphic/internal/providers/sqlite"
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/internal/providers/postgresql"
+	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 // TestUpsertData_TypeName verifies the operation identifier.

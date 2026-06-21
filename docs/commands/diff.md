@@ -9,7 +9,7 @@ shows the differences in both directions.
    in-process via the yaegi Go interpreter, then reconstructs the "expected"
    schema state by replaying the migration DAG.
 2. **Scans and merges YAML schema files** from the current module and its
-   dependencies (same discovery used by `morphic generate`).
+   dependencies (same discovery used by `makemigrations generate`).
 3. **Diffs the two schemas** and reports differences grouped by direction
    and category.
 
@@ -17,10 +17,10 @@ shows the differences in both directions.
 
 - **In Schema, Not Yet Migrated** — Tables, fields, or indexes present in
   `schema.yaml` but not yet captured in a migration. Running
-  `morphic generate` would generate code for these.
+  `makemigrations generate` would generate code for these.
 - **In Migrations, Removed from Schema** — Tables, fields, or indexes that
   exist in the migration DAG but have been removed from `schema.yaml`.
-  Running `morphic generate` would generate a drop for these.
+  Running `makemigrations generate` would generate a drop for these.
 - **Field Differences** — Fields that exist in both but differ in added vs
   removed status across tables.
 - **Modified Fields** — Fields whose properties (type, length, nullable, etc.)
@@ -78,25 +78,25 @@ Raw `SchemaDiff` structure as JSON, suitable for piping to `jq` or other tools.
 ### Quick overview of pending changes
 
 ```bash
-morphic schema-diff
+makemigrations schema-diff
 ```
 
 ### YAML output for scripting
 
 ```bash
-morphic schema-diff --yaml
+makemigrations schema-diff --yaml
 ```
 
 ### JSON output piped to jq
 
 ```bash
-morphic schema-diff --json | jq '.changes[] | select(.type == "table_removed")'
+makemigrations schema-diff --json | jq '.changes[] | select(.type == "table_removed")'
 ```
 
 ### Verbose mode
 
 ```bash
-morphic schema-diff --verbose
+makemigrations schema-diff --verbose
 ```
 
 Shows additional detail for each change, including full descriptions.
@@ -107,4 +107,4 @@ Shows additional detail for each change, including full descriptions.
 |---------|----------|----------|
 | `schema-diff` | YAML schema ↔ migration DAG | See what a migration would do |
 | `db-diff` | migration DAG ↔ live database | Detect drift after deployment |
-| `morphic --check` | YAML schema ↔ migration DAG | CI gate (exit code only) |
+| `makemigrations --check` | YAML schema ↔ migration DAG | CI gate (exit code only) |

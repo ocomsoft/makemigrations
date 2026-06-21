@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // ConvertDefaultValue converts a YAML default value to database-specific SQL

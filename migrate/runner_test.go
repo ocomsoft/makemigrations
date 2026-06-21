@@ -32,8 +32,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/ocomsoft/morphic/internal/providers/sqlite"
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/internal/providers/sqlite"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 // openTestDB opens an in-memory SQLite database for testing.
@@ -734,7 +734,7 @@ func TestRunner_Up_WarnOnMissingDrop_SkipsIfNotFound(t *testing.T) {
 	}
 
 	// Reset history so we can attempt again
-	if _, err := db.Exec("DELETE FROM morphic_history"); err != nil {
+	if _, err := db.Exec("DELETE FROM makemigrations_history"); err != nil {
 		t.Fatalf("resetting history: %v", err)
 	}
 

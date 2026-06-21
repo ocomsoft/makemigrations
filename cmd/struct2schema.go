@@ -28,7 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/struct2schema"
+	"github.com/ocomsoft/makemigrations/internal/struct2schema"
 )
 
 var (
@@ -46,10 +46,10 @@ var struct2schemaCmd = &cobra.Command{
 	Aliases: []string{"struct2schema"},
 	GroupID: "convert",
 	Short:   "Convert Go structs to YAML schema format",
-	Long: `Convert Go structs to YAML schema format compatible with morphic.
+	Long: `Convert Go structs to YAML schema format compatible with makemigrations.
 
 This command scans Go source files in a directory, extracts struct definitions,
-and generates a YAML schema file that can be used with morphic.
+and generates a YAML schema file that can be used with makemigrations.
 
 Features:
 - Recursive directory scanning with smart exclusions (.git, vendor, etc.)
@@ -62,16 +62,16 @@ Features:
 
 Examples:
   # Scan current directory and generate schema.yaml
-  morphic struct2schema
+  makemigrations struct2schema
 
   # Scan specific directory with custom output
-  morphic struct2schema --input ./models --output schema/generated.yaml
+  makemigrations struct2schema --input ./models --output schema/generated.yaml
 
   # Use custom config for type mappings
-  morphic struct2schema --config mappings.yaml --database postgresql
+  makemigrations struct2schema --config mappings.yaml --database postgresql
 
   # Preview changes without writing files
-  morphic struct2schema --dry-run --verbose`,
+  makemigrations struct2schema --dry-run --verbose`,
 	RunE: runStruct2Schema,
 }
 

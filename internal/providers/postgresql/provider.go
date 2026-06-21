@@ -32,11 +32,11 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq" // PostgreSQL driver
-	"github.com/ocomsoft/morphic/internal/fkutils"
-	"github.com/ocomsoft/morphic/internal/typemap"
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/internal/utils"
-	"github.com/ocomsoft/morphic/internal/version"
+	"github.com/ocomsoft/makemigrations/internal/fkutils"
+	"github.com/ocomsoft/makemigrations/internal/typemap"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
+	"github.com/ocomsoft/makemigrations/internal/version"
 )
 
 // Provider implements the Provider interface for PostgreSQL
@@ -83,9 +83,9 @@ func (p *Provider) Placeholder(n int) string {
 }
 
 // HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
-// morphic_history migration-tracking table, using this provider's SQL dialect.
+// makemigrations_history migration-tracking table, using this provider's SQL dialect.
 func (p *Provider) HistoryTableDDL() string {
-	return `CREATE TABLE IF NOT EXISTS morphic_history (
+	return `CREATE TABLE IF NOT EXISTS makemigrations_history (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP

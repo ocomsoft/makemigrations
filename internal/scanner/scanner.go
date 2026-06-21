@@ -36,7 +36,7 @@ import (
 	ignore "github.com/sabhiram/go-gitignore"
 	"golang.org/x/mod/modfile"
 
-	"github.com/ocomsoft/morphic/internal/errors"
+	"github.com/ocomsoft/makemigrations/internal/errors"
 )
 
 // SchemaFile represents a discovered schema file along with its module path and content.

@@ -24,7 +24,7 @@ SOFTWARE.
 package yaml
 
 import (
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // Include is an alias for types.Include for backwards compatibility.

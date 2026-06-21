@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 func TestProvider_QuoteName(t *testing.T) {

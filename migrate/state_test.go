@@ -27,7 +27,7 @@ package migrate_test
 import (
 	"testing"
 
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 func TestSchemaState_AddTable(t *testing.T) {

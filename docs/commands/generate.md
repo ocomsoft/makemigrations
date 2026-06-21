@@ -6,12 +6,12 @@ The `generate` command is the **primary command** for generating Go-based databa
 
 The `generate` command compares the desired schema (defined in YAML files) against the current schema (reconstructed by replaying all registered Go migration files) and generates a new `.go` migration file containing typed operations for each detected change.
 
-Unlike the SQL-mode commands, Go migrations are real `.go` source files. They run via `morphic migrate up` (etc.), which loads them in-process with the [yaegi](https://github.com/traefik/yaegi) Go interpreter — no `go build`, no temporary binary, no Go toolchain at runtime. The same files can also be compiled into a self-contained binary as an optional fallback.
+Unlike the SQL-mode commands, Go migrations are real `.go` source files. They run via `makemigrations migrate up` (etc.), which loads them in-process with the [yaegi](https://github.com/traefik/yaegi) Go interpreter — no `go build`, no temporary binary, no Go toolchain at runtime. The same files can also be compiled into a self-contained binary as an optional fallback.
 
 ## Usage
 
 ```bash
-morphic generate [flags]
+makemigrations generate [flags]
 ```
 
 ## Command Flags
@@ -28,7 +28,7 @@ morphic generate [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
 
 ## How It Works
 
@@ -53,7 +53,7 @@ The registry and graph live only for the duration of this query; nothing is writ
 
 ### Step 3 — Parse the YAML schema
 
-The command parses `schema/schema.yaml` (and any files it includes) to produce the **desired** schema state. This uses the same YAML parser as all other `morphic` commands.
+The command parses `schema/schema.yaml` (and any files it includes) to produce the **desired** schema state. This uses the same YAML parser as all other `makemigrations` commands.
 
 ### Step 4 — Diff the two schemas
 
@@ -78,7 +78,7 @@ Each generated file is in `package main` and calls `m.Register()` from an `init(
 // migrations/0001_initial.go
 package main
 
-import m "github.com/ocomsoft/morphic/migrate"
+import m "github.com/ocomsoft/makemigrations/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -267,7 +267,7 @@ Executes raw SQL directly. Used for data migrations, custom constraints, trigger
 
 ## Destructive Operation Prompt
 
-When the diff engine detects a destructive change (e.g. `DropTable`, `DropField`), morphic pauses and prompts for a decision before generating the migration:
+When the diff engine detects a destructive change (e.g. `DropTable`, `DropField`), makemigrations pauses and prompts for a decision before generating the migration:
 
 ```
 ⚠  Destructive operation detected: table_removed on "ocom_reset_password"
@@ -298,7 +298,7 @@ When `SchemaOnly: true` is set on an operation, the runner treats the table or f
 Use `--silent` to auto-accept all destructive operations as **Generate** without prompting:
 
 ```bash
-morphic generate --silent
+makemigrations generate --silent
 ```
 
 This is equivalent to always choosing option 1. Useful in automated or non-interactive environments.
@@ -341,7 +341,7 @@ m.Field{
 
 ```bash
 # Generate a migration from detected schema changes
-morphic generate
+makemigrations generate
 
 # Output (when changes are detected)
 Created migrations/0002_add_products.go
@@ -353,10 +353,10 @@ No changes detected.
 ### With a Custom Name
 
 ```bash
-morphic generate --name "add_products"
+makemigrations generate --name "add_products"
 # Generates: migrations/0002_add_products.go
 
-morphic generate --name "Add User Preferences"
+makemigrations generate --name "Add User Preferences"
 # Generates: migrations/0003_add_user_preferences.go
 ```
 
@@ -365,13 +365,13 @@ morphic generate --name "Add User Preferences"
 Preview the generated Go source without writing a file:
 
 ```bash
-morphic generate --dry-run
+makemigrations generate --dry-run
 ```
 
 ```go
 package main
 
-import m "github.com/ocomsoft/morphic/migrate"
+import m "github.com/ocomsoft/makemigrations/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -393,7 +393,7 @@ func init() {
 ### CI/CD Check Mode
 
 ```bash
-morphic generate --check
+makemigrations generate --check
 
 # Exit codes:
 # 0 — schema is up to date with all migrations
@@ -403,7 +403,7 @@ morphic generate --check
 ### Verbose Output
 
 ```bash
-morphic generate --verbose
+makemigrations generate --verbose
 
 # Output
 Loading migrations/ via yaegi...
@@ -416,17 +416,17 @@ No changes detected.
 
 ```bash
 # 1. Initialise the migrations directory
-morphic init
+makemigrations init
 
 # 2. Edit the schema
 vim schema/schema.yaml
 
 # 3. Generate the first migration
-morphic generate --name "initial"
+makemigrations generate --name "initial"
 # Created migrations/0001_initial.go
 
 # 4. Apply (yaegi loads the .go file in-process — no go build)
-morphic migrate up
+makemigrations migrate up
 ```
 
 ### Adding a New Table
@@ -435,14 +435,14 @@ morphic migrate up
 # 1. Add the 'products' table to schema/schema.yaml
 
 # 2. Generate the migration
-morphic generate --name "add_products"
+makemigrations generate --name "add_products"
 # Created migrations/0002_add_products.go
 
 # 3. Review the generated file
 cat migrations/0002_add_products.go
 
 # 4. Apply
-morphic migrate up
+makemigrations migrate up
 ```
 
 ### Altering an Existing Field
@@ -451,11 +451,11 @@ morphic migrate up
 # 1. Change 'status' field from varchar(50) to varchar(100) in schema/schema.yaml
 
 # 2. Generate
-morphic generate --name "expand_user_status"
+makemigrations generate --name "expand_user_status"
 # Created migrations/0003_expand_user_status.go
 
 # 3. Apply
-morphic migrate up
+makemigrations migrate up
 ```
 
 ## Branch and Merge Workflow
@@ -465,11 +465,11 @@ When two developers generate migrations from the same parent migration concurren
 ### Detecting Branches
 
 ```bash
-morphic generate
+makemigrations generate
 
 # Output when branches are detected
 WARNING: Branches detected: 0002_add_products, 0002_add_orders
-Run 'morphic generate --merge' to generate a merge migration.
+Run 'makemigrations generate --merge' to generate a merge migration.
 ```
 
 ### Generating a Merge Migration
@@ -477,7 +477,7 @@ Run 'morphic generate --merge' to generate a merge migration.
 A merge migration has two (or more) entries in `Dependencies` and an empty `Operations` list. It unifies the branches into a single leaf so subsequent migrations have one clear parent.
 
 ```bash
-morphic generate --merge
+makemigrations generate --merge
 # Created merge migration: migrations/0003_merge_0002_add_products_and_0002_add_orders.go
 # Dependencies: 0002_add_products, 0002_add_orders
 ```
@@ -488,7 +488,7 @@ The generated file looks like:
 // migrations/0003_merge_0002_add_products_and_0002_add_orders.go
 package main
 
-import m "github.com/ocomsoft/morphic/migrate"
+import m "github.com/ocomsoft/makemigrations/migrate"
 
 func init() {
     m.Register(&m.Migration{
@@ -507,7 +507,7 @@ After the merge migration is committed, both branches can apply `./migrate up` i
 ### Merge with Dry Run
 
 ```bash
-morphic generate --merge --dry-run
+makemigrations generate --merge --dry-run
 ```
 
 ## CI/CD Integration
@@ -527,10 +527,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - name: Install morphic
-        run: go install github.com/ocomsoft/morphic@latest
+      - name: Install makemigrations
+        run: go install github.com/ocomsoft/makemigrations@latest
       - name: Check for pending migrations
-        run: morphic generate --check
+        run: makemigrations generate --check
 ```
 
 ### Shell Script
@@ -541,14 +541,14 @@ jobs:
 set -e
 
 echo "Checking for schema changes..."
-if morphic generate --check 2>/dev/null; then
+if makemigrations generate --check 2>/dev/null; then
     echo "No migrations needed"
 else
     echo "Generating migrations..."
-    morphic generate --verbose
+    makemigrations generate --verbose
 
     echo "Applying migrations..."
-    morphic migrate up
+    makemigrations migrate up
 
     echo "Done"
 fi
@@ -562,7 +562,7 @@ After initialisation and several generated migrations, the `migrations/` directo
 migrations/
 ├── go.mod              # Module file: myproject/migrations  (used by IDE/gopls)
 ├── go.sum
-├── main.go             # Optional standalone-binary entry point  (NOT used by `morphic migrate`)
+├── main.go             # Optional standalone-binary entry point  (NOT used by `makemigrations migrate`)
 ├── 0001_initial.go     # Auto-generated
 ├── 0002_add_products.go
 └── 0003_expand_user_status.go
@@ -570,7 +570,7 @@ migrations/
 
 ### main.go (optional)
 
-`main.go` is generated once by `morphic init`. **It is not invoked by `morphic migrate`** — that command interprets the migration files in-process via yaegi. The file exists so you can `go build` the directory into a self-contained binary if you want one. Safe to delete if you only ever use `morphic migrate`:
+`main.go` is generated once by `makemigrations init`. **It is not invoked by `makemigrations migrate`** — that command interprets the migration files in-process via yaegi. The file exists so you can `go build` the directory into a self-contained binary if you want one. Safe to delete if you only ever use `makemigrations migrate`:
 
 ```go
 package main
@@ -579,7 +579,7 @@ import (
     "fmt"
     "os"
 
-    m "github.com/ocomsoft/morphic/migrate"
+    m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func main() {
@@ -595,7 +595,7 @@ func main() {
 
 ### go.mod
 
-`go.mod` is also generated once and pins the `morphic` runtime:
+`go.mod` is also generated once and pins the `makemigrations` runtime:
 
 ```
 module myproject/migrations
@@ -603,40 +603,40 @@ module myproject/migrations
 go 1.24
 
 require (
-    github.com/ocomsoft/morphic v0.3.0
+    github.com/ocomsoft/makemigrations v0.3.0
 )
 ```
 
 ## After Generating a Migration
 
-There is **no rebuild step**. `morphic migrate` re-reads the latest migration files on every invocation and interprets them in-process via yaegi:
+There is **no rebuild step**. `makemigrations migrate` re-reads the latest migration files on every invocation and interprets them in-process via yaegi:
 
 ```bash
-morphic migrate up
+makemigrations migrate up
 ```
 
 To verify the migration was applied:
 
 ```bash
-morphic migrate status
+makemigrations migrate status
 ```
 
 To roll back the last migration:
 
 ```bash
-morphic migrate down
+makemigrations migrate down
 ```
 
 To view the full DAG:
 
 ```bash
-morphic migrate dag
-morphic migrate dag --format json
+makemigrations migrate dag
+makemigrations migrate dag --format json
 ```
 
 ## Configuration Integration
 
-The command reads `migrations/morphic.config.yaml`:
+The command reads `migrations/makemigrations.config.yaml`:
 
 ```yaml
 database:
@@ -674,7 +674,7 @@ A migration file references a dependency that does not exist. Check the `Depende
 **Branches detected without --merge**
 ```
 WARNING: Branches detected: 0002_add_products, 0002_add_orders
-Run 'morphic generate --merge' to generate a merge migration.
+Run 'makemigrations generate --merge' to generate a merge migration.
 ```
 Run with `--merge` to resolve.
 

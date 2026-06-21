@@ -1,13 +1,13 @@
 ---
-name: go-morphic
-description: Use when making database schema changes in Go projects — adding tables, fields, indexes, foreign keys, or modifying columns. Triggers on any database structure work, migration creation, or when a project has schema/schema.yaml or migrations/morphic.config.yaml. Enforces schema-first workflow over raw SQL.
+name: go-makemigrations
+description: Use when making database schema changes in Go projects — adding tables, fields, indexes, foreign keys, or modifying columns. Triggers on any database structure work, migration creation, or when a project has schema/schema.yaml or migrations/makemigrations.config.yaml. Enforces schema-first workflow over raw SQL.
 ---
 
-# Go Morphic
+# Go Makemigrations
 
 ## Overview
 
-**morphic** is the database migration tool for Go projects at Ocom. It works like Django migrations: you define your schema in YAML, and the tool generates type-safe Go migration code.
+**makemigrations** is the database migration tool for Go projects at Ocom. It works like Django migrations: you define your schema in YAML, and the tool generates type-safe Go migration code.
 
 **Core principle:** schema.yaml is the single source of truth. All database changes flow through it. RunSQL is a last resort.
 
@@ -22,30 +22,30 @@ Auto-trigger on ANY of these:
 - "Rename a table/column"
 - "Remove/drop a table/column"
 - Working in a project that has `schema/schema.yaml`
-- Working in a project that has `migrations/morphic.config.yaml`
+- Working in a project that has `migrations/makemigrations.config.yaml`
 - Any request that implies database structure changes
 
 ## The Workflow
 
 ```dot
-digraph morphic_workflow {
+digraph makemigrations_workflow {
     rankdir=TB;
     "Database change needed" [shape=doublecircle];
-    "Is morphic initialized?" [shape=diamond];
-    "Run morphic init" [shape=box];
+    "Is makemigrations initialized?" [shape=diamond];
+    "Run makemigrations init" [shape=box];
     "Edit schema/schema.yaml" [shape=box];
-    "Run morphic generate" [shape=box];
+    "Run makemigrations generate" [shape=box];
     "Review generated .go file" [shape=box];
     "Preview SQL with migrate showsql" [shape=box];
     "Run tests" [shape=box];
     "Done" [shape=doublecircle];
 
-    "Database change needed" -> "Is morphic initialized?";
-    "Is morphic initialized?" -> "Run morphic init" [label="no"];
-    "Is morphic initialized?" -> "Edit schema/schema.yaml" [label="yes"];
-    "Run morphic init" -> "Edit schema/schema.yaml";
-    "Edit schema/schema.yaml" -> "Run morphic generate";
-    "Run morphic generate" -> "Review generated .go file";
+    "Database change needed" -> "Is makemigrations initialized?";
+    "Is makemigrations initialized?" -> "Run makemigrations init" [label="no"];
+    "Is makemigrations initialized?" -> "Edit schema/schema.yaml" [label="yes"];
+    "Run makemigrations init" -> "Edit schema/schema.yaml";
+    "Edit schema/schema.yaml" -> "Run makemigrations generate";
+    "Run makemigrations generate" -> "Review generated .go file";
     "Review generated .go file" -> "Preview SQL with migrate showsql";
     "Preview SQL with migrate showsql" -> "Run tests";
     "Run tests" -> "Done";
@@ -54,16 +54,16 @@ digraph morphic_workflow {
 
 ### Step 1: Check Initialization
 
-Look for `migrations/morphic.config.yaml`. If missing:
+Look for `migrations/makemigrations.config.yaml`. If missing:
 
 ```bash
-morphic init --database postgresql
+makemigrations init --database postgresql
 ```
 
 This creates:
 - `migrations/go.mod`
 - `migrations/main.go`
-- `migrations/morphic.config.yaml`
+- `migrations/makemigrations.config.yaml`
 
 Then create `schema/schema.yaml` with the initial database definition.
 
@@ -105,7 +105,7 @@ tables:
 ### Step 3: Generate Migration
 
 ```bash
-morphic generate --name "describe_the_change"
+makemigrations generate --name "describe_the_change"
 ```
 
 Use `--dry-run` to preview without writing files. Use `--check` to verify schema is up to date (CI use).
@@ -114,7 +114,7 @@ Use `--dry-run` to preview without writing files. Use `--check` to verify schema
 
 ```bash
 # Preview the SQL that will run
-morphic migrate showsql
+makemigrations migrate showsql
 
 # Run tests
 go test ./...
@@ -123,15 +123,15 @@ go test ./...
 ### Step 5: Apply (when ready)
 
 ```bash
-morphic migrate up
+makemigrations migrate up
 ```
 
 ## Rules
 
 1. **Schema-first**: Edit `schema/schema.yaml` before anything else. Never write SQL to change structure.
-2. **NEVER compile or run migrations with `go build` / `go run`**: The `migrations/` directory contains `.go` files but you must NOT compile or execute them with the Go toolchain. Always use `morphic migrate up`, `morphic migrate showsql`, etc. The yaegi interpreter runs them in-process — no build step needed.
+2. **NEVER compile or run migrations with `go build` / `go run`**: The `migrations/` directory contains `.go` files but you must NOT compile or execute them with the Go toolchain. Always use `makemigrations migrate up`, `makemigrations migrate showsql`, etc. The yaegi interpreter runs them in-process — no build step needed.
 3. **Prefer generated code unchanged**: Only modify generated migration `.go` files if you absolutely must (e.g., adding data migration logic). Try to leave them as-is.
-4. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `morphic generate empty --name "description"` to create the shell.
+4. **RunSQL is last resort**: Only for data migrations or complex SQL that cannot be expressed in the schema. Use `makemigrations generate empty --name "description"` to create the shell.
 5. **Never skip generation**: Don't hand-write migration operations. Let the tool diff the schema and generate them.
 6. **Name migrations descriptively**: `--name "add_user_profiles"` not `--name "update"`.
 
@@ -248,25 +248,25 @@ include:
 
 | Command | Purpose |
 |---------|---------|
-| `morphic init` | Bootstrap migrations directory |
-| `morphic generate` | Generate migration from schema diff |
-| `morphic migrate up` | Apply pending migrations |
-| `morphic migrate down` | Rollback last migration |
-| `morphic migrate status` | Show migration status |
-| `morphic migrate showsql` | Preview SQL without applying |
-| `morphic migrate dag` | View migration dependency graph |
-| `morphic generate empty` | Create blank migration (for RunSQL) |
-| `morphic db2schema` | Reverse-engineer schema from existing DB |
-| `morphic struct2schema` | Convert Go structs to schema YAML |
-| `morphic generate dump-data` | Generate data-seeding migration |
-| `morphic schema-to-sql` | Convert merged YAML schema to SQL |
+| `makemigrations init` | Bootstrap migrations directory |
+| `makemigrations generate` | Generate migration from schema diff |
+| `makemigrations migrate up` | Apply pending migrations |
+| `makemigrations migrate down` | Rollback last migration |
+| `makemigrations migrate status` | Show migration status |
+| `makemigrations migrate showsql` | Preview SQL without applying |
+| `makemigrations migrate dag` | View migration dependency graph |
+| `makemigrations generate empty` | Create blank migration (for RunSQL) |
+| `makemigrations db2schema` | Reverse-engineer schema from existing DB |
+| `makemigrations struct2schema` | Convert Go structs to schema YAML |
+| `makemigrations generate dump-data` | Generate data-seeding migration |
+| `makemigrations schema-to-sql` | Convert merged YAML schema to SQL |
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Running `go build` or `go run` on the migrations directory | Use `morphic migrate up` — yaegi interprets them in-process, no compilation needed |
-| Writing CREATE TABLE SQL directly | Edit schema.yaml and run `morphic generate` |
+| Running `go build` or `go run` on the migrations directory | Use `makemigrations migrate up` — yaegi interprets them in-process, no compilation needed |
+| Writing CREATE TABLE SQL directly | Edit schema.yaml and run `makemigrations generate` |
 | Hand-writing migration operations | Let the tool generate them from the schema diff |
 | Forgetting `--name` flag | Always name migrations: `--name "add_user_profiles"` |
 | Using RunSQL for structure changes | Express it in schema.yaml instead |
@@ -280,4 +280,4 @@ include:
 - Database-specific features not covered by field types (e.g., triggers, stored procedures)
 - One-off fixes that don't map to schema changes
 
-Create the shell with: `morphic generate empty --name "description"`
+Create the shell with: `makemigrations generate empty --name "description"`

@@ -23,7 +23,7 @@ SOFTWARE.
 */
 package main
 
-import "github.com/ocomsoft/morphic/cmd"
+import "github.com/ocomsoft/makemigrations/cmd"
 
 func main() {
 	cmd.Execute()

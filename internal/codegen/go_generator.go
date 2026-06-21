@@ -33,8 +33,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/utils"
-	"github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/utils"
+	"github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // GoGenerator produces Go source code for migration files, main.go, and go.mod.
@@ -82,7 +82,7 @@ func (g *GoGenerator) GenerateMigration(
 	// File header
 	b.WriteString("package main\n\n")
 	b.WriteString("import (\n")
-	b.WriteString("\tm \"github.com/ocomsoft/morphic/migrate\"\n")
+	b.WriteString("\tm \"github.com/ocomsoft/makemigrations/migrate\"\n")
 	b.WriteString(")\n\n")
 
 	// init() function
@@ -551,14 +551,14 @@ func generateIndexLiteral(idx yaml.Index) string {
 }
 
 // GenerateMainGo returns the source for a migrations/main.go file. The file
-// is **optional at runtime** — `morphic migrate` interprets the
+// is **optional at runtime** — `makemigrations migrate` interprets the
 // migration .go files in-process via yaegi and never invokes main(). It is
 // generated so users can still `go build` the migrations directory into a
 // standalone binary if they want one.
 func (g *GoGenerator) GenerateMainGo() string {
 	return `// Optional standalone-binary entry point for the migrations module.
 //
-// morphic migrate runs the migration files in-process via yaegi and
+// makemigrations migrate runs the migration files in-process via yaegi and
 // does NOT invoke this main(). Keep this file if you want to ` + "`go build`" + ` the
 // migrations directory into a self-contained binary as a fallback (or to
 // ship in a release artifact). Otherwise it is safe to delete — the
@@ -569,7 +569,7 @@ import (
 	"fmt"
 	"os"
 
-	m "github.com/ocomsoft/morphic/migrate"
+	m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func main() {
@@ -587,7 +587,7 @@ func main() {
 
 // GenerateGoMod returns a go.mod file content string for the generated migrations
 // module. moduleName is the module path (e.g. "myproject/migrations"), version
-// is the morphic version to require (e.g. "v0.3.0" or "main"), and
+// is the makemigrations version to require (e.g. "v0.3.0" or "main"), and
 // goVersion is the Go version to declare (e.g. "1.25", defaults to "1.24").
 func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion string) string {
 	if goVersion == "" {
@@ -597,7 +597,7 @@ func (g *GoGenerator) GenerateGoMod(moduleName, version, goVersion string) strin
 	b.WriteString(fmt.Sprintf("module %s\n\n", moduleName))
 	b.WriteString(fmt.Sprintf("go %s\n\n", goVersion))
 	b.WriteString("require (\n")
-	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/morphic %s\n", version))
+	b.WriteString(fmt.Sprintf("\tgithub.com/ocomsoft/makemigrations %s\n", version))
 	b.WriteString(")\n")
 	return b.String()
 }

@@ -1,12 +1,12 @@
 # db-to-schema Command
 
-The `db-to-schema` command extracts database schema information from a PostgreSQL database and generates a YAML schema file compatible with morphic. This reverse engineering tool allows you to convert existing database structures into morphic schema format.
+The `db-to-schema` command extracts database schema information from a PostgreSQL database and generates a YAML schema file compatible with makemigrations. This reverse engineering tool allows you to convert existing database structures into makemigrations schema format.
 
 ## Overview
 
 The `db-to-schema` command connects to a PostgreSQL database, reads the INFORMATION_SCHEMA tables, and extracts complete metadata to generate a comprehensive YAML schema file. It's useful for:
 
-- Converting existing databases to morphic format
+- Converting existing databases to makemigrations format
 - Reverse engineering database structures for documentation
 - Migrating from other schema management tools
 - Creating schema files from production databases
@@ -15,7 +15,7 @@ The `db-to-schema` command connects to a PostgreSQL database, reads the INFORMAT
 ## Usage
 
 ```bash
-morphic db-to-schema [flags]
+makemigrations db-to-schema [flags]
 ```
 
 ## Command Flags
@@ -35,7 +35,7 @@ morphic db-to-schema [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
 
 ## What It Extracts
 
@@ -55,12 +55,12 @@ tables:
 ### 2. Field Information
 Complete field metadata including:
 - **Name**: Column name
-- **Data Type**: Converted to morphic YAML types
+- **Data Type**: Converted to makemigrations YAML types
 - **Length**: For VARCHAR and TEXT fields
 - **Precision/Scale**: For DECIMAL fields  
 - **Nullable**: Whether the field accepts NULL values
 - **Primary Key**: Primary key constraints
-- **Default Values**: Converted to morphic format
+- **Default Values**: Converted to makemigrations format
 
 ```yaml
 fields:
@@ -123,7 +123,7 @@ Intelligent conversion of SQL defaults to YAML format:
 
 ```bash
 # Extract schema from local PostgreSQL
-morphic db-to-schema --database=myapp --username=myuser --password=mypass
+makemigrations db-to-schema --database=myapp --username=myuser --password=mypass
 
 # Output
 Database schema successfully extracted to: schema.yaml
@@ -135,14 +135,14 @@ Extracted 5 tables:
   - orders
   - order_items
 
-You can now use this schema file with other morphic commands.
+You can now use this schema file with other makemigrations commands.
 ```
 
 ### Verbose Mode
 
 ```bash
 # Show detailed processing information
-morphic db-to-schema --verbose --database=myapp --username=myuser
+makemigrations db-to-schema --verbose --database=myapp --username=myuser
 
 # Output
 Extracting database schema to YAML
@@ -168,17 +168,17 @@ Database schema successfully extracted to: schema.yaml
 
 ```bash
 # Extract to specific file
-morphic db-to-schema --output=extracted_schema.yaml --database=myapp
+makemigrations db-to-schema --output=extracted_schema.yaml --database=myapp
 
 # Extract to directory
-morphic db-to-schema --output=schemas/production.yaml --database=prod_db
+makemigrations db-to-schema --output=schemas/production.yaml --database=prod_db
 ```
 
 ### Remote Database Connection
 
 ```bash
 # Connect to remote database
-morphic db-to-schema \
+makemigrations db-to-schema \
   --host=db.example.com \
   --port=5432 \
   --database=production \
@@ -199,7 +199,7 @@ export PGUSER=myuser
 export PGPASSWORD=mypass
 
 # Extract schema
-morphic db-to-schema --verbose
+makemigrations db-to-schema --verbose
 ```
 
 ## Database Support
@@ -361,7 +361,7 @@ CREATE TABLE products (
 
 ```bash
 # Production connection with full SSL verification
-morphic db-to-schema \
+makemigrations db-to-schema \
   --host=prod-db.company.com \
   --port=5432 \
   --database=production \
@@ -375,7 +375,7 @@ morphic db-to-schema \
 ### Connection Errors
 
 ```bash
-$ morphic db-to-schema --host=nonexistent --database=test
+$ makemigrations db-to-schema --host=nonexistent --database=test
 Error: failed to extract database schema: failed to ping database: 
 dial tcp: lookup nonexistent: no such host
 ```
@@ -383,7 +383,7 @@ dial tcp: lookup nonexistent: no such host
 ### Authentication Errors
 
 ```bash
-$ morphic db-to-schema --username=invalid --password=wrong
+$ makemigrations db-to-schema --username=invalid --password=wrong
 Error: failed to extract database schema: failed to ping database: 
 pq: password authentication failed for user "invalid"
 ```
@@ -391,7 +391,7 @@ pq: password authentication failed for user "invalid"
 ### Database Access Errors
 
 ```bash
-$ morphic db-to-schema --database=forbidden
+$ makemigrations db-to-schema --database=forbidden
 Error: failed to extract database schema: failed to ping database:
 pq: permission denied for database "forbidden"
 ```
@@ -399,7 +399,7 @@ pq: permission denied for database "forbidden"
 ### Permission Errors
 
 ```bash
-$ morphic db-to-schema --username=limited_user
+$ makemigrations db-to-schema --username=limited_user
 Error: failed to extract database schema: failed to extract tables: 
 failed to query tables: pq: permission denied for schema information_schema
 ```
@@ -436,25 +436,25 @@ failed to query tables: pq: permission denied for schema information_schema
 4. **Type Conversion Issues**
    ```bash
    # Use verbose mode to see detailed type processing
-   morphic db-to-schema --verbose --database=mydb
+   makemigrations db-to-schema --verbose --database=mydb
    ```
 
-## Integration with Morphic
+## Integration with Makemigrations
 
 ### Workflow Example
 
 ```bash
 # 1. Extract existing database schema
-morphic db-to-schema --database=production --output=baseline_schema.yaml
+makemigrations db-to-schema --database=production --output=baseline_schema.yaml
 
 # 2. Initialize migrations directory with extracted schema
-morphic init --schema=baseline_schema.yaml
+makemigrations init --schema=baseline_schema.yaml
 
 # 3. Make schema modifications
 vim schema/schema.yaml
 
 # 4. Generate migration for changes
-morphic generate --name="add_new_features"
+makemigrations generate --name="add_new_features"
 
 # 5. Apply migrations
 goose -dir migrations postgres $DATABASE_URL up
@@ -464,7 +464,7 @@ goose -dir migrations postgres $DATABASE_URL up
 
 ```bash
 # Before making changes - capture current state
-morphic db-to-schema --database=staging --output=current_state.yaml
+makemigrations db-to-schema --database=staging --output=current_state.yaml
 
 # Make schema changes in YAML
 vim schema/schema.yaml
@@ -473,7 +473,7 @@ vim schema/schema.yaml
 diff current_state.yaml schema/schema.yaml
 
 # Generate and review migration
-morphic generate --dry-run
+makemigrations generate --dry-run
 ```
 
 ## Performance Considerations
@@ -484,17 +484,17 @@ For databases with many tables:
 
 ```bash
 # Use verbose mode to monitor progress
-time morphic db-to-schema --verbose --database=large_db
+time makemigrations db-to-schema --verbose --database=large_db
 
 # Consider extracting specific schemas (future feature)
-# morphic db-to-schema --schema=specific_schema --database=large_db
+# makemigrations db-to-schema --schema=specific_schema --database=large_db
 ```
 
 ### Network Considerations
 
 ```bash
 # For remote databases, consider connection timeouts
-timeout 300 morphic db-to-schema \
+timeout 300 makemigrations db-to-schema \
   --host=remote-db.example.com \
   --database=myapp \
   --verbose
@@ -505,7 +505,7 @@ timeout 300 morphic db-to-schema \
 The command respects the configuration file for database type settings:
 
 ```yaml
-# migrations/morphic.config.yaml
+# migrations/makemigrations.config.yaml
 database:
   type: postgresql              # Used to determine provider
   default_schema: public        # Schema to extract from
@@ -516,11 +516,11 @@ database:
 
 ```bash
 # Database connection can be specified via environment
-export MORPHIC_DATABASE_TYPE=postgresql
+export MAKEMIGRATIONS_DATABASE_TYPE=postgresql
 export DATABASE_URL=postgres://user:pass@host:port/dbname
 
 # Run extraction
-morphic db-to-schema --verbose
+makemigrations db-to-schema --verbose
 ```
 
 ## Use Cases
@@ -529,7 +529,7 @@ morphic db-to-schema --verbose
 
 ```bash
 # Extract legacy database structure
-morphic db-to-schema \
+makemigrations db-to-schema \
   --host=legacy-db.company.com \
   --database=legacy_system \
   --username=readonly \
@@ -539,14 +539,14 @@ morphic db-to-schema \
 vim legacy_schema.yaml
 
 # Initialize new schema-based project
-morphic init --schema=legacy_schema.yaml
+makemigrations init --schema=legacy_schema.yaml
 ```
 
 ### 2. Development Environment Setup
 
 ```bash
 # Extract production schema
-morphic db-to-schema \
+makemigrations db-to-schema \
   --host=prod-db.company.com \
   --database=production \
   --username=readonly \
@@ -555,15 +555,15 @@ morphic db-to-schema \
 
 # Use for local development
 cp prod_schema.yaml schema/schema.yaml
-morphic init
+makemigrations init
 ```
 
 ### 3. Documentation Generation
 
 ```bash
 # Extract schema for documentation
-morphic db-to-schema --database=myapp --verbose > schema_extraction.log
-morphic schema-to-sql --database=postgresql > schema_structure.sql
+makemigrations db-to-schema --database=myapp --verbose > schema_extraction.log
+makemigrations schema-to-sql --database=postgresql > schema_structure.sql
 
 # Generate complete documentation
 echo "# Database Schema Documentation" > docs/database.md
@@ -577,8 +577,8 @@ cat schema_structure.sql >> docs/database.md
 
 ```bash
 # Compare staging vs production
-morphic db-to-schema --database=staging --output=staging_schema.yaml
-morphic db-to-schema --database=production --output=prod_schema.yaml
+makemigrations db-to-schema --database=staging --output=staging_schema.yaml
+makemigrations db-to-schema --database=production --output=prod_schema.yaml
 
 # Compare schemas
 diff staging_schema.yaml prod_schema.yaml
@@ -591,7 +591,7 @@ diff staging_schema.yaml prod_schema.yaml
 # ci/extract-schema.sh
 
 # Extract current production schema
-morphic db-to-schema \
+makemigrations db-to-schema \
   --host=$PROD_DB_HOST \
   --database=$PROD_DB_NAME \
   --username=$READONLY_USER \
@@ -613,7 +613,7 @@ fi
 
 ```bash
 # Override extracted database name
-morphic db-to-schema --database=myapp --output=temp_schema.yaml
+makemigrations db-to-schema --database=myapp --output=temp_schema.yaml
 
 # Edit the database section
 sed -i 's/extracted_schema/myapp_v2/g' temp_schema.yaml
@@ -623,53 +623,53 @@ sed -i 's/extracted_schema/myapp_v2/g' temp_schema.yaml
 
 ```bash
 # Future planned feature
-# morphic db-to-schema --tables="users,products,orders" --database=myapp
+# makemigrations db-to-schema --tables="users,products,orders" --database=myapp
 ```
 
 ### Schema Filtering (Future Feature)
 
 ```bash
 # Future planned feature  
-# morphic db-to-schema --exclude-tables="audit_*,temp_*" --database=myapp
+# makemigrations db-to-schema --exclude-tables="audit_*,temp_*" --database=myapp
 ```
 
 ## Migration Path Examples
 
-### From Django to Morphic
+### From Django to Makemigrations
 
 ```bash
 # 1. Extract Django database
-morphic db-to-schema --database=django_app --output=django_schema.yaml
+makemigrations db-to-schema --database=django_app --output=django_schema.yaml
 
 # 2. Convert Django-specific types (manual review needed)
 # - Review auto_now and auto_now_add fields
 # - Check CharField max_length mappings
 # - Verify foreign key on_delete behaviors
 
-# 3. Initialize morphic
-morphic init --schema=django_schema.yaml
+# 3. Initialize makemigrations
+makemigrations init --schema=django_schema.yaml
 ```
 
-### From Rails to Morphic  
+### From Rails to Makemigrations  
 
 ```bash
 # 1. Extract Rails database
-morphic db-to-schema --database=rails_app --output=rails_schema.yaml
+makemigrations db-to-schema --database=rails_app --output=rails_schema.yaml
 
 # 2. Review Rails conventions
 # - Convert created_at/updated_at to auto_create/auto_update
 # - Review ActiveRecord foreign key naming
 # - Check index naming conventions
 
-# 3. Initialize morphic
-morphic init --schema=rails_schema.yaml
+# 3. Initialize makemigrations
+makemigrations init --schema=rails_schema.yaml
 ```
 
-### From Liquibase to Morphic
+### From Liquibase to Makemigrations
 
 ```bash
 # 1. Extract current database state
-morphic db-to-schema --database=liquibase_db --output=current_schema.yaml
+makemigrations db-to-schema --database=liquibase_db --output=current_schema.yaml
 
 # 2. Clean up and organize
 # - Remove Liquibase system tables from extracted schema
@@ -677,7 +677,7 @@ morphic db-to-schema --database=liquibase_db --output=current_schema.yaml
 # - Standardize naming conventions
 
 # 3. Initialize clean migration history
-morphic init --schema=current_schema.yaml
+makemigrations init --schema=current_schema.yaml
 ```
 
 ## Limitations and Considerations
@@ -709,7 +709,7 @@ Some PostgreSQL types have no direct YAML equivalent:
 ## See Also
 
 - [init Command](./init.md) - Initialize new projects with extracted schemas
-- [morphic Command](./morphic.md) - Generate migrations from schemas  
+- [makemigrations Command](./makemigrations.md) - Generate migrations from schemas  
 - [schema-to-sql Command](./schema_to_sql.md) - View generated SQL from extracted schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options

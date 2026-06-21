@@ -34,9 +34,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/config"
-	"github.com/ocomsoft/morphic/internal/scanner"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/scanner"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // YAMLComponents holds the initialized YAML processing components

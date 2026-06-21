@@ -55,10 +55,10 @@ A Go utility that replicates Django's `makemigrations` functionality for Postgre
 ### Primary Commands
 ```bash
 # First time setup - initialize migrations directory
-morphic init [flags]
+makemigrations init [flags]
 
 # Generate migrations
-morphic generate [flags]
+makemigrations generate [flags]
 ```
 
 ### Flags
@@ -164,7 +164,7 @@ DROP TABLE IF EXISTS users;
 ## Example Workflow
 
 1. Developer adds/modifies `sql/schema.sql` in their module
-2. Run `morphic`
+2. Run `makemigrations`
 3. Utility scans dependencies and merges schemas
 4. Compares with last snapshot
 5. Generates migration file `migrations/00002_add_orders_table.sql`
@@ -173,7 +173,7 @@ DROP TABLE IF EXISTS users;
 8. Run `goose up` to apply migration
 
 ## Configuration (Optional Future Enhancement)
-Consider adding `.morphic.yaml` for:
+Consider adding `.makemigrations.yaml` for:
 - Custom schema file locations
 - Module inclusion/exclusion rules
 - Conflict resolution overrides

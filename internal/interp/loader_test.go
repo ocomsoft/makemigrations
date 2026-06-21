@@ -29,13 +29,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/interp"
+	"github.com/ocomsoft/makemigrations/internal/interp"
 )
 
 const file0001 = `package main
 
 import (
-	m "github.com/ocomsoft/morphic/migrate"
+	m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func init() {
@@ -58,7 +58,7 @@ func init() {
 const file0002 = `package main
 
 import (
-	m "github.com/ocomsoft/morphic/migrate"
+	m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func init() {
@@ -81,7 +81,7 @@ import (
 	"fmt"
 	"os"
 
-	m "github.com/ocomsoft/morphic/migrate"
+	m "github.com/ocomsoft/makemigrations/migrate"
 )
 
 func main() {
@@ -148,7 +148,7 @@ func TestLoadRegistryIsolated(t *testing.T) {
 }
 
 // file0001Legacy uses the old makemigrations import path — the loader
-// should silently rewrite it to the morphic path.
+// should silently rewrite it to the makemigrations path.
 const file0001Legacy = `package main
 
 import (

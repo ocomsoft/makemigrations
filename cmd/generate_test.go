@@ -29,14 +29,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/ui"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/internal/ui"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 // TestTypeMappingsSurvivedMergeAndDiffDetection is a regression test for the
 // bug where TypeMappings in a schema.yaml were silently dropped by MergeSchemas,
-// causing morphic generate to report "No changes detected" even when type_mappings
+// causing makemigrations generate to report "No changes detected" even when type_mappings
 // were present (e.g. float → DOUBLE PRECISION in air_radiators).
 //
 // The test verifies the full pipeline:

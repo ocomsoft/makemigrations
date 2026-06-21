@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-// Package interp loads morphic migration .go files into an in-process
+// Package interp loads makemigrations migration .go files into an in-process
 // *migrate.Registry using the yaegi interpreter, removing the need to compile
 // the migrations module with the Go toolchain.
 package interp
@@ -44,8 +44,8 @@ import (
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
 
-	"github.com/ocomsoft/morphic/migrate"
-	"github.com/ocomsoft/morphic/migrate/symbols"
+	"github.com/ocomsoft/makemigrations/migrate"
+	"github.com/ocomsoft/makemigrations/migrate/symbols"
 )
 
 // virtualPkg is the package name used inside the in-memory filesystem when
@@ -129,7 +129,7 @@ func perLoadSymbols(reg *migrate.Registry) map[string]map[string]reflect.Value {
 		}
 		out[pkg] = copied
 	}
-	const migPkg = "github.com/ocomsoft/morphic/migrate/migrate"
+	const migPkg = "github.com/ocomsoft/makemigrations/migrate/migrate"
 	if out[migPkg] == nil {
 		out[migPkg] = map[string]reflect.Value{}
 	}
@@ -141,11 +141,11 @@ func perLoadSymbols(reg *migrate.Registry) map[string]map[string]reflect.Value {
 
 const (
 	legacyImportPrefix  = "github.com/ocomsoft/makemigrations/"
-	currentImportPrefix = "github.com/ocomsoft/morphic/"
+	currentImportPrefix = "github.com/ocomsoft/makemigrations/"
 )
 
 // rewritePackage parses src, replaces the package name with newName, and
-// silently rewrites legacy makemigrations import paths to morphic.
+// silently rewrites legacy makemigrations import paths to makemigrations.
 // Comments and formatting are preserved.
 func rewritePackage(filename string, src []byte, newName string) ([]byte, error) {
 	fset := token.NewFileSet()
@@ -163,7 +163,7 @@ func rewritePackage(filename string, src []byte, newName string) ([]byte, error)
 }
 
 // rewriteLegacyImports rewrites any import paths starting with the old
-// makemigrations module path to the current morphic path, so pre-rebrand
+// makemigrations module path to the current makemigrations path, so pre-rebrand
 // migration files load without manual edits.
 func rewriteLegacyImports(file *ast.File) {
 	for _, imp := range file.Imports {

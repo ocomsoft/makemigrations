@@ -35,8 +35,8 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/internal/workflow"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/workflow"
 )
 
 var (
@@ -83,13 +83,13 @@ VS Code, etc.).
 
 Examples:
   # Generate documentation to default file
-  morphic schema2diagram
+  makemigrations schema2diagram
 
   # Generate to specific output file
-  morphic schema2diagram --output=docs/database-schema.md
+  makemigrations schema2diagram --output=docs/database-schema.md
 
   # Generate with verbose processing information
-  morphic schema2diagram --verbose --output=schema-docs.md
+  makemigrations schema2diagram --verbose --output=schema-docs.md
 
 The generated Markdown includes live diagrams that automatically update when
 viewed in supported platforms, making it perfect for living documentation.`,

@@ -1,15 +1,15 @@
 # struct-to-schema Command
 
-Convert Go struct definitions to morphic-compatible YAML schema files automatically.
+Convert Go struct definitions to makemigrations-compatible YAML schema files automatically.
 
 ## Overview
 
-The `struct-to-schema` command analyzes Go source code to extract struct definitions and generates comprehensive YAML schema files that can be used with morphic. This powerful feature enables automatic database schema generation from existing Go codebases.
+The `struct-to-schema` command analyzes Go source code to extract struct definitions and generates comprehensive YAML schema files that can be used with makemigrations. This powerful feature enables automatic database schema generation from existing Go codebases.
 
 ## Usage
 
 ```bash
-morphic struct-to-schema [flags]
+makemigrations struct-to-schema [flags]
 ```
 
 ### Flags
@@ -27,28 +27,28 @@ morphic struct-to-schema [flags]
 
 Scan the current directory and generate a schema file:
 ```bash
-morphic struct-to-schema
+makemigrations struct-to-schema
 ```
 
 ### Scan Specific Directory
 
 Scan a models directory and output to a custom location:
 ```bash
-morphic struct-to-schema --input ./models --output schema/generated.yaml
+makemigrations struct-to-schema --input ./models --output schema/generated.yaml
 ```
 
 ### Preview Changes
 
 See what would be generated without creating files:
 ```bash
-morphic struct-to-schema --dry-run --verbose
+makemigrations struct-to-schema --dry-run --verbose
 ```
 
 ### Use Custom Configuration
 
 Apply custom type mappings and naming conventions:
 ```bash
-morphic struct-to-schema --config mappings.yaml --database postgresql
+makemigrations struct-to-schema --config mappings.yaml --database postgresql
 ```
 
 ## Features
@@ -229,23 +229,23 @@ Automatically excludes common directories:
 ### Error Handling
 
 - **Graceful Failures**: Continues processing if individual files fail
-- **Validation**: Ensures generated schema passes morphic validation
+- **Validation**: Ensures generated schema passes makemigrations validation
 - **Detailed Logging**: Verbose mode shows file-by-file progress
 - **Recovery**: Creates backups before any destructive operations
 
-## Integration with Morphic
+## Integration with Makemigrations
 
-Generated schemas are fully compatible with the morphic workflow:
+Generated schemas are fully compatible with the makemigrations workflow:
 
 ```bash
 # Generate schema from Go structs
-morphic struct-to-schema --input ./models
+makemigrations struct-to-schema --input ./models
 
 # Generate migration from schema
-morphic generate
+makemigrations generate
 
 # Apply migration
-morphic goose postgres "connection-string" up
+makemigrations goose postgres "connection-string" up
 ```
 
 ## Best Practices
@@ -302,7 +302,7 @@ type Model struct {
 
 Use `--verbose` flag for detailed information:
 ```bash
-morphic struct-to-schema --verbose --dry-run
+makemigrations struct-to-schema --verbose --dry-run
 ```
 
 This will show:

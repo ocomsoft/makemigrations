@@ -28,7 +28,7 @@ package ui
 import (
 	"fmt"
 
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // NewBubbleteaPromptFunc returns a yamlpkg.PromptFunc that wraps the bubbletea

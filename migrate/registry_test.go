@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 func TestRegistry_Register(t *testing.T) {

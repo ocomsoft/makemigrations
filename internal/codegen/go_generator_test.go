@@ -29,8 +29,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
-	"github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 func TestGoGenerator_GenerateMigration_CreateTable(t *testing.T) {
@@ -137,8 +137,8 @@ func TestGoGenerator_GenerateGoMod(t *testing.T) {
 	if !strings.Contains(src, "module myproject/migrations") {
 		t.Error("expected module declaration")
 	}
-	if !strings.Contains(src, "github.com/ocomsoft/morphic") {
-		t.Error("expected morphic dependency")
+	if !strings.Contains(src, "github.com/ocomsoft/makemigrations") {
+		t.Error("expected makemigrations dependency")
 	}
 }
 

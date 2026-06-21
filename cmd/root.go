@@ -30,8 +30,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	_ "github.com/ocomsoft/morphic/internal/drivers"
-	"github.com/ocomsoft/morphic/internal/version"
+	_ "github.com/ocomsoft/makemigrations/internal/drivers"
+	"github.com/ocomsoft/makemigrations/internal/version"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "morphic",
+	Use:   "makemigrations",
 	Short: "Django-style Go migration generator",
 	Long: `Generate database migrations from YAML schema files as typed Go code.
 
@@ -73,7 +73,7 @@ func init() {
 	)
 
 	// Global flag for config file
-	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "Config file path (default: migrations/morphic.config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&configFile, "config", "", "Config file path (default: migrations/makemigrations.config.yaml)")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -86,10 +86,10 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".morphic" (without extension).
+		// Search config in home directory with name ".makemigrations" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".morphic")
+		viper.SetConfigName(".makemigrations")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

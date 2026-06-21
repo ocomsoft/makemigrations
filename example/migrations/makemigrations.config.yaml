@@ -1,0 +1,17 @@
+# Makemigrations Configuration File
+#
+# This file contains configuration for the makemigrations tool.
+# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
+# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
+#
+# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
+#
+
+database:
+    type: mysql
+    default_url: ""
+migration:
+    directory: migrations
+output:
+    verbose: true
+    color_enabled: true

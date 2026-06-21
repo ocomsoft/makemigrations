@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/morphic/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/config"
 )
 
 // currentStateVerbose controls verbose output for the current_state command.
@@ -50,7 +50,7 @@ migration DAG and applying each operation's Mutate in order. The resulting
 schema state is output as YAML.
 
 This is useful for:
-  - Debugging why morphic generate keeps generating the same migration
+  - Debugging why makemigrations generate keeps generating the same migration
   - Verifying that the migration chain produces the expected schema
   - Comparing the reconstructed state against your schema.yaml files`,
 	RunE: runCurrentState,

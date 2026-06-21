@@ -38,7 +38,7 @@ import (
 func newTestShimCmd() (*cobra.Command, *bytes.Buffer) {
 	buf := &bytes.Buffer{}
 	cmd := &cobra.Command{
-		Use:  "makemigrations",
+		Use:  "morphic",
 		RunE: runMakemigrationsShim,
 	}
 	cmd.Flags().BoolVar(&makemigrationsShimDryRun, "dry-run", false, "dry run")
@@ -64,7 +64,7 @@ func setupConfigDir(t *testing.T) (string, func()) {
 	}
 
 	// Write legacy config file
-	oldConfig := filepath.Join(migrationsDir, "makemigrations.config.yaml")
+	oldConfig := filepath.Join(migrationsDir, "morphic.config.yaml")
 	if err := os.WriteFile(oldConfig, []byte("database:\n  type: postgresql\n"), 0644); err != nil {
 		t.Fatalf("failed to write old config: %v", err)
 	}
@@ -93,10 +93,10 @@ func TestShimRenameConfig(t *testing.T) {
 	}
 
 	// Verify old file is gone and new file exists
-	if fileExists(filepath.Join("migrations", "makemigrations.config.yaml")) {
+	if fileExists(filepath.Join("migrations", "morphic.config.yaml")) {
 		t.Error("old config file should have been renamed")
 	}
-	if !fileExists(filepath.Join("migrations", "morphic.config.yaml")) {
+	if !fileExists(filepath.Join("migrations", "makemigrations.config.yaml")) {
 		t.Error("new config file should exist after rename")
 	}
 
@@ -104,7 +104,7 @@ func TestShimRenameConfig(t *testing.T) {
 	if !containsSubstring(output, "renamed") {
 		t.Errorf("expected output to mention rename, got: %s", output)
 	}
-	if !containsSubstring(output, "morphic generate") {
+	if !containsSubstring(output, "makemigrations generate") {
 		t.Errorf("expected deprecation notice, got: %s", output)
 	}
 }
@@ -123,11 +123,11 @@ func TestShimDryRun(t *testing.T) {
 	}
 
 	// Old file should still exist
-	if !fileExists(filepath.Join("migrations", "makemigrations.config.yaml")) {
+	if !fileExists(filepath.Join("migrations", "morphic.config.yaml")) {
 		t.Error("old config file should still exist in dry-run mode")
 	}
 	// New file should NOT exist
-	if fileExists(filepath.Join("migrations", "morphic.config.yaml")) {
+	if fileExists(filepath.Join("migrations", "makemigrations.config.yaml")) {
 		t.Error("new config file should not exist in dry-run mode")
 	}
 
@@ -153,7 +153,7 @@ func TestShimIdempotent(t *testing.T) {
 		t.Fatalf("first run failed: %v", err)
 	}
 
-	if !fileExists(filepath.Join("migrations", "morphic.config.yaml")) {
+	if !fileExists(filepath.Join("migrations", "makemigrations.config.yaml")) {
 		t.Fatal("new config should exist after first run")
 	}
 

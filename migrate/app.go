@@ -65,7 +65,7 @@ func (a *App) Run(args []string) error {
 func (a *App) buildRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "migrate",
-		Short:         "morphic migration runner",
+		Short:         "makemigrations migration runner",
 		Long:          "Compiled migration binary -- apply, rollback, and inspect database migrations.",
 		SilenceErrors: true,
 		SilenceUsage:  true,

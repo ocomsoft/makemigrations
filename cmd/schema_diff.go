@@ -34,10 +34,10 @@ import (
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/morphic/internal/config"
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/internal/workflow"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/workflow"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 var (

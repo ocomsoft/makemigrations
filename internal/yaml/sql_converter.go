@@ -28,7 +28,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/providers"
+	"github.com/ocomsoft/makemigrations/internal/providers"
 )
 
 // PromptResponse represents the user's response to a destructive operation prompt

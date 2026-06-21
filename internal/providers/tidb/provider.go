@@ -27,9 +27,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/typemap"
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/internal/utils"
+	"github.com/ocomsoft/makemigrations/internal/typemap"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/utils"
 )
 
 // Provider implements the Provider interface for TiDB
@@ -54,9 +54,9 @@ func (p *Provider) Placeholder(_ int) string {
 }
 
 // HistoryTableDDL returns the CREATE TABLE IF NOT EXISTS statement for the
-// morphic_history migration-tracking table, using this provider's SQL dialect.
+// makemigrations_history migration-tracking table, using this provider's SQL dialect.
 func (p *Provider) HistoryTableDDL() string {
-	return `CREATE TABLE IF NOT EXISTS morphic_history (
+	return `CREATE TABLE IF NOT EXISTS makemigrations_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

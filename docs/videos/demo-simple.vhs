@@ -1,4 +1,4 @@
-# Simple VHS Demo Script for morphic
+# Simple VHS Demo Script for makemigrations
 # Demonstrates core functionality with actual runnable commands
 
 Output demo-simple.gif
@@ -15,7 +15,7 @@ Type "clear"
 Enter
 Sleep 1s
 
-Type "# morphic Demo - Core Features"
+Type "# makemigrations Demo - Core Features"
 Enter
 Sleep 2s
 Type "clear"
@@ -37,10 +37,10 @@ Sleep 2s
 # ========================================
 # Initialize project
 # ========================================
-Type "# 1. Initialize morphic project"
+Type "# 1. Initialize makemigrations project"
 Enter
 Sleep 1s
-Type "../morphic init --verbose"
+Type "../makemigrations init --verbose"
 Enter
 Sleep 3s
 
@@ -90,7 +90,7 @@ Sleep 2s
 # ========================================
 Type "# 3. Convert structs to YAML schema"
 Enter
-Type "../morphic struct2schema --input ./models --verbose"
+Type "../makemigrations struct2schema --input ./models --verbose"
 Enter
 Sleep 3s
 
@@ -105,7 +105,7 @@ Sleep 3s
 # ========================================
 Type "# 4. Generate initial migration"
 Enter
-Type "../morphic generate --name \"initial\""
+Type "../makemigrations generate --name \"initial\""
 Enter
 Sleep 3s
 
@@ -163,7 +163,7 @@ Sleep 2s
 # ========================================
 Type "# 6. Generate migration for changes"
 Enter
-Type "../morphic generate --name \"add_posts\""
+Type "../makemigrations generate --name \"add_posts\""
 Enter
 Sleep 3s
 
@@ -178,7 +178,7 @@ Sleep 3s
 # ========================================
 Type "# 7. Check migration status"
 Enter
-Type "../morphic generate --check"
+Type "../makemigrations generate --check"
 Enter
 Type "echo \"No pending migrations (exit code: $?)\""
 Enter
@@ -199,7 +199,7 @@ Type "# • init - Initialize project"
 Enter
 Type "# • struct2schema - Convert Go to YAML"
 Enter
-Type "# • morphic - Generate migrations"
+Type "# • makemigrations - Generate migrations"
 Enter
 Type "# • --check - Verify migration status"
 Enter

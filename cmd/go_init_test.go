@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ocomsoft/morphic/cmd"
+	"github.com/ocomsoft/makemigrations/cmd"
 )
 
 // TestExecuteGoMigrationInit_NoSnapshot verifies that init --go creates main.go

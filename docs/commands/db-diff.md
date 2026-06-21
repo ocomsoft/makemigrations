@@ -38,7 +38,7 @@ from the migration DAG.
 | `--verbose`  | `false`      | Show detailed processing information                             |
 
 Connection flags can also be supplied via the config file
-(`migrations/morphic.config.yaml`). Command-line flags take precedence
+(`migrations/makemigrations.config.yaml`). Command-line flags take precedence
 over config file settings.
 
 ## Exit Codes
@@ -56,7 +56,7 @@ drift.
 ### Basic local PostgreSQL comparison
 
 ```bash
-morphic db-diff \
+makemigrations db-diff \
   --host=localhost \
   --port=5432 \
   --database=myapp \
@@ -67,7 +67,7 @@ morphic db-diff \
 ### Using config file
 
 ```bash
-morphic db-diff --config=migrations/morphic.config.yaml
+makemigrations db-diff --config=migrations/makemigrations.config.yaml
 ```
 
 When the config file already contains the database connection details, no
@@ -76,7 +76,7 @@ additional flags are needed.
 ### JSON output for scripting
 
 ```bash
-morphic db-diff \
+makemigrations db-diff \
   --host=localhost \
   --database=myapp \
   --format=json | jq '.changes[] | select(.destructive == true)'
@@ -88,7 +88,7 @@ programmatically inspect drift.
 ### CI pipeline usage with environment variables
 
 ```bash
-morphic db-diff \
+makemigrations db-diff \
   --host="$DB_HOST" \
   --port="$DB_PORT" \
   --database="$DB_NAME" \
@@ -102,7 +102,7 @@ morphic db-diff \
 ### Verbose output for debugging
 
 ```bash
-morphic db-diff \
+makemigrations db-diff \
   --host=localhost \
   --database=myapp \
   --verbose

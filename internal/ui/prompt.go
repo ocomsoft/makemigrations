@@ -32,7 +32,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // PromptScope controls how a prompt response is applied to subsequent operations.

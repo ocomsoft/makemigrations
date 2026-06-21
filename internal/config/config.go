@@ -35,7 +35,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
-// Config represents the morphic configuration
+// Config represents the makemigrations configuration
 type Config struct {
 	// Database configuration
 	Database DatabaseConfig `yaml:"database" mapstructure:"database"`
@@ -85,7 +85,7 @@ func Load(configPath string) (*Config, error) {
 	v := viper.New()
 
 	// Set up environment variable binding
-	v.SetEnvPrefix("MORPHIC")
+	v.SetEnvPrefix("MAKEMIGRATIONS")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -103,22 +103,13 @@ func Load(configPath string) (*Config, error) {
 			}
 		}
 	} else {
-		// Try morphic.config first, fall back to makemigrations.config for backward compat
-		v.SetConfigName("morphic.config")
+		v.SetConfigName("makemigrations.config")
 		v.SetConfigType("yaml")
 		v.AddConfigPath("migrations")
 		v.AddConfigPath(".")
 
 		if err := v.ReadInConfig(); err != nil {
-			if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-				// Try legacy config name
-				v.SetConfigName("makemigrations.config")
-				if legacyErr := v.ReadInConfig(); legacyErr != nil {
-					if _, ok := legacyErr.(viper.ConfigFileNotFoundError); !ok {
-						return nil, fmt.Errorf("failed to read config file: %w", legacyErr)
-					}
-				}
-			} else {
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return nil, fmt.Errorf("failed to read config file: %w", err)
 			}
 		}
@@ -156,13 +147,13 @@ func (c *Config) Save(path string) error {
 	}
 
 	// Add header comment
-	header := `# Morphic Configuration File
+	header := `# Makemigrations Configuration File
 #
-# This file contains configuration for the morphic tool.
-# All settings can be overridden using environment variables with the prefix MORPHIC_
-# For example: MORPHIC_DATABASE_TYPE=mysql
+# This file contains configuration for the makemigrations tool.
+# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
+# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
 #
-# For nested values, use underscores: MORPHIC_OUTPUT_COLOR_ENABLED=false
+# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 #
 
 `
@@ -187,5 +178,5 @@ func setDefaults(v *viper.Viper, cfg *Config) {
 
 // GetConfigPath returns the default config file path
 func GetConfigPath() string {
-	return filepath.Join("migrations", "morphic.config.yaml")
+	return filepath.Join("migrations", "makemigrations.config.yaml")
 }

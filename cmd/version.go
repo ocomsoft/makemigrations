@@ -29,7 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/version"
+	"github.com/ocomsoft/makemigrations/internal/version"
 )
 
 var (
@@ -42,7 +42,7 @@ var versionCmd = &cobra.Command{
 	Use:     "version",
 	GroupID: "inspect",
 	Short:   "Show version information",
-	Long: `Display version information for morphic.
+	Long: `Display version information for makemigrations.
 
 This command shows the current version, build date, git commit, and platform information.
 
@@ -51,9 +51,9 @@ Output formats:
 - json: JSON format for scripting
 
 Examples:
-  morphic version
-  morphic version --format json
-  morphic version --build-info`,
+  makemigrations version
+  makemigrations version --format json
+  makemigrations version --build-info`,
 	RunE: runVersion,
 }
 

@@ -27,7 +27,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestGetConfigPath(t *testing.T) {
-	expected := filepath.Join("migrations", "morphic.config.yaml")
+	expected := filepath.Join("migrations", "makemigrations.config.yaml")
 	got := GetConfigPath()
 	if got != expected {
 		t.Errorf("expected config path %q, got %q", expected, got)
@@ -237,7 +237,7 @@ func TestSaveAndReload(t *testing.T) {
 	if len(data) == 0 {
 		t.Fatal("saved config file is empty")
 	}
-	if string(data[:len("# Morphic")]) != "# Morphic" {
+	if string(data[:len("# Makemigrations")]) != "# Makemigrations" {
 		t.Error("expected config file to start with header comment")
 	}
 
@@ -275,44 +275,6 @@ func TestSaveCreatesDirectory(t *testing.T) {
 
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		t.Fatal("expected config file to be created in nested directory")
-	}
-}
-
-func TestLoadLegacyConfigFallback(t *testing.T) {
-	// When no morphic.config.yaml exists but makemigrations.config.yaml does,
-	// the loader should fall back to the legacy name.
-	origDir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("failed to get working directory: %v", err)
-	}
-	tmpDir := t.TempDir()
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatalf("failed to chdir: %v", err)
-	}
-	defer func() {
-		_ = os.Chdir(origDir)
-	}()
-
-	// Create migrations dir with legacy config name only
-	migrationsDir := filepath.Join(tmpDir, "migrations")
-	if err := os.MkdirAll(migrationsDir, 0755); err != nil {
-		t.Fatalf("failed to create migrations dir: %v", err)
-	}
-	legacyCfg := filepath.Join(migrationsDir, "makemigrations.config.yaml")
-	content := `database:
-  type: sqlite
-`
-	if err := os.WriteFile(legacyCfg, []byte(content), 0644); err != nil {
-		t.Fatalf("failed to write legacy config: %v", err)
-	}
-
-	cfg, err := Load("")
-	if err != nil {
-		t.Fatalf("Load returned error: %v", err)
-	}
-
-	if cfg.Database.Type != "sqlite" {
-		t.Errorf("expected legacy fallback to load database type 'sqlite', got %q", cfg.Database.Type)
 	}
 }
 
@@ -374,7 +336,7 @@ func TestLoadDefaultURLEnvOverride(t *testing.T) {
 	}
 
 	// Env var should override the file value
-	t.Setenv("MORPHIC_DATABASE_DEFAULT_URL", "host=envhost dbname=envdb")
+	t.Setenv("MAKEMIGRATIONS_DATABASE_DEFAULT_URL", "host=envhost dbname=envdb")
 
 	cfg, err := Load(cfgPath)
 	if err != nil {
@@ -398,7 +360,7 @@ func TestLoadWithEnvOverride(t *testing.T) {
 	}
 
 	// Set env var to override
-	t.Setenv("MORPHIC_DATABASE_TYPE", "mysql")
+	t.Setenv("MAKEMIGRATIONS_DATABASE_TYPE", "mysql")
 
 	cfg, err := Load(cfgPath)
 	if err != nil {

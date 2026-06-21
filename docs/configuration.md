@@ -1,42 +1,42 @@
 # Configuration Guide
 
-This guide covers all configuration options for morphic, including config files, environment variables, and runtime flags.
+This guide covers all configuration options for makemigrations, including config files, environment variables, and runtime flags.
 
 ## Configuration Hierarchy
 
 Configuration is loaded in the following priority order (highest to lowest):
 
 1. **Command line flags** (e.g., `--verbose`)
-2. **Environment variables** (prefixed with `MORPHIC_`)
-3. **Configuration file** (`migrations/morphic.config.yaml`)
+2. **Environment variables** (prefixed with `MAKEMIGRATIONS_`)
+3. **Configuration file** (`migrations/makemigrations.config.yaml`)
 4. **Default values**
 
 ## Configuration File
 
 ### Location and Format
 
-The configuration file is automatically created when running `morphic init`:
+The configuration file is automatically created when running `makemigrations init`:
 
 ```
-migrations/morphic.config.yaml
+migrations/makemigrations.config.yaml
 ```
 
 You can specify a custom config file location:
 
 ```bash
-morphic --config /path/to/custom-config.yaml makemigrations
+makemigrations --config /path/to/custom-config.yaml makemigrations
 ```
 
 ### Complete Configuration Example
 
 ```yaml
-# Morphic Configuration File
+# Makemigrations Configuration File
 #
-# This file contains configuration for the morphic tool.
-# All settings can be overridden using environment variables with the prefix MORPHIC_
-# For example: MORPHIC_DATABASE_TYPE=mysql
+# This file contains configuration for the makemigrations tool.
+# All settings can be overridden using environment variables with the prefix MAKEMIGRATIONS_
+# For example: MAKEMIGRATIONS_DATABASE_TYPE=mysql
 #
-# For nested values, use underscores: MORPHIC_OUTPUT_COLOR_ENABLED=false
+# For nested values, use underscores: MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 
 # Database connection and behavior settings
 database:
@@ -72,7 +72,7 @@ Controls database SQL generation behavior and connection defaults.
 
 **Database URL Precedence:**
 
-When connecting to a database (e.g., `morphic migrate`, `morphic db-to-schema`, `morphic generate dump-data`), the URL is resolved in this order:
+When connecting to a database (e.g., `makemigrations migrate`, `makemigrations db-to-schema`, `makemigrations generate dump-data`), the URL is resolved in this order:
 
 1. Command-line flags (`--host`, `--port`, `--database`, etc.) or `--dsn`
 2. `DATABASE_URL` environment variable
@@ -83,8 +83,8 @@ This allows you to set a project-level database URL in config while still overri
 
 **Environment Variable Examples:**
 ```bash
-export MORPHIC_DATABASE_TYPE=mysql
-export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+export MAKEMIGRATIONS_DATABASE_TYPE=mysql
+export MAKEMIGRATIONS_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 ```
 
 ### Migration Section
@@ -97,7 +97,7 @@ Controls migration file storage.
 
 **Environment Variable Example:**
 ```bash
-export MORPHIC_MIGRATION_DIRECTORY=db/migrations
+export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
 ```
 
 ### Output Section
@@ -111,8 +111,8 @@ Controls display formatting and verbosity.
 
 **Environment Variable Examples:**
 ```bash
-export MORPHIC_OUTPUT_VERBOSE=true
-export MORPHIC_OUTPUT_COLOR_ENABLED=false
+export MAKEMIGRATIONS_OUTPUT_VERBOSE=true
+export MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 ```
 
 ## Environment Variables
@@ -122,24 +122,24 @@ export MORPHIC_OUTPUT_COLOR_ENABLED=false
 All config file settings can be overridden with environment variables:
 
 ```bash
-# Format: MORPHIC_SECTION_SETTING
-export MORPHIC_DATABASE_TYPE=mysql
-export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
-export MORPHIC_MIGRATION_DIRECTORY=db/migrations
-export MORPHIC_OUTPUT_VERBOSE=true
-export MORPHIC_OUTPUT_COLOR_ENABLED=false
+# Format: MAKEMIGRATIONS_SECTION_SETTING
+export MAKEMIGRATIONS_DATABASE_TYPE=mysql
+export MAKEMIGRATIONS_DATABASE_DEFAULT_URL="host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
+export MAKEMIGRATIONS_OUTPUT_VERBOSE=true
+export MAKEMIGRATIONS_OUTPUT_COLOR_ENABLED=false
 ```
 
 ### Database Connection Variables
 
-The `DATABASE_URL` environment variable is used by `morphic migrate`, `morphic db-to-schema`, `morphic generate dump-data`, and `morphic db-diff` to connect to the database:
+The `DATABASE_URL` environment variable is used by `makemigrations migrate`, `makemigrations db-to-schema`, `makemigrations generate dump-data`, and `makemigrations db-diff` to connect to the database:
 
 ```bash
 # PostgreSQL
 export DATABASE_URL="host=localhost port=5432 dbname=myapp user=postgres sslmode=disable"
 ```
 
-If `DATABASE_URL` is not set, morphic falls back to `database.default_url` from the config file.
+If `DATABASE_URL` is not set, makemigrations falls back to `database.default_url` from the config file.
 
 ## Command Line Flags
 
@@ -173,7 +173,7 @@ Available on migration commands:
 
 ### Development Environment
 
-**Config file (`migrations/morphic.config.yaml`):**
+**Config file (`migrations/makemigrations.config.yaml`):**
 ```yaml
 database:
   type: postgresql
@@ -195,10 +195,10 @@ output:
 **Usage in CI:**
 ```bash
 # Check if migrations are needed (exits with code 1 if true)
-morphic makemigrations --check
+makemigrations makemigrations --check
 
 # Generate migrations in CI
-morphic makemigrations --name "automated_$(date +%Y%m%d)"
+makemigrations makemigrations --name "automated_$(date +%Y%m%d)"
 ```
 
 ## Validation and Debugging
@@ -207,20 +207,20 @@ morphic makemigrations --name "automated_$(date +%Y%m%d)"
 
 ```bash
 # Show current configuration (including overrides)
-morphic --config migrations/morphic.config.yaml --verbose makemigrations --dry-run
+makemigrations --config migrations/makemigrations.config.yaml --verbose makemigrations --dry-run
 
 # Test environment variable overrides
-MORPHIC_OUTPUT_VERBOSE=true morphic makemigrations --dry-run
+MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations makemigrations --dry-run
 ```
 
 ### Debug Configuration Loading
 
 ```bash
 # Enable verbose output to see config loading
-morphic --verbose makemigrations --dry-run
+makemigrations --verbose makemigrations --dry-run
 
 # Check environment variables
-env | grep MORPHIC_
+env | grep MAKEMIGRATIONS_
 ```
 
 ### Common Configuration Issues
@@ -228,20 +228,20 @@ env | grep MORPHIC_
 1. **Environment variables not working:**
    ```bash
    # Check variable names (must be exact)
-   env | grep MORPHIC_
+   env | grep MAKEMIGRATIONS_
    
    # Test with explicit export
-   export MORPHIC_OUTPUT_VERBOSE=true
-   morphic --help
+   export MAKEMIGRATIONS_OUTPUT_VERBOSE=true
+   makemigrations --help
    ```
 
 2. **Config file not found:**
    ```bash
    # Check file exists
-   ls -la migrations/morphic.config.yaml
+   ls -la migrations/makemigrations.config.yaml
    
    # Use custom path
-   morphic --config /full/path/to/config.yaml
+   makemigrations --config /full/path/to/config.yaml
    ```
 
 3. **Database connection issues:**
@@ -250,7 +250,7 @@ env | grep MORPHIC_
    echo "DATABASE_URL: $DATABASE_URL"
    
    # Test with migrate status
-   morphic migrate status
+   makemigrations migrate status
    ```
 
 ## Security Considerations
@@ -291,9 +291,9 @@ output:
   verbose: true                     # Log all operations
 ```
 
-## Legacy Configuration
+## Upgrading from morphic
 
-Morphic supports backward compatibility with the legacy `makemigrations.config.yaml` filename. If no `morphic.config.yaml` is found, the loader will fall back to `makemigrations.config.yaml`. Environment variables with the `MAKEMIGRATIONS_` prefix are no longer supported; use `MORPHIC_` instead.
+Makemigrations was previously named *morphic*. To upgrade an existing morphic project, run the hidden `makemigrations morphic` shim, which renames `migrations/morphic.config.yaml` to `makemigrations.config.yaml`, renames the `morphic_history` table, and rewrites legacy import paths in your migration files. Use `--dry-run` to preview the changes. Environment variables with the `MORPHIC_` prefix are no longer supported; use the `MAKEMIGRATIONS_` prefix instead.
 
 ## Converting Config File to Environment Variables
 
@@ -310,10 +310,10 @@ output:
 
 **To environment variables:**
 ```bash
-export MORPHIC_DATABASE_TYPE=mysql
-export MORPHIC_DATABASE_DEFAULT_URL="host=localhost port=3306 dbname=myapp user=root"
-export MORPHIC_MIGRATION_DIRECTORY=db/migrations
-export MORPHIC_OUTPUT_VERBOSE=false
+export MAKEMIGRATIONS_DATABASE_TYPE=mysql
+export MAKEMIGRATIONS_DATABASE_DEFAULT_URL="host=localhost port=3306 dbname=myapp user=root"
+export MAKEMIGRATIONS_MIGRATION_DIRECTORY=db/migrations
+export MAKEMIGRATIONS_OUTPUT_VERBOSE=false
 ```
 
 For detailed command usage, see the [Commands Documentation](commands/).

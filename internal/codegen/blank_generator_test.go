@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
 )
 
 func TestBlankGenerator_GenerateBlank(t *testing.T) {

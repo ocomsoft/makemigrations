@@ -15,7 +15,7 @@ The `schema-to-sql` command processes YAML schema files and outputs the database
 ## Usage
 
 ```bash
-morphic schema-to-sql [flags]
+makemigrations schema-to-sql [flags]
 ```
 
 ## Command Flags
@@ -29,7 +29,7 @@ morphic schema-to-sql [flags]
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--config` | string | `migrations/morphic.config.yaml` | Path to configuration file |
+| `--config` | string | `migrations/makemigrations.config.yaml` | Path to configuration file |
 
 ## What It Shows
 
@@ -89,7 +89,7 @@ Shows how the same schema generates different SQL for different databases.
 
 ```bash
 # Show SQL for current schema
-morphic schema-to-sql
+makemigrations schema-to-sql
 
 # Output
 ▶ Scanning for schema files...
@@ -111,7 +111,7 @@ CREATE TABLE users (
 
 ```bash
 # Show detailed processing information
-morphic schema-to-sql --verbose
+makemigrations schema-to-sql --verbose
 
 # Output
 ▶ Scanning for schema files...
@@ -146,7 +146,7 @@ CREATE TABLE users (
 
 ```bash
 # Generate MySQL-specific SQL
-morphic schema-to-sql --database mysql
+makemigrations schema-to-sql --database mysql
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -159,7 +159,7 @@ CREATE TABLE users (
 );
 
 # Generate SQLite-specific SQL
-morphic schema-to-sql --database sqlite
+makemigrations schema-to-sql --database sqlite
 
 # Output
 -- Database: myapp (v1.0.0)
@@ -286,7 +286,7 @@ CREATE TABLE products (
 The command will show detailed error messages for invalid schemas:
 
 ```bash
-$ morphic schema-to-sql
+$ makemigrations schema-to-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -299,7 +299,7 @@ $ morphic schema-to-sql
 ### YAML Syntax Errors
 
 ```bash
-$ morphic schema-to-sql
+$ makemigrations schema-to-sql
 ▶ Scanning for schema files...
 ✓ Found schema file: schema/schema.yaml
 ▶ Processing YAML schema...
@@ -312,7 +312,7 @@ $ morphic schema-to-sql
 ### Missing Schema Files
 
 ```bash
-$ morphic schema-to-sql
+$ makemigrations schema-to-sql
 ▶ Scanning for schema files...
 ✗ No schema files found in search paths:
   - ./schema/schema.yaml
@@ -329,7 +329,7 @@ $ morphic schema-to-sql
 ```bash
 # Iterative schema development
 vim schema/schema.yaml
-morphic schema-to-sql --verbose    # Check for issues
+makemigrations schema-to-sql --verbose    # Check for issues
 # Fix issues, repeat
 ```
 
@@ -337,9 +337,9 @@ morphic schema-to-sql --verbose    # Check for issues
 
 ```bash
 # Check how schema translates across databases
-morphic schema-to-sql --database postgresql > schema-pg.sql
-morphic schema-to-sql --database mysql > schema-mysql.sql
-morphic schema-to-sql --database sqlite > schema-sqlite.sql
+makemigrations schema-to-sql --database postgresql > schema-pg.sql
+makemigrations schema-to-sql --database mysql > schema-mysql.sql
+makemigrations schema-to-sql --database sqlite > schema-sqlite.sql
 
 # Compare outputs
 diff schema-pg.sql schema-mysql.sql
@@ -349,14 +349,14 @@ diff schema-pg.sql schema-mysql.sql
 
 ```bash
 # Generate schema documentation
-morphic schema-to-sql --verbose > docs/database-schema.sql
+makemigrations schema-to-sql --verbose > docs/database-schema.sql
 ```
 
 ### 4. CI/CD Validation
 
 ```bash
 # Validate schema in CI pipeline
-if ! morphic schema-to-sql --verbose; then
+if ! makemigrations schema-to-sql --verbose; then
     echo "Schema validation failed"
     exit 1
 fi
@@ -366,7 +366,7 @@ fi
 
 ```bash
 # Debug processing with maximum verbosity
-MORPHIC_OUTPUT_VERBOSE=true morphic schema-to-sql --verbose
+MAKEMIGRATIONS_OUTPUT_VERBOSE=true makemigrations schema-to-sql --verbose
 ```
 
 ## Configuration Integration
@@ -377,16 +377,16 @@ The command respects configuration settings:
 
 ```bash
 # Override config file database type
-morphic schema-to-sql --database mysql
+makemigrations schema-to-sql --database mysql
 
 # With environment variable
-MORPHIC_DATABASE_TYPE=sqlite morphic schema-to-sql
+MAKEMIGRATIONS_DATABASE_TYPE=sqlite makemigrations schema-to-sql
 ```
 
 ### Schema Search Paths
 
 ```yaml
-# migrations/morphic.config.yaml
+# migrations/makemigrations.config.yaml
 schema:
   search_paths:
     - "modules/*/database"
@@ -397,7 +397,7 @@ schema:
 ### Output Settings
 
 ```yaml
-# migrations/morphic.config.yaml
+# migrations/makemigrations.config.yaml
 output:
   verbose: true                    # Default to verbose mode
   color_enabled: false            # Disable colors for file output
@@ -410,7 +410,7 @@ output:
 
 ```bash
 # Dump SQL showing module boundaries
-morphic schema-to-sql --verbose
+makemigrations schema-to-sql --verbose
 
 # Output shows file sources
 ▶ Processing YAML schema...
@@ -445,16 +445,16 @@ tables:
         default: custom_timestamp
 EOF
 
-morphic schema-to-sql
+makemigrations schema-to-sql
 ```
 
 ### Schema Comparison
 
 ```bash
 # Compare before/after schema changes
-morphic schema-to-sql > before.sql
+makemigrations schema-to-sql > before.sql
 # Make schema changes...
-morphic schema-to-sql > after.sql
+makemigrations schema-to-sql > after.sql
 diff before.sql after.sql
 ```
 
@@ -469,7 +469,7 @@ diff before.sql after.sql
    ls -la schema/
    
    # Verify config search paths
-   cat migrations/morphic.config.yaml
+   cat migrations/makemigrations.config.yaml
    ```
 
 2. **YAML syntax errors**
@@ -484,7 +484,7 @@ diff before.sql after.sql
 3. **Type validation errors**
    ```bash
    # Review field definitions
-   morphic schema-to-sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
+   makemigrations schema-to-sql --verbose 2>&1 | grep -A5 -B5 "validation failed"
    ```
 
 4. **Foreign key reference errors**
@@ -502,7 +502,7 @@ For projects with many schema files:
 
 ```bash
 # Use verbose mode to monitor processing time
-time morphic schema-to-sql --verbose
+time makemigrations schema-to-sql --verbose
 
 # Consider splitting large schemas
 find . -name "schema.yaml" -exec wc -l {} + | sort -n
@@ -512,10 +512,10 @@ find . -name "schema.yaml" -exec wc -l {} + | sort -n
 
 ```bash
 # Redirect output for large schemas
-morphic schema-to-sql > full-schema.sql
+makemigrations schema-to-sql > full-schema.sql
 
 # Filter specific tables
-morphic schema-to-sql | grep -A20 "CREATE TABLE users"
+makemigrations schema-to-sql | grep -A20 "CREATE TABLE users"
 ```
 
 ## Integration Examples
@@ -528,16 +528,16 @@ morphic schema-to-sql | grep -A20 "CREATE TABLE users"
 
 schema-validate:
 	@echo "Validating schema..."
-	@morphic schema-to-sql --verbose > /dev/null
+	@makemigrations schema-to-sql --verbose > /dev/null
 
 schema-docs:
 	@echo "Generating schema documentation..."
-	@morphic schema-to-sql --verbose > docs/schema.sql
+	@makemigrations schema-to-sql --verbose > docs/schema.sql
 	@echo "Schema docs generated at docs/schema.sql"
 
 schema-compare:
-	@morphic schema-to-sql --database postgresql > schema-pg.sql
-	@morphic schema-to-sql --database mysql > schema-mysql.sql
+	@makemigrations schema-to-sql --database postgresql > schema-pg.sql
+	@makemigrations schema-to-sql --database mysql > schema-mysql.sql
 	@echo "Cross-database comparison files generated"
 ```
 
@@ -548,7 +548,7 @@ schema-compare:
 # .git/hooks/pre-commit
 
 echo "Validating schema before commit..."
-if ! morphic schema-to-sql --verbose > /dev/null 2>&1; then
+if ! makemigrations schema-to-sql --verbose > /dev/null 2>&1; then
     echo "Schema validation failed. Commit aborted."
     exit 1
 fi
@@ -556,7 +556,7 @@ fi
 
 ## See Also
 
-- [morphic Command](./morphic.md) - Generate migrations from schemas
+- [makemigrations Command](./makemigrations.md) - Generate migrations from schemas
 - [Schema Format Guide](../schema-format.md) - YAML schema syntax reference
 - [Configuration Guide](../configuration.md) - Configuration options
 - [init Command](./init.md) - Initialize new projects

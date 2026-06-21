@@ -1,5 +1,5 @@
-# VHS Demo Script for morphic
-# Demonstrates struct2schema, db2schema, init, and morphic subcommands
+# VHS Demo Script for makemigrations
+# Demonstrates struct2schema, db2schema, init, and makemigrations subcommands
 # https://github.com/charmbracelet/vhs
 
 # Setup
@@ -19,7 +19,7 @@ Enter
 Sleep 1s
 
 # Show title
-Type "# morphic Demo - YAML-First Database Schema Management"
+Type "# makemigrations Demo - YAML-First Database Schema Management"
 Enter
 Sleep 2s
 Type "clear"
@@ -28,10 +28,10 @@ Enter
 # ========================================
 # Part 1: Initialize a new project
 # ========================================
-Type "# 1. Initialize a new morphic project"
+Type "# 1. Initialize a new makemigrations project"
 Enter
 Sleep 1s
-Type "morphic init --verbose"
+Type "makemigrations init --verbose"
 Enter
 Sleep 3s
 
@@ -43,7 +43,7 @@ Sleep 2s
 
 Type "# Check the generated config file"
 Enter
-Type "cat migrations/morphic.config.yaml | head -20"
+Type "cat migrations/makemigrations.config.yaml | head -20"
 Enter
 Sleep 3s
 
@@ -127,7 +127,7 @@ Sleep 2s
 
 Type "# Convert structs to YAML schema"
 Enter
-Type "morphic struct2schema --input ./models --output schema/from_structs.yaml --verbose"
+Type "makemigrations struct2schema --input ./models --output schema/from_structs.yaml --verbose"
 Enter
 Sleep 3s
 
@@ -289,13 +289,13 @@ Sleep 1s
 
 Type "# First, let's see what will be generated (dry run)"
 Enter
-Type "morphic generate --dry-run --verbose"
+Type "makemigrations generate --dry-run --verbose"
 Enter
 Sleep 4s
 
 Type "# Now generate the actual migration"
 Enter
-Type "morphic generate --name \"initial_schema\""
+Type "makemigrations generate --name \"initial_schema\""
 Enter
 Sleep 3s
 
@@ -457,7 +457,7 @@ Sleep 2s
 
 Type "# Generate migration for the new changes"
 Enter
-Type "morphic generate --name \"add_orders_tables\" --verbose"
+Type "makemigrations generate --name \"add_orders_tables\" --verbose"
 Enter
 Sleep 3s
 
@@ -493,7 +493,7 @@ Sleep 1s
 
 Type "# Generate migration with destructive changes (using silent mode to auto-accept)"
 Enter
-Type "morphic generate --name \"update_customer_fields\" --silent"
+Type "makemigrations generate --name \"update_customer_fields\" --silent"
 Enter
 Sleep 3s
 
@@ -521,7 +521,7 @@ Sleep 1s
 
 Type "# Simulate extracting from a production database"
 Enter
-Type "morphic db2schema --database=myapp --host=localhost --username=postgres --output=schema/extracted.yaml --dry-run"
+Type "makemigrations db2schema --database=myapp --host=localhost --username=postgres --output=schema/extracted.yaml --dry-run"
 Enter
 Sleep 3s
 
@@ -549,7 +549,7 @@ Sleep 1s
 
 Type "# Check if migrations are needed (useful for CI/CD)"
 Enter
-Type "morphic generate --check"
+Type "makemigrations generate --check"
 Enter
 Type "echo \"Exit code: $?\""
 Enter
@@ -557,7 +557,7 @@ Sleep 2s
 
 Type "# Generate SQL without creating migration files"
 Enter
-Type "morphic dump_sql --database postgresql"
+Type "makemigrations dump_sql --database postgresql"
 Enter
 Sleep 3s
 
@@ -579,19 +579,19 @@ Sleep 1s
 
 Type "# PostgreSQL (default)"
 Enter
-Type "MORPHIC_DATABASE_TYPE=postgresql morphic generate --dry-run --name \"postgres_migration\" | head -20"
+Type "MAKEMIGRATIONS_DATABASE_TYPE=postgresql makemigrations generate --dry-run --name \"postgres_migration\" | head -20"
 Enter
 Sleep 3s
 
 Type "# MySQL"
 Enter
-Type "MORPHIC_DATABASE_TYPE=mysql morphic generate --dry-run --name \"mysql_migration\" | head -20"
+Type "MAKEMIGRATIONS_DATABASE_TYPE=mysql makemigrations generate --dry-run --name \"mysql_migration\" | head -20"
 Enter
 Sleep 3s
 
 Type "# SQLite"
 Enter
-Type "MORPHIC_DATABASE_TYPE=sqlite morphic generate --dry-run --name \"sqlite_migration\" | head -20"
+Type "MAKEMIGRATIONS_DATABASE_TYPE=sqlite makemigrations generate --dry-run --name \"sqlite_migration\" | head -20"
 Enter
 Sleep 3s
 
@@ -601,7 +601,7 @@ Enter
 # ========================================
 # Closing
 # ========================================
-Type "# morphic - YAML-First Database Schema Management"
+Type "# makemigrations - YAML-First Database Schema Management"
 Enter
 Type "# "
 Enter
@@ -613,7 +613,7 @@ Type "# ✓ struct2schema - Convert Go structs to YAML schemas"
 Enter
 Type "# ✓ db2schema    - Extract schemas from existing databases"
 Enter
-Type "# ✓ morphic - Generate SQL migrations from YAML changes"
+Type "# ✓ makemigrations - Generate SQL migrations from YAML changes"
 Enter
 Type "# "
 Enter
@@ -631,7 +631,7 @@ Type "# • Integration with existing Go projects"
 Enter
 Type "# "
 Enter
-Type "# Learn more: https://github.com/ocomsoft/morphic"
+Type "# Learn more: https://github.com/ocomsoft/makemigrations"
 Enter
 Sleep 5s
 

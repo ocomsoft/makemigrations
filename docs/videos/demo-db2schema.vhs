@@ -180,7 +180,7 @@ Sleep 1s
 
 Type "# Run db2schema to extract the schema"
 Enter
-Type "./morphic db2schema \\"
+Type "./makemigrations db2schema \\"
 Enter
 Type "  --host localhost \\"
 Enter
@@ -221,7 +221,7 @@ Sleep 3s
 # ========================================
 Type "clear"
 Enter
-Type "# 4. Use extracted schema with morphic"
+Type "# 4. Use extracted schema with makemigrations"
 Enter
 Sleep 1s
 
@@ -233,7 +233,7 @@ Type "go mod init migrated"
 Enter
 Sleep 1s
 
-Type "../morphic init"
+Type "../makemigrations init"
 Enter
 Sleep 2s
 
@@ -245,7 +245,7 @@ Sleep 1s
 
 Type "# Generate initial migration from extracted schema"
 Enter
-Type "../morphic generate --name \"from_existing_db\""
+Type "../makemigrations generate --name \"from_existing_db\""
 Enter
 Sleep 3s
 
@@ -341,7 +341,7 @@ Sleep 2s
 
 Type "# Generate migration for new changes"
 Enter
-Type "../morphic generate --name \"add_reviews\""
+Type "../makemigrations generate --name \"add_reviews\""
 Enter
 Sleep 2s
 
@@ -366,7 +366,7 @@ Type "# ✓ Capture foreign key relationships"
 Enter
 Type "# ✓ Extract indexes and constraints"
 Enter
-Type "# ✓ Generate YAML schema compatible with morphic"
+Type "# ✓ Generate YAML schema compatible with makemigrations"
 Enter
 Type "# ✓ Enable schema evolution from existing databases"
 Enter

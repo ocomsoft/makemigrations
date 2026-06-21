@@ -29,9 +29,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
-	"github.com/ocomsoft/morphic/internal/config"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 // ExecuteGoMigrationInit initializes the migrations/ directory for the Go migration framework.
@@ -102,7 +102,7 @@ func ExecuteGoMigrationInit(databaseType string, verbose bool) error {
 		fmt.Printf(`
 Your database already has these tables applied. Mark this migration as applied without re-running SQL:
 
-  morphic migrate fake %s
+  makemigrations migrate fake %s
 
 `, initialMigName)
 	} else {
@@ -110,10 +110,10 @@ Your database already has these tables applied. Mark this migration as applied w
 Initialization complete. No existing schema found.
 
 To generate your first migration:
-  morphic generate --name "initial"
+  makemigrations generate --name "initial"
 
 Then run:
-  morphic migrate up
+  makemigrations migrate up
 
 Migrations are interpreted in-process — no Go toolchain required at runtime.
 The generated %s/main.go and %s/go.mod remain available so you can still

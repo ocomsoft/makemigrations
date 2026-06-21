@@ -32,11 +32,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/ocomsoft/morphic/internal/codegen"
-	"github.com/ocomsoft/morphic/internal/config"
-	"github.com/ocomsoft/morphic/internal/dumpdata"
-	"github.com/ocomsoft/morphic/internal/types"
-	"github.com/ocomsoft/morphic/migrate"
+	"github.com/ocomsoft/makemigrations/internal/codegen"
+	"github.com/ocomsoft/makemigrations/internal/config"
+	"github.com/ocomsoft/makemigrations/internal/dumpdata"
+	"github.com/ocomsoft/makemigrations/internal/types"
+	"github.com/ocomsoft/makemigrations/migrate"
 )
 
 var (
@@ -48,7 +48,7 @@ var (
 	dumpDataWhere       []string
 )
 
-// dumpDataCmd is the "morphic dump-data" subcommand. It connects to a
+// dumpDataCmd is the "makemigrations dump-data" subcommand. It connects to a
 // live database, fetches all rows from the specified tables, and generates a
 // Go migration file containing UpsertData operations for each table.
 var dumpDataCmd = &cobra.Command{
@@ -66,25 +66,25 @@ the migration chain correctly.
 
 Examples:
   # Dump a single table
-  morphic generate dump-data countries
+  makemigrations generate dump-data countries
 
   # Dump multiple tables with a custom name
-  morphic generate dump-data countries currencies --name seed_reference_data
+  makemigrations generate dump-data countries currencies --name seed_reference_data
 
   # Override conflict keys for tables without migrations
-  morphic generate dump-data legacy_config --conflict-key code
+  makemigrations generate dump-data legacy_config --conflict-key code
 
   # Preview without writing
-  morphic generate dump-data countries --dry-run
+  makemigrations generate dump-data countries --dry-run
 
   # Use a full DSN instead of individual flags
-  morphic generate dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
+  makemigrations generate dump-data countries --dsn "host=localhost port=5432 dbname=myapp user=dev sslmode=disable"
 
   # Filter rows with a WHERE clause
-  morphic generate dump-data users --where "users:status='active'"
+  makemigrations generate dump-data users --where "users:status='active'"
 
   # Apply the same filter to all tables
-  morphic generate dump-data countries currencies --where "active = 1"`,
+  makemigrations generate dump-data countries currencies --where "active = 1"`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: runDumpData,
 }
@@ -320,7 +320,7 @@ func buildDumpDataDSN(dbType string, defaultURL string) string {
 			return database
 		}
 
-		return "morphic.db"
+		return "makemigrations.db"
 	default:
 		return buildConnectionString(types.DatabasePostgreSQL)
 	}

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Bump version script for morphic
+# Bump version script for makemigrations
 # Usage: ./scripts/bump-version.sh [patch|minor|major] [--dry-run] [--allow-dirty]
 
 set -e

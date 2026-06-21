@@ -23,15 +23,15 @@ SOFTWARE.
 */
 
 // operations.go defines the Operation interface and all concrete migration
-// operation types used by the morphic Go migration framework.
+// operation types used by the makemigrations Go migration framework.
 package migrate
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/ocomsoft/morphic/internal/providers"
-	"github.com/ocomsoft/morphic/internal/types"
+	"github.com/ocomsoft/makemigrations/internal/providers"
+	"github.com/ocomsoft/makemigrations/internal/types"
 )
 
 // Operation is the interface all migration operations must implement.

@@ -35,8 +35,8 @@ import (
 	"golang.org/x/mod/modfile"
 	yaml "gopkg.in/yaml.v3"
 
-	"github.com/ocomsoft/morphic/internal/workflow"
-	yamlpkg "github.com/ocomsoft/morphic/internal/yaml"
+	"github.com/ocomsoft/makemigrations/internal/workflow"
+	yamlpkg "github.com/ocomsoft/makemigrations/internal/yaml"
 )
 
 var (
@@ -64,9 +64,9 @@ Use --interactive to review and select which schemas to include.
 The command preserves existing includes and only adds newly discovered ones.
 
 Examples:
-  morphic find_includes                    # Add all discovered schemas
-  morphic find_includes --interactive      # Review before adding
-  morphic find_includes --schema custom.yaml  # Use different schema file`,
+  makemigrations find_includes                    # Add all discovered schemas
+  makemigrations find_includes --interactive      # Review before adding
+  makemigrations find_includes --schema custom.yaml  # Use different schema file`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runFindIncludes(cmd, args)
 	},

@@ -1,6 +1,6 @@
 module github.com/ocomsoft/makemigrations
 
-go 1.25.11
+go 1.25.12
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -14,8 +14,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/traefik/yaegi v0.16.1
-	golang.org/x/mod v0.36.0
-	golang.org/x/text v0.37.0
+	golang.org/x/mod v0.37.0
+	golang.org/x/text v0.39.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
